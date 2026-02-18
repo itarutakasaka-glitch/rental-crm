@@ -35,7 +35,7 @@ export async function getAnalytics(organizationId: string): Promise<AnalyticsDat
   const monthVisits = await prisma.schedule.count({ where: { organizationId, type: { in: ["VISIT","VIEWING"] }, startAt: { gte: monthStart } } });
 
   const statusBreakdown = statuses.map((s: any) => ({ name: s.name, color: s.color, count: s._count.customers }));
-  const portalMap: Record<string,number> = {}; customers.forEach((c: any) => { const p = c.sourcePortal||"不�E"; portalMap[p]=(portalMap[p]||0)+1; });
+  const portalMap: Record<string,number> = {}; customers.forEach((c: any) => { const p = c.sourcePortal||"荳肴・"; portalMap[p]=(portalMap[p]||0)+1; });
   const portalBreakdown = Object.entries(portalMap).map(([portal,count]) => ({portal,count})).sort((a,b) => b.count-a.count);
 
   const monthMap: Record<string,number> = {};
@@ -48,7 +48,7 @@ export async function getAnalytics(organizationId: string): Promise<AnalyticsDat
   const channelBreakdown = Object.entries(chMap).map(([channel,d]) => ({channel,...d}));
 
   const assigneeMap: Record<string,{name:string;total:number;needAction:number}> = {};
-  customers.forEach((c: any) => { const n=c.assignee?.name||"未割彁E; if(!assigneeMap[n])assigneeMap[n]={name:n,total:0,needAction:0}; assigneeMap[n].total++; if(c.isNeedAction)assigneeMap[n].needAction++; });
+  customers.forEach((c: any) => { const n=c.assignee?.name||"譛ｪ蜑ｲ蠖・; if(!assigneeMap[n])assigneeMap[n]={name:n,total:0,needAction:0}; assigneeMap[n].total++; if(c.isNeedAction)assigneeMap[n].needAction++; });
   const assigneeBreakdown = Object.values(assigneeMap).sort((a,b) => b.total-a.total);
 
   const wfStats = {total:workflowRuns.length, running:0, completed:0, stopped:0};
