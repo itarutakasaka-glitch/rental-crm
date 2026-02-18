@@ -1,0 +1,334 @@
+// ===========================================
+// 不動産賃貸仲介CRM — Prismaスキーマ
+// ===========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+// ── 組織 ──
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now())
+  users              User[]
+  customers          Customer[]
+  statuses           Status[]
+  templates          Template[]
+  templateCategories TemplateCategory[]
+  workflows          Workflow[]
+  schedules          Schedule[]
+}
+
+// ── ユーザー（営業担当者） ──
+model User {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  email          String       @unique
+  name           String
+  role           UserRole     @default(MEMBER)
+  createdAt      DateTime     @default(now())
+  assignedCustomers Customer[] @relation("AssignedCustomers")
+  messages          Message[]  @relation("SentMessages")
+  auditLogs         AuditLog[]
+  schedules         Schedule[]
+}
+
+enum UserRole { ADMIN  MEMBER }
+
+// ── 顧客ステータス ──
+model Status {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  color          String       @default("#6b7280")
+  description    String?
+  order          Int
+  isDefault      Boolean      @default(false)
+  isSystem       Boolean      @default(false)
+  customers     Customer[]
+  historyFrom   StatusHistory[] @relation("StatusFrom")
+  historyTo     StatusHistory[] @relation("StatusTo")
+}
+
+// ── 顧客 ──
+model Customer {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  name             String
+  nameKana         String?
+  email            String?
+  phone            String?
+  preferredContact String?
+  postalCode       String?
+  address          String?
+  gender           String?
+  age              String?
+  occupation       String?
+  income           String?
+  currentArea      String?
+  sourcePortal     String?
+  inquiryContent   String?
+  statusId         String
+  status           Status       @relation(fields: [statusId], references: [id])
+  assigneeId       String?
+  assignee         User?        @relation("AssignedCustomers", fields: [assigneeId], references: [id])
+  isNeedAction     Boolean      @default(true)
+  snoozedUntil     DateTime?
+  lineUserId       String?
+  lineDisplayName  String?
+  lineLinkedAt     DateTime?
+  lineBlockedAt    DateTime?
+  autoFollowActive Boolean      @default(true)
+  memo             String?
+  lastActiveAt     DateTime?
+  lastContactAt    DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  tags            CustomerTag[]
+  properties      InquiryProperty[]
+  wishCondition   WishCondition?
+  messages        Message[]
+  schedules       Schedule[]
+  workflowRuns    WorkflowRun[]
+  statusHistory   StatusHistory[]
+  auditLogs       AuditLog[]
+}
+
+// ── 顧客タグ ──
+model CustomerTag {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name       String
+  @@unique([customerId, name])
+}
+
+// ── 問い合わせ物件 ──
+model InquiryProperty {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name        String
+  address     String?
+  station     String?
+  roomNumber  String?
+  rent        Int?
+  area        Float?
+  layout      String?
+  portalUrl   String?
+  propertyId  String?
+  inquiryId   String?
+  createdAt   DateTime @default(now())
+}
+
+// ── 希望条件 ──
+model WishCondition {
+  id          String   @id @default(cuid())
+  customerId  String   @unique
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  areas       String?
+  stations    String?
+  rentMin     Int?
+  rentMax     Int?
+  layout      String?
+  walkMinutes Int?
+  buildAge    Int?
+  areaMin     Float?
+  features    String?
+  moveInDate  String?
+  reason      String?
+  freeText    String?
+  updatedAt   DateTime @updatedAt
+}
+
+// ── メッセージ ──
+model Message {
+  id          String        @id @default(cuid())
+  customerId  String
+  customer    Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  senderId    String?
+  sender      User?         @relation("SentMessages", fields: [senderId], references: [id])
+  direction   Direction
+  channel     Channel
+  subject     String?
+  body        String
+  status      MessageStatus @default(SENT)
+  externalId  String?       @unique
+  deliveredAt DateTime?
+  openedAt    DateTime?
+  openCount   Int           @default(0)
+  clickedAt   DateTime?
+  clickCount  Int           @default(0)
+  bouncedAt   DateTime?
+  bounceReason String?
+  workflowStepRunId String?
+  workflowStepRun   WorkflowStepRun? @relation(fields: [workflowStepRunId], references: [id])
+  createdAt   DateTime      @default(now())
+  events      MessageEvent[]
+}
+
+enum Direction { INBOUND  OUTBOUND }
+enum Channel { EMAIL  LINE  SMS  CALL  NOTE  VISIT }
+enum MessageStatus { PENDING  SENT  DELIVERED  FAILED  BOUNCED }
+
+// ── メッセージイベント ──
+model MessageEvent {
+  id         String   @id @default(cuid())
+  messageId  String
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  type       String
+  occurredAt DateTime
+  metadata   Json?
+  createdAt  DateTime @default(now())
+}
+
+// ── スケジュール ──
+model Schedule {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  customerId     String?
+  customer       Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  title          String
+  description    String?
+  type           ScheduleType
+  startAt        DateTime
+  endAt          DateTime?
+  isAllDay       Boolean      @default(false)
+  location       String?
+  color          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+enum ScheduleType { VISIT  VIEWING  CALL  FOLLOW_UP  OTHER }
+
+// ── テンプレートカテゴリ ──
+model TemplateCategory {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  order          Int
+  templates      Template[]
+}
+
+// ── テンプレート ──
+model Template {
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  categoryId     String
+  category       TemplateCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name           String
+  channel        Channel
+  subject        String?
+  body           String
+  order          Int              @default(0)
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  workflowSteps  WorkflowStep[]
+}
+
+// ── ワークフロー ──
+model Workflow {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  isDefault      Boolean      @default(false)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  steps          WorkflowStep[]
+  runs           WorkflowRun[]
+}
+
+model WorkflowStep {
+  id          String   @id @default(cuid())
+  workflowId  String
+  workflow    Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  name        String
+  daysAfter   Int
+  timeOfDay   String
+  channel     Channel
+  templateId  String
+  template    Template @relation(fields: [templateId], references: [id])
+  order       Int
+  isActive    Boolean  @default(true)
+  stepRuns    WorkflowStepRun[]
+}
+
+model WorkflowRun {
+  id          String      @id @default(cuid())
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  workflowId  String
+  workflow    Workflow     @relation(fields: [workflowId], references: [id])
+  status      WFRunStatus @default(RUNNING)
+  startedAt   DateTime    @default(now())
+  stoppedAt   DateTime?
+  stopReason  String?
+  stepRuns    WorkflowStepRun[]
+}
+
+enum WFRunStatus { RUNNING  COMPLETED  STOPPED_BY_REPLY  STOPPED_BY_LINE_ADD  STOPPED_BY_VISIT  STOPPED_BY_CALL  STOPPED_MANUAL }
+
+model WorkflowStepRun {
+  id              String        @id @default(cuid())
+  workflowRunId   String
+  workflowRun     WorkflowRun   @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+  stepId          String
+  step            WorkflowStep  @relation(fields: [stepId], references: [id])
+  status          StepRunStatus @default(PENDING)
+  scheduledAt     DateTime
+  executedAt      DateTime?
+  errorMessage    String?
+  retryCount      Int           @default(0)
+  messages        Message[]
+}
+
+enum StepRunStatus { PENDING  SENT  FAILED  CANCELLED  SKIPPED }
+
+// ── ステータス変更履歴 ──
+model StatusHistory {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  fromId     String?
+  from       Status?  @relation("StatusFrom", fields: [fromId], references: [id])
+  toId       String
+  to         Status   @relation("StatusTo", fields: [toId], references: [id])
+  changedBy  String?
+  reason     String?
+  createdAt  DateTime @default(now())
+}
+
+// ── 監査ログ ──
+model AuditLog {
+  id         String   @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  field      String?
+  oldValue   String?
+  newValue   String?
+  createdAt  DateTime @default(now())
+}
