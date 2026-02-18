@@ -9,7 +9,7 @@ export async function signInWithEmail(formData: { email: string; password: strin
   return { error: null };
 }
 
-export async function signUpWithEmail(formData: { email: string; password: string }) {
+export async function signUpWithEmail(formData: { email: string, password: string, name?: string }) {
   const supabase = await createClient();
   if (formData.password.length < 6) return { error: "パスワードは6文字以上で入力してください" };
   const { error } = await supabase.auth.signUp({ email: formData.email, password: formData.password });
