@@ -10,7 +10,7 @@ function LoginForm() {
 
   const handleSubmit = () => { setError("");
     start(async () => {
-      const res = isSignUp ? await signUpWithEmail(email, password, name) : await signInWithEmail(email, password);
+      const res = isSignUp ? await signUpWithEmail({ email, password, name }) : await signInWithEmail({ email, password });
       if (res?.error) setError(res.error); else router.push(redirectTo);
     });
   };
