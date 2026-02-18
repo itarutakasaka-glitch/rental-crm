@@ -68,5 +68,5 @@ export async function getAuthUserForAction(): Promise<AuthUser | null> {
       role: dbUser.role as "ADMIN" | "MEMBER",
       organizationId: dbUser.organizationId, organizationName: dbUser.organization.name,
     };
-  } catch { return null; }
+  } catch (e) { return null; }
 }
