@@ -43,7 +43,10 @@ model User {
   schedules         Schedule[]
 }
 
-enum UserRole { ADMIN  MEMBER }
+enum UserRole {
+  ADMIN
+  MEMBER
+}
 
 // ── 顧客ステータス ──
 model Status {
@@ -179,9 +182,25 @@ model Message {
   events      MessageEvent[]
 }
 
-enum Direction { INBOUND  OUTBOUND }
-enum Channel { EMAIL  LINE  SMS  CALL  NOTE  VISIT }
-enum MessageStatus { PENDING  SENT  DELIVERED  FAILED  BOUNCED }
+enum Direction {
+  INBOUND
+  OUTBOUND
+}
+enum Channel {
+  EMAIL
+  LINE
+  SMS
+  CALL
+  NOTE
+  VISIT
+}
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+}
 
 // ── メッセージイベント ──
 model MessageEvent {
@@ -215,7 +234,13 @@ model Schedule {
   updatedAt      DateTime     @updatedAt
 }
 
-enum ScheduleType { VISIT  VIEWING  CALL  FOLLOW_UP  OTHER }
+enum ScheduleType {
+  VISIT
+  VIEWING
+  CALL
+  FOLLOW_UP
+  OTHER
+}
 
 // ── テンプレートカテゴリ ──
 model TemplateCategory {
@@ -287,7 +312,15 @@ model WorkflowRun {
   stepRuns    WorkflowStepRun[]
 }
 
-enum WFRunStatus { RUNNING  COMPLETED  STOPPED_BY_REPLY  STOPPED_BY_LINE_ADD  STOPPED_BY_VISIT  STOPPED_BY_CALL  STOPPED_MANUAL }
+enum WFRunStatus {
+  RUNNING
+  COMPLETED
+  STOPPED_BY_REPLY
+  STOPPED_BY_LINE_ADD
+  STOPPED_BY_VISIT
+  STOPPED_BY_CALL
+  STOPPED_MANUAL
+}
 
 model WorkflowStepRun {
   id              String        @id @default(cuid())
@@ -303,7 +336,13 @@ model WorkflowStepRun {
   messages        Message[]
 }
 
-enum StepRunStatus { PENDING  SENT  FAILED  CANCELLED  SKIPPED }
+enum StepRunStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+  SKIPPED
+}
 
 // ── ステータス変更履歴 ──
 model StatusHistory {
