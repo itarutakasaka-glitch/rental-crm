@@ -1,6 +1,5 @@
 // ===========================================
-// 不動産賃貸仲介CRM — Prismaスキーマ
-// ===========================================
+// 不動産賁E��仲介CRM  EPrismaスキーチE// ===========================================
 
 generator client {
   provider = "prisma-client-js"
@@ -9,9 +8,10 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// ── 組織 ──
+// ── 絁E��E──
 model Organization {
   id        String   @id @default(cuid())
   name      String
@@ -28,7 +28,7 @@ model Organization {
   schedules          Schedule[]
 }
 
-// ── ユーザー（営業担当者） ──
+// ── ユーザー�E�営業拁E��老E��E──
 model User {
   id             String       @id @default(cuid())
   organizationId String
@@ -48,7 +48,7 @@ enum UserRole {
   MEMBER
 }
 
-// ── 顧客ステータス ──
+// ── 顧客スチE�Eタス ──
 model Status {
   id             String       @id @default(cuid())
   organizationId String
@@ -156,7 +156,7 @@ model WishCondition {
   updatedAt   DateTime @updatedAt
 }
 
-// ── メッセージ ──
+// ── メチE��ージ ──
 model Message {
   id          String        @id @default(cuid())
   customerId  String
@@ -202,7 +202,7 @@ enum MessageStatus {
   BOUNCED
 }
 
-// ── メッセージイベント ──
+// ── メチE��ージイベンチE──
 model MessageEvent {
   id         String   @id @default(cuid())
   messageId  String
@@ -242,7 +242,7 @@ enum ScheduleType {
   OTHER
 }
 
-// ── テンプレートカテゴリ ──
+// ── チE��プレートカチE��リ ──
 model TemplateCategory {
   id             String       @id @default(cuid())
   organizationId String
@@ -252,7 +252,7 @@ model TemplateCategory {
   templates      Template[]
 }
 
-// ── テンプレート ──
+// ── チE��プレーチE──
 model Template {
   id             String           @id @default(cuid())
   organizationId String
@@ -344,7 +344,7 @@ enum StepRunStatus {
   SKIPPED
 }
 
-// ── ステータス変更履歴 ──
+// ── スチE�Eタス変更履歴 ──
 model StatusHistory {
   id         String   @id @default(cuid())
   customerId String
