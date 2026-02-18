@@ -16,7 +16,7 @@ export default async function CustomersPage() {
           <thead><tr className="border-b border-gray-100 bg-gray-50/50">
             {["顧客名","ステータス","反響元","物件","最終"].map(h=><th key={h} className="text-left py-2.5 px-4 text-xs font-semibold text-gray-500">{h}</th>)}
           </tr></thead>
-          <tbody>{customers.map(c => (
+          <tbody>{customers.map((c: any) => (
             <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50">
               <td className="py-2.5 px-4"><Link href={`/customers/${c.id}`} className="flex items-center gap-2">
                 <span className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">{c.name[0]}</span>
