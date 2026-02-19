@@ -28,7 +28,7 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
   const [body, setBody] = useState(""); const [subj, setSubj] = useState(""); const [ch, setCh] = useState("EMAIL");
   const [isPending, start] = useTransition(); const router = useRouter();
   const [lineCode, setLineCode] = useState(""); const [linkMsg, setLinkMsg] = useState("");
-  const [tpls, setTpls] = useState<Tpl[]>([]); const [showTpl, setShowTpl] = useState(false); const [org, setOrg] = useState<any>(null); const [org, setOrg] = useState<any>(null);
+  const [tpls, setTpls] = useState<Tpl[]>([]); const [showTpl, setShowTpl] = useState(false); const [org, setOrg] = useState<any>(null);
   const st = statuses.find((s: any) => s.id === c.statusId);
 
   useEffect(() => { fetch("/api/templates").then(r => r.json()).then(d => setTpls(d.templates || [])); fetch("/api/organization").then(r => r.json()).then(d => setOrg(d)); }, []);
