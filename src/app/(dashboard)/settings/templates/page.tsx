@@ -6,9 +6,18 @@ type Template = { id: string; name: string; channel: string; subject: string | n
 
 const VARS = [
   { key: "{{customer_name}}", label: "\u9867\u5BA2\u540D" },
+  { key: "{{customer_email}}", label: "\u9867\u5BA2\u30E1\u30FC\u30EB" },
+  { key: "{{customer_phone}}", label: "\u9867\u5BA2\u96FB\u8A71" },
   { key: "{{staff_name}}", label: "\u62C5\u5F53\u8005\u540D" },
   { key: "{{property_name}}", label: "\u7269\u4EF6\u540D" },
+  { key: "{{property_url}}", label: "\u7269\u4EF6URL" },
   { key: "{{company_name}}", label: "\u4F1A\u793E\u540D" },
+  { key: "{{store_name}}", label: "\u5E97\u8217\u540D" },
+  { key: "{{store_address}}", label: "\u5E97\u8217\u4F4F\u6240" },
+  { key: "{{store_phone}}", label: "\u5E97\u8217\u96FB\u8A71" },
+  { key: "{{store_hours}}", label: "\u55B6\u696D\u6642\u9593" },
+  { key: "{{line_url}}", label: "LINE URL" },
+  { key: "{{license_number}}", label: "\u514D\u8A31\u756A\u53F7" },
 ];
 
 export default function TemplatesPage() {

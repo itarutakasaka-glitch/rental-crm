@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { sendMessage } from "@/actions/send-message";
@@ -7,22 +7,31 @@ import type { AuthUser } from "@/lib/auth";
 const CH: Record<string, { label: string; color: string }> = { EMAIL: { label: "Email", color: "#3b82f6" }, LINE: { label: "LINE", color: "#06c755" }, SMS: { label: "SMS", color: "#f59e0b" }, CALL: { label: "Tel", color: "#8b5cf6" }, NOTE: { label: "Note", color: "#6b7280" } };
 type Tpl = { id: string; name: string; channel: string; subject: string | null; body: string; category: { name: string } };
 
-function resolveVars(text: string, c: any, user: AuthUser) {
+function resolveVars(text: string, c: any, user: AuthUser, org: any) {
   return text
     .replace(/\{\{customer_name\}\}/g, c.name || "")
+    .replace(/\{\{customer_email\}\}/g, c.email || "")
+    .replace(/\{\{customer_phone\}\}/g, c.phone || "")
     .replace(/\{\{staff_name\}\}/g, user.name || c.assignee?.name || "")
     .replace(/\{\{property_name\}\}/g, c.properties?.[0]?.name || "")
-    .replace(/\{\{company_name\}\}/g, c.organization?.name || "\u305F\u307E\u4E0D\u52D5\u7523");
+    .replace(/\{\{property_url\}\}/g, c.properties?.[0]?.url || "")
+    .replace(/\{\{company_name\}\}/g, org?.name || "")
+    .replace(/\{\{store_name\}\}/g, org?.storeName || org?.name || "")
+    .replace(/\{\{store_address\}\}/g, org?.storeAddress || org?.address || "")
+    .replace(/\{\{store_phone\}\}/g, org?.storePhone || org?.phone || "")
+    .replace(/\{\{store_hours\}\}/g, org?.storeHours || "")
+    .replace(/\{\{line_url\}\}/g, org?.lineUrl || "https://line.me/R/ti/p/@331fxngy")
+    .replace(/\{\{license_number\}\}/g, org?.licenseNumber || "");
 }
 
 export function CustomerDetail({ customer: c, statuses, templates: _t, currentUser }: { customer: any; statuses: any[]; templates: any[]; currentUser: AuthUser }) {
   const [body, setBody] = useState(""); const [subj, setSubj] = useState(""); const [ch, setCh] = useState("EMAIL");
   const [isPending, start] = useTransition(); const router = useRouter();
   const [lineCode, setLineCode] = useState(""); const [linkMsg, setLinkMsg] = useState("");
-  const [tpls, setTpls] = useState<Tpl[]>([]); const [showTpl, setShowTpl] = useState(false);
+  const [tpls, setTpls] = useState<Tpl[]>([]); const [showTpl, setShowTpl] = useState(false); const [org, setOrg] = useState<any>(null); const [org, setOrg] = useState<any>(null);
   const st = statuses.find((s: any) => s.id === c.statusId);
 
-  useEffect(() => { fetch("/api/templates").then(r => r.json()).then(d => setTpls(d.templates || [])); }, []);
+  useEffect(() => { fetch("/api/templates").then(r => r.json()).then(d => setTpls(d.templates || [])); fetch("/api/organization").then(r => r.json()).then(d => setOrg(d)); }, []);
 
   const send = () => { if (!body.trim()) return;
     start(async () => {
@@ -33,8 +42,8 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
 
   const applyTpl = (t: Tpl) => {
     setCh(t.channel);
-    setBody(resolveVars(t.body, c, currentUser));
-    if (t.subject) setSubj(resolveVars(t.subject, c, currentUser));
+    setBody(resolveVars(t.body, c, currentUser, org));
+    if (t.subject) setSubj(resolveVars(t.subject, c, currentUser, org));
     setShowTpl(false);
   };
 

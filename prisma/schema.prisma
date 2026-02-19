@@ -17,6 +17,15 @@ model Organization {
   phone     String?
   email     String?
   address   String?
+  website        String?
+  storeName      String?
+  storeAddress   String?
+  storePhone     String?
+  storeHours     String?
+  storeAccess    String?
+  logoUrl        String?
+  lineUrl        String?
+  licenseNumber  String?
   createdAt DateTime @default(now())
   users              User[]
   customers          Customer[]
