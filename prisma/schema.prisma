@@ -1,5 +1,5 @@
-// ===========================================
-// 不動産賁E��仲介CRM  EPrismaスキーチE// ===========================================
+﻿// ===========================================
+// 荳榊虚逕｣雉・ｲｸ莉ｲ莉気RM 窶・Prisma繧ｹ繧ｭ繝ｼ繝・// ===========================================
 
 generator client {
   provider = "prisma-client-js"
@@ -11,7 +11,7 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ── 絁E��E──
+// 笏笏 邨・ｹ・笏笏
 model Organization {
   id        String   @id @default(cuid())
   name      String
@@ -28,7 +28,7 @@ model Organization {
   schedules          Schedule[]
 }
 
-// ── ユーザー�E�営業拁E��老E��E──
+// 笏笏 繝ｦ繝ｼ繧ｶ繝ｼ・亥霧讌ｭ諡・ｽ楢・ｼ・笏笏
 model User {
   id             String       @id @default(cuid())
   organizationId String
@@ -48,7 +48,7 @@ enum UserRole {
   MEMBER
 }
 
-// ── 顧客スチE�Eタス ──
+// 笏笏 鬘ｧ螳｢繧ｹ繝・・繧ｿ繧ｹ 笏笏
 model Status {
   id             String       @id @default(cuid())
   organizationId String
@@ -64,7 +64,7 @@ model Status {
   historyTo     StatusHistory[] @relation("StatusTo")
 }
 
-// ── 顧客 ──
+// 笏笏 鬘ｧ螳｢ 笏笏
 model Customer {
   id               String       @id @default(cuid())
   organizationId   String
@@ -109,7 +109,7 @@ model Customer {
   auditLogs       AuditLog[]
 }
 
-// ── 顧客タグ ──
+// 笏笏 鬘ｧ螳｢繧ｿ繧ｰ 笏笏
 model CustomerTag {
   id         String   @id @default(cuid())
   customerId String
@@ -118,7 +118,7 @@ model CustomerTag {
   @@unique([customerId, name])
 }
 
-// ── 問い合わせ物件 ──
+// 笏笏 蝠上＞蜷医ｏ縺帷黄莉ｶ 笏笏
 model InquiryProperty {
   id          String   @id @default(cuid())
   customerId  String
@@ -136,7 +136,7 @@ model InquiryProperty {
   createdAt   DateTime @default(now())
 }
 
-// ── 希望条件 ──
+// 笏笏 蟶梧悍譚｡莉ｶ 笏笏
 model WishCondition {
   id          String   @id @default(cuid())
   customerId  String   @unique
@@ -156,7 +156,7 @@ model WishCondition {
   updatedAt   DateTime @updatedAt
 }
 
-// ── メチE��ージ ──
+// 笏笏 繝｡繝・そ繝ｼ繧ｸ 笏笏
 model Message {
   id          String        @id @default(cuid())
   customerId  String
@@ -202,7 +202,7 @@ enum MessageStatus {
   BOUNCED
 }
 
-// ── メチE��ージイベンチE──
+// 笏笏 繝｡繝・そ繝ｼ繧ｸ繧､繝吶Φ繝・笏笏
 model MessageEvent {
   id         String   @id @default(cuid())
   messageId  String
@@ -213,7 +213,7 @@ model MessageEvent {
   createdAt  DateTime @default(now())
 }
 
-// ── スケジュール ──
+// 笏笏 繧ｹ繧ｱ繧ｸ繝･繝ｼ繝ｫ 笏笏
 model Schedule {
   id             String       @id @default(cuid())
   organizationId String
@@ -242,7 +242,7 @@ enum ScheduleType {
   OTHER
 }
 
-// ── チE��プレートカチE��リ ──
+// 笏笏 繝・Φ繝励Ξ繝ｼ繝医き繝・ざ繝ｪ 笏笏
 model TemplateCategory {
   id             String       @id @default(cuid())
   organizationId String
@@ -252,7 +252,7 @@ model TemplateCategory {
   templates      Template[]
 }
 
-// ── チE��プレーチE──
+// 笏笏 繝・Φ繝励Ξ繝ｼ繝・笏笏
 model Template {
   id             String           @id @default(cuid())
   organizationId String
@@ -270,7 +270,7 @@ model Template {
   workflowSteps  WorkflowStep[]
 }
 
-// ── ワークフロー ──
+// 笏笏 繝ｯ繝ｼ繧ｯ繝輔Ο繝ｼ 笏笏
 model Workflow {
   id             String       @id @default(cuid())
   organizationId String
@@ -344,7 +344,7 @@ enum StepRunStatus {
   SKIPPED
 }
 
-// ── スチE�Eタス変更履歴 ──
+// 笏笏 繧ｹ繝・・繧ｿ繧ｹ螟画峩螻･豁ｴ 笏笏
 model StatusHistory {
   id         String   @id @default(cuid())
   customerId String
@@ -358,7 +358,7 @@ model StatusHistory {
   createdAt  DateTime @default(now())
 }
 
-// ── 監査ログ ──
+// 笏笏 逶｣譟ｻ繝ｭ繧ｰ 笏笏
 model AuditLog {
   id         String   @id @default(cuid())
   customerId String?
@@ -381,3 +381,5 @@ model LinePending {
   organizationId String   @default("org_default")
   createdAt      DateTime @default(now())
 }
+
+
