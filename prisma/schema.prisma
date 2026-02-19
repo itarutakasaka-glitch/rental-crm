@@ -10,7 +10,7 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// 隨渉隨渉 驍ｨ繝ｻ・ｹ繝ｻ隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 鬩搾ｽｨ郢晢ｽｻ繝ｻ・ｹ郢晢ｽｻ髫ｨ貂可髫ｨ貂可
 model Organization {
   id        String   @id @default(cuid())
   name      String
@@ -27,7 +27,7 @@ model Organization {
   schedules          Schedule[]
 }
 
-// 隨渉隨渉 郢晢ｽｦ郢晢ｽｼ郢ｧ・ｶ郢晢ｽｼ繝ｻ莠･髴ｧ隶鯉ｽｭ隲｡繝ｻ・ｽ讌｢ﾂ繝ｻ・ｼ繝ｻ隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 驛｢譎｢・ｽ・ｦ驛｢譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｶ驛｢譎｢・ｽ・ｼ郢晢ｽｻ闔・･鬮ｴ・ｧ髫ｶ魃会ｽｽ・ｭ髫ｲ・｡郢晢ｽｻ繝ｻ・ｽ隶鯉ｽ｢・つ郢晢ｽｻ繝ｻ・ｼ郢晢ｽｻ髫ｨ貂可髫ｨ貂可
 model User {
   id             String       @id @default(cuid())
   organizationId String
@@ -47,7 +47,7 @@ enum UserRole {
   MEMBER
 }
 
-// 隨渉隨渉 鬯假ｽｧ陞ｳ・｢郢ｧ・ｹ郢昴・繝ｻ郢ｧ・ｿ郢ｧ・ｹ 隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 鬯ｯ蛛・ｽｽ・ｧ髯橸ｽｳ繝ｻ・｢驛｢・ｧ繝ｻ・ｹ驛｢譏ｴ繝ｻ郢晢ｽｻ驛｢・ｧ繝ｻ・ｿ驛｢・ｧ繝ｻ・ｹ 髫ｨ貂可髫ｨ貂可
 model Status {
   id             String       @id @default(cuid())
   organizationId String
@@ -63,7 +63,7 @@ model Status {
   historyTo     StatusHistory[] @relation("StatusTo")
 }
 
-// 隨渉隨渉 鬯假ｽｧ陞ｳ・｢ 隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 鬯ｯ蛛・ｽｽ・ｧ髯橸ｽｳ繝ｻ・｢ 髫ｨ貂可髫ｨ貂可
 model Customer {
   id               String       @id @default(cuid())
   organizationId   String
@@ -92,6 +92,7 @@ model Customer {
   lineDisplayName  String?
   lineLinkedAt     DateTime?
   lineBlockedAt    DateTime?
+  lineCode         String?
   autoFollowActive Boolean      @default(true)
   memo             String?
   lastActiveAt     DateTime?
@@ -108,7 +109,7 @@ model Customer {
   auditLogs       AuditLog[]
 }
 
-// 隨渉隨渉 鬯假ｽｧ陞ｳ・｢郢ｧ・ｿ郢ｧ・ｰ 隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 鬯ｯ蛛・ｽｽ・ｧ髯橸ｽｳ繝ｻ・｢驛｢・ｧ繝ｻ・ｿ驛｢・ｧ繝ｻ・ｰ 髫ｨ貂可髫ｨ貂可
 model CustomerTag {
   id         String   @id @default(cuid())
   customerId String
@@ -117,7 +118,7 @@ model CustomerTag {
   @@unique([customerId, name])
 }
 
-// 隨渉隨渉 陜荳奇ｼ櫁惺蛹ｻ・冗ｸｺ蟶ｷ鮟・脂・ｶ 隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 髯懶｣ｰ闕ｳ螂・ｽｼ讚∵・陋ｹ・ｻ繝ｻ蜀暦ｽｸ・ｺ陝ｶ・ｷ魄溘・閼ゅ・・ｶ 髫ｨ貂可髫ｨ貂可
 model InquiryProperty {
   id          String   @id @default(cuid())
   customerId  String
@@ -135,7 +136,7 @@ model InquiryProperty {
   createdAt   DateTime @default(now())
 }
 
-// 隨渉隨渉 陝ｶ譴ｧ謔崎ｭ夲ｽ｡闔会ｽｶ 隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 髯晢ｽｶ隴ｴ・ｧ隰泌ｴ趣ｽｭ螟ｲ・ｽ・｡髣比ｼ夲ｽｽ・ｶ 髫ｨ貂可髫ｨ貂可
 model WishCondition {
   id          String   @id @default(cuid())
   customerId  String   @unique
@@ -155,7 +156,7 @@ model WishCondition {
   updatedAt   DateTime @updatedAt
 }
 
-// 隨渉隨渉 郢晢ｽ｡郢昴・縺晉ｹ晢ｽｼ郢ｧ・ｸ 隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 驛｢譎｢・ｽ・｡驛｢譏ｴ繝ｻ邵ｺ譎会ｽｹ譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｸ 髫ｨ貂可髫ｨ貂可
 model Message {
   id          String        @id @default(cuid())
   customerId  String
@@ -201,7 +202,7 @@ enum MessageStatus {
   BOUNCED
 }
 
-// 隨渉隨渉 郢晢ｽ｡郢昴・縺晉ｹ晢ｽｼ郢ｧ・ｸ郢ｧ・､郢晏生ﾎｦ郢昴・隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 驛｢譎｢・ｽ・｡驛｢譏ｴ繝ｻ邵ｺ譎会ｽｹ譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｸ驛｢・ｧ繝ｻ・､驛｢譎冗函・趣ｽｦ驛｢譏ｴ繝ｻ髫ｨ貂可髫ｨ貂可
 model MessageEvent {
   id         String   @id @default(cuid())
   messageId  String
@@ -212,7 +213,7 @@ model MessageEvent {
   createdAt  DateTime @default(now())
 }
 
-// 隨渉隨渉 郢ｧ・ｹ郢ｧ・ｱ郢ｧ・ｸ郢晢ｽ･郢晢ｽｼ郢晢ｽｫ 隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 驛｢・ｧ繝ｻ・ｹ驛｢・ｧ繝ｻ・ｱ驛｢・ｧ繝ｻ・ｸ驛｢譎｢・ｽ・･驛｢譎｢・ｽ・ｼ驛｢譎｢・ｽ・ｫ 髫ｨ貂可髫ｨ貂可
 model Schedule {
   id             String       @id @default(cuid())
   organizationId String
@@ -241,7 +242,7 @@ enum ScheduleType {
   OTHER
 }
 
-// 隨渉隨渉 郢昴・ﾎｦ郢晏干ﾎ樒ｹ晢ｽｼ郢晏現縺咲ｹ昴・縺也ｹ晢ｽｪ 隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 驛｢譏ｴ繝ｻ・趣ｽｦ驛｢譎丞ｹｲ・取ｨ抵ｽｹ譎｢・ｽ・ｼ驛｢譎冗樟邵ｺ蜥ｲ・ｹ譏ｴ繝ｻ邵ｺ荵滂ｽｹ譎｢・ｽ・ｪ 髫ｨ貂可髫ｨ貂可
 model TemplateCategory {
   id             String       @id @default(cuid())
   organizationId String
@@ -251,7 +252,7 @@ model TemplateCategory {
   templates      Template[]
 }
 
-// 隨渉隨渉 郢昴・ﾎｦ郢晏干ﾎ樒ｹ晢ｽｼ郢昴・隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 驛｢譏ｴ繝ｻ・趣ｽｦ驛｢譎丞ｹｲ・取ｨ抵ｽｹ譎｢・ｽ・ｼ驛｢譏ｴ繝ｻ髫ｨ貂可髫ｨ貂可
 model Template {
   id             String           @id @default(cuid())
   organizationId String
@@ -269,7 +270,7 @@ model Template {
   workflowSteps  WorkflowStep[]
 }
 
-// 隨渉隨渉 郢晢ｽｯ郢晢ｽｼ郢ｧ・ｯ郢晁ｼ釆溽ｹ晢ｽｼ 隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 驛｢譎｢・ｽ・ｯ驛｢譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｯ驛｢譎・ｽｼ驥・ｺｽ・ｹ譎｢・ｽ・ｼ 髫ｨ貂可髫ｨ貂可
 model Workflow {
   id             String       @id @default(cuid())
   organizationId String
@@ -343,7 +344,7 @@ enum StepRunStatus {
   SKIPPED
 }
 
-// 隨渉隨渉 郢ｧ・ｹ郢昴・繝ｻ郢ｧ・ｿ郢ｧ・ｹ陞溽判蟲ｩ陞ｻ・･雎・ｽｴ 隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 驛｢・ｧ繝ｻ・ｹ驛｢譏ｴ繝ｻ郢晢ｽｻ驛｢・ｧ繝ｻ・ｿ驛｢・ｧ繝ｻ・ｹ髯樊ｺｽ蛻､陝ｲ・ｩ髯橸ｽｻ繝ｻ・･髮弱・・ｽ・ｴ 髫ｨ貂可髫ｨ貂可
 model StatusHistory {
   id         String   @id @default(cuid())
   customerId String
@@ -357,7 +358,7 @@ model StatusHistory {
   createdAt  DateTime @default(now())
 }
 
-// 隨渉隨渉 騾ｶ・｣隴滂ｽｻ郢晢ｽｭ郢ｧ・ｰ 隨渉隨渉
+// 髫ｨ貂可髫ｨ貂可 鬨ｾ・ｶ繝ｻ・｣髫ｴ貊ゑｽｽ・ｻ驛｢譎｢・ｽ・ｭ驛｢・ｧ繝ｻ・ｰ 髫ｨ貂可髫ｨ貂可
 model AuditLog {
   id         String   @id @default(cuid())
   customerId String?
