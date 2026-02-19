@@ -6,10 +6,11 @@ import { signOut } from "@/actions/auth";
 import type { AuthUser } from "@/lib/auth";
 
 const NAV = [
-  { href: "/customers", icon: "則", label: "鬘ｧ螳｢荳隕ｧ" },
-  { href: "/schedule", icon: "套", label: "繧ｹ繧ｱ繧ｸ繝･繝ｼ繝ｫ" },
-  { href: "/analytics", icon: "投", label: "蛻・梵" },
-  { href: "/settings", icon: "笞呻ｸ・, label: "險ｭ螳・ },
+  { href: "/inbox", icon: "\uD83D\uDCE5", label: "\u53D7\u4FE1\u30C8\u30EC\u30A4" },
+  { href: "/customers", icon: "\uD83D\uDC65", label: "\u9867\u5BA2\u4E00\u89A7" },
+  { href: "/schedule", icon: "\uD83D\uDCC5", label: "\u30B9\u30B1\u30B8\u30E5\u30FC\u30EB" },
+  { href: "/analytics", icon: "\uD83D\uDCCA", label: "\u5206\u6790" },
+  { href: "/settings", icon: "\u2699\uFE0F", label: "\u8A2D\u5B9A" },
 ];
 
 export function SidebarNav({ user }: { user: AuthUser }) {
@@ -18,7 +19,7 @@ export function SidebarNav({ user }: { user: AuthUser }) {
   return (
     <aside className="w-[200px] bg-gray-900 text-white flex flex-col flex-shrink-0">
       <div className="p-4 border-b border-white/5">
-        <div className="text-sm font-extrabold text-primary tracking-tight">荳榊虚逕｣CRM</div>
+        <div className="text-sm font-extrabold text-primary tracking-tight">{"\u4E0D\u52D5\u7523CRM"}</div>
         <div className="text-[10px] text-gray-500 mt-0.5">{user.organizationName}</div>
       </div>
       <nav className="flex-1 p-2">
@@ -37,12 +38,11 @@ export function SidebarNav({ user }: { user: AuthUser }) {
           <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs text-primary font-bold">{user.name[0]}</div>
           <div className="flex-1 min-w-0">
             <div className="text-xs truncate">{user.name}</div>
-            <div className="text-[10px] text-gray-500">{user.role === "ADMIN" ? "邂｡逅・・ : "繝｡繝ｳ繝舌・"}</div>
+            <div className="text-[10px] text-gray-500">{user.role === "ADMIN" ? "\u7BA1\u7406\u8005" : "\u30E1\u30F3\u30D0\u30FC"}</div>
           </div>
-          <button onClick={() => startTransition(() => signOut())} className="text-xs text-gray-600 hover:text-white" title="繝ｭ繧ｰ繧｢繧ｦ繝・>坎</button>
+          <button onClick={() => startTransition(() => signOut())} className="text-xs text-gray-600 hover:text-white" title={"\u30ED\u30B0\u30A2\u30A6\u30C8"}>{"\uD83D\uDEAA"}</button>
         </div>
       </div>
     </aside>
   );
 }
-
