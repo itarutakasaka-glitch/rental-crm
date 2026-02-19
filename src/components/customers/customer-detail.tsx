@@ -90,7 +90,7 @@ export function CustomerDetail({ customer: c, statuses, templates, currentUser }
             <div className="text-xs font-semibold text-green-700 mb-2">LINE{"\u9023\u643A"}</div>
             <div className="text-[10px] text-green-600 mb-2">{"\u9867\u5BA2\u304C\u53CB\u3060\u3061\u8FFD\u52A0\u3059\u308B\u3068\u8A8D\u8A3C\u30B3\u30FC\u30C9\u304C\u9001\u3089\u308C\u307E\u3059\u3002\u305D\u306E\u30B3\u30FC\u30C9\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002"}</div>
             <div className="flex gap-1">
-              <input value={lineCode} onChange={e => setLineCode(e.target.value)} placeholder="4{"\u6841\u30B3\u30FC\u30C9"}" maxLength={4} className="flex-1 px-2 py-1.5 border rounded text-sm text-center tracking-widest font-mono" />
+              <input value={lineCode} onChange={e => setLineCode(e.target.value)} placeholder={"4\u6841\u30B3\u30FC\u30C9"} maxLength={4} className="flex-1 px-2 py-1.5 border rounded text-sm text-center tracking-widest font-mono" />
               <button onClick={linkLine} className="px-3 py-1.5 bg-[#06c755] text-white rounded text-xs font-semibold">{"\u9023\u643A"}</button>
             </div>
             {linkMsg && <div className="text-[10px] mt-1.5 text-green-700">{linkMsg}</div>}
@@ -114,3 +114,4 @@ export function CustomerDetail({ customer: c, statuses, templates, currentUser }
     </div>
   );
 }
+
