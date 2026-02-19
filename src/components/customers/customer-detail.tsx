@@ -1,22 +1,41 @@
 ﻿"use client";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { sendMessage } from "@/actions/send-message";
 import type { AuthUser } from "@/lib/auth";
 
-const CH = { EMAIL: { label: "Email", color: "#3b82f6" }, LINE: { label: "LINE", color: "#06c755" }, SMS: { label: "SMS", color: "#f59e0b" }, CALL: { label: "Tel", color: "#8b5cf6" }, NOTE: { label: "Note", color: "#6b7280" } };
+const CH: Record<string, { label: string; color: string }> = { EMAIL: { label: "Email", color: "#3b82f6" }, LINE: { label: "LINE", color: "#06c755" }, SMS: { label: "SMS", color: "#f59e0b" }, CALL: { label: "Tel", color: "#8b5cf6" }, NOTE: { label: "Note", color: "#6b7280" } };
+type Tpl = { id: string; name: string; channel: string; subject: string | null; body: string; category: { name: string } };
 
-export function CustomerDetail({ customer: c, statuses, templates, currentUser }: { customer: any; statuses: any[]; templates: any[]; currentUser: AuthUser }) {
+function resolveVars(text: string, c: any, user: AuthUser) {
+  return text
+    .replace(/\{\{customer_name\}\}/g, c.name || "")
+    .replace(/\{\{staff_name\}\}/g, user.name || c.assignee?.name || "")
+    .replace(/\{\{property_name\}\}/g, c.properties?.[0]?.name || "")
+    .replace(/\{\{company_name\}\}/g, c.organization?.name || "\u305F\u307E\u4E0D\u52D5\u7523");
+}
+
+export function CustomerDetail({ customer: c, statuses, templates: _t, currentUser }: { customer: any; statuses: any[]; templates: any[]; currentUser: AuthUser }) {
   const [body, setBody] = useState(""); const [subj, setSubj] = useState(""); const [ch, setCh] = useState("EMAIL");
   const [isPending, start] = useTransition(); const router = useRouter();
   const [lineCode, setLineCode] = useState(""); const [linkMsg, setLinkMsg] = useState("");
+  const [tpls, setTpls] = useState<Tpl[]>([]); const [showTpl, setShowTpl] = useState(false);
   const st = statuses.find((s: any) => s.id === c.statusId);
+
+  useEffect(() => { fetch("/api/templates").then(r => r.json()).then(d => setTpls(d.templates || [])); }, []);
 
   const send = () => { if (!body.trim()) return;
     start(async () => {
       await sendMessage({ customerId: c.id, senderId: currentUser.id, channel: ch as any, subject: ch === "EMAIL" ? subj : undefined, body });
       setBody(""); setSubj(""); router.refresh();
     });
+  };
+
+  const applyTpl = (t: Tpl) => {
+    setCh(t.channel);
+    setBody(resolveVars(t.body, c, currentUser));
+    if (t.subject) setSubj(resolveVars(t.subject, c, currentUser));
+    setShowTpl(false);
   };
 
   const linkLine = async () => {
@@ -27,6 +46,8 @@ export function CustomerDetail({ customer: c, statuses, templates, currentUser }
     if (res.ok) { setLinkMsg(`LINE\u9023\u643A\u5B8C\u4E86: ${data.displayName || "OK"}`); setLineCode(""); router.refresh(); }
     else { setLinkMsg(`\u30A8\u30E9\u30FC: ${data.error}`); }
   };
+
+  const filteredTpls = tpls.filter(t => t.channel === ch);
 
   return (
     <div className="flex h-full">
@@ -43,9 +64,7 @@ export function CustomerDetail({ customer: c, statuses, templates, currentUser }
               <div className="text-xs text-gray-400">{c.email} {"\u00B7"} {c.phone}</div>
             </div>
           </div>
-          <div className="flex gap-2">
-            <span className="px-3 py-1 rounded-md text-xs font-semibold border-2" style={{ borderColor: st?.color, color: st?.color, background: st?.color + "10" }}>{st?.name}</span>
-          </div>
+          <span className="px-3 py-1 rounded-md text-xs font-semibold border-2" style={{ borderColor: st?.color, color: st?.color, background: st?.color + "10" }}>{st?.name}</span>
         </div>
         <div className="flex-1 overflow-auto p-4 bg-gray-50/50 space-y-3">
           {c.messages.map((m: any) => {
@@ -66,11 +85,26 @@ export function CustomerDetail({ customer: c, statuses, templates, currentUser }
           })}
         </div>
         <div className="border-t bg-white p-3">
-          <div className="flex gap-1 mb-2">
+          <div className="flex gap-1 mb-2 items-center">
             {Object.entries(CH).filter(([k]) => k !== "LINE" || c.lineUserId).map(([k, v]) => (
               <button key={k} onClick={() => setCh(k)} className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${ch === k ? "text-white" : "text-gray-500 bg-gray-100 hover:bg-gray-200"}`}
                 style={ch === k ? { background: v.color, color: "white" } : {}}>{v.label}</button>
             ))}
+            <div className="ml-auto relative">
+              <button onClick={() => setShowTpl(!showTpl)} className="px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-600 hover:bg-purple-100">{"\u5B9A\u578B\u6587"}</button>
+              {showTpl && (
+                <div className="absolute bottom-10 right-0 w-64 bg-white border rounded-xl shadow-xl z-50 max-h-64 overflow-auto">
+                  <div className="p-2 border-b text-xs font-semibold text-gray-500">{"\u5B9A\u578B\u6587\u3092\u9078\u629E"}</div>
+                  {filteredTpls.length === 0 && <div className="p-3 text-xs text-gray-400">{"\u3053\u306E\u30C1\u30E3\u30CD\u30EB\u306E\u5B9A\u578B\u6587\u306F\u3042\u308A\u307E\u305B\u3093"}</div>}
+                  {filteredTpls.map(t => (
+                    <button key={t.id} onClick={() => applyTpl(t)} className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b last:border-0">
+                      <div className="text-sm font-semibold">{t.name}</div>
+                      <div className="text-[10px] text-gray-400 truncate">{t.body.slice(0, 50)}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           {ch === "EMAIL" && <input value={subj} onChange={e => setSubj(e.target.value)} placeholder={"\u4EF6\u540D"} className="w-full px-3 py-1.5 border rounded-lg text-sm mb-2" />}
           <div className="flex gap-2">
@@ -84,7 +118,6 @@ export function CustomerDetail({ customer: c, statuses, templates, currentUser }
         {[["\u6C0F\u540D", c.name], ["\u30E1\u30FC\u30EB", c.email], ["\u96FB\u8A71", c.phone], ["\u53CD\u97FF\u5143", c.sourcePortal], ["\u62C5\u5F53", c.assignee?.name], ["LINE", c.lineDisplayName || (c.lineUserId ? "\u9023\u643A\u6E08" : "\u672A\u9023\u643A")]].map(([l, v]) => (
           <div key={l as string} className="flex py-1 border-b border-gray-50 text-xs"><span className="w-14 text-gray-400 flex-shrink-0">{l}</span><span>{v || "\u2014"}</span></div>
         ))}
-
         {!c.lineUserId && (
           <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
             <div className="text-xs font-semibold text-green-700 mb-2">LINE{"\u9023\u643A"}</div>
@@ -96,7 +129,6 @@ export function CustomerDetail({ customer: c, statuses, templates, currentUser }
             {linkMsg && <div className="text-[10px] mt-1.5 text-green-700">{linkMsg}</div>}
           </div>
         )}
-
         {c.properties?.[0] && (
           <div className="mt-4">
             <h3 className="text-sm font-bold mb-2">{"\u7269\u4EF6\u60C5\u5831"}</h3>
@@ -114,4 +146,3 @@ export function CustomerDetail({ customer: c, statuses, templates, currentUser }
     </div>
   );
 }
-
