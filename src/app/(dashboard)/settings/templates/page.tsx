@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect } from "react";
 
 type Category = { id: string; name: string };
@@ -21,7 +21,7 @@ export default function TemplatesPage() {
   const load = () => fetch("/api/templates").then(r => r.json()).then(d => { setTemplates(d.templates); setCategories(d.categories); });
   useEffect(() => { load(); }, []);
 
-  const startNew = () => { setForm({ name: "", categoryId: categories[0]?.id || "", channel: "EMAIL", subject: "", body: "" }); setIsNew(true); setEditing(null); };
+  const startNew = () => { const catId = categories.length > 0 ? categories[0].id : "cat_general"; setForm({ name: "", categoryId: catId, channel: "EMAIL", subject: "", body: "" }); setIsNew(true); setEditing(null); };
   const startEdit = (t: Template) => { setForm({ name: t.name, categoryId: t.categoryId, channel: t.channel, subject: t.subject || "", body: t.body }); setEditing(t); setIsNew(false); };
   const cancel = () => { setIsNew(false); setEditing(null); };
 
