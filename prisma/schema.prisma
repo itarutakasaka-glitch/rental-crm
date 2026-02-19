@@ -1,5 +1,4 @@
-﻿// ===========================================
-// 荳榊虚逕｣雉・ｲｸ莉ｲ莉気RM 窶・Prisma繧ｹ繧ｭ繝ｼ繝・// ===========================================
+// Prisma Schema
 
 generator client {
   provider = "prisma-client-js"
@@ -11,7 +10,7 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// 笏笏 邨・ｹ・笏笏
+// 隨渉隨渉 驍ｨ繝ｻ・ｹ繝ｻ隨渉隨渉
 model Organization {
   id        String   @id @default(cuid())
   name      String
@@ -28,7 +27,7 @@ model Organization {
   schedules          Schedule[]
 }
 
-// 笏笏 繝ｦ繝ｼ繧ｶ繝ｼ・亥霧讌ｭ諡・ｽ楢・ｼ・笏笏
+// 隨渉隨渉 郢晢ｽｦ郢晢ｽｼ郢ｧ・ｶ郢晢ｽｼ繝ｻ莠･髴ｧ隶鯉ｽｭ隲｡繝ｻ・ｽ讌｢ﾂ繝ｻ・ｼ繝ｻ隨渉隨渉
 model User {
   id             String       @id @default(cuid())
   organizationId String
@@ -48,7 +47,7 @@ enum UserRole {
   MEMBER
 }
 
-// 笏笏 鬘ｧ螳｢繧ｹ繝・・繧ｿ繧ｹ 笏笏
+// 隨渉隨渉 鬯假ｽｧ陞ｳ・｢郢ｧ・ｹ郢昴・繝ｻ郢ｧ・ｿ郢ｧ・ｹ 隨渉隨渉
 model Status {
   id             String       @id @default(cuid())
   organizationId String
@@ -64,7 +63,7 @@ model Status {
   historyTo     StatusHistory[] @relation("StatusTo")
 }
 
-// 笏笏 鬘ｧ螳｢ 笏笏
+// 隨渉隨渉 鬯假ｽｧ陞ｳ・｢ 隨渉隨渉
 model Customer {
   id               String       @id @default(cuid())
   organizationId   String
@@ -109,7 +108,7 @@ model Customer {
   auditLogs       AuditLog[]
 }
 
-// 笏笏 鬘ｧ螳｢繧ｿ繧ｰ 笏笏
+// 隨渉隨渉 鬯假ｽｧ陞ｳ・｢郢ｧ・ｿ郢ｧ・ｰ 隨渉隨渉
 model CustomerTag {
   id         String   @id @default(cuid())
   customerId String
@@ -118,7 +117,7 @@ model CustomerTag {
   @@unique([customerId, name])
 }
 
-// 笏笏 蝠上＞蜷医ｏ縺帷黄莉ｶ 笏笏
+// 隨渉隨渉 陜荳奇ｼ櫁惺蛹ｻ・冗ｸｺ蟶ｷ鮟・脂・ｶ 隨渉隨渉
 model InquiryProperty {
   id          String   @id @default(cuid())
   customerId  String
@@ -136,7 +135,7 @@ model InquiryProperty {
   createdAt   DateTime @default(now())
 }
 
-// 笏笏 蟶梧悍譚｡莉ｶ 笏笏
+// 隨渉隨渉 陝ｶ譴ｧ謔崎ｭ夲ｽ｡闔会ｽｶ 隨渉隨渉
 model WishCondition {
   id          String   @id @default(cuid())
   customerId  String   @unique
@@ -156,7 +155,7 @@ model WishCondition {
   updatedAt   DateTime @updatedAt
 }
 
-// 笏笏 繝｡繝・そ繝ｼ繧ｸ 笏笏
+// 隨渉隨渉 郢晢ｽ｡郢昴・縺晉ｹ晢ｽｼ郢ｧ・ｸ 隨渉隨渉
 model Message {
   id          String        @id @default(cuid())
   customerId  String
@@ -202,7 +201,7 @@ enum MessageStatus {
   BOUNCED
 }
 
-// 笏笏 繝｡繝・そ繝ｼ繧ｸ繧､繝吶Φ繝・笏笏
+// 隨渉隨渉 郢晢ｽ｡郢昴・縺晉ｹ晢ｽｼ郢ｧ・ｸ郢ｧ・､郢晏生ﾎｦ郢昴・隨渉隨渉
 model MessageEvent {
   id         String   @id @default(cuid())
   messageId  String
@@ -213,7 +212,7 @@ model MessageEvent {
   createdAt  DateTime @default(now())
 }
 
-// 笏笏 繧ｹ繧ｱ繧ｸ繝･繝ｼ繝ｫ 笏笏
+// 隨渉隨渉 郢ｧ・ｹ郢ｧ・ｱ郢ｧ・ｸ郢晢ｽ･郢晢ｽｼ郢晢ｽｫ 隨渉隨渉
 model Schedule {
   id             String       @id @default(cuid())
   organizationId String
@@ -242,7 +241,7 @@ enum ScheduleType {
   OTHER
 }
 
-// 笏笏 繝・Φ繝励Ξ繝ｼ繝医き繝・ざ繝ｪ 笏笏
+// 隨渉隨渉 郢昴・ﾎｦ郢晏干ﾎ樒ｹ晢ｽｼ郢晏現縺咲ｹ昴・縺也ｹ晢ｽｪ 隨渉隨渉
 model TemplateCategory {
   id             String       @id @default(cuid())
   organizationId String
@@ -252,7 +251,7 @@ model TemplateCategory {
   templates      Template[]
 }
 
-// 笏笏 繝・Φ繝励Ξ繝ｼ繝・笏笏
+// 隨渉隨渉 郢昴・ﾎｦ郢晏干ﾎ樒ｹ晢ｽｼ郢昴・隨渉隨渉
 model Template {
   id             String           @id @default(cuid())
   organizationId String
@@ -270,7 +269,7 @@ model Template {
   workflowSteps  WorkflowStep[]
 }
 
-// 笏笏 繝ｯ繝ｼ繧ｯ繝輔Ο繝ｼ 笏笏
+// 隨渉隨渉 郢晢ｽｯ郢晢ｽｼ郢ｧ・ｯ郢晁ｼ釆溽ｹ晢ｽｼ 隨渉隨渉
 model Workflow {
   id             String       @id @default(cuid())
   organizationId String
@@ -344,7 +343,7 @@ enum StepRunStatus {
   SKIPPED
 }
 
-// 笏笏 繧ｹ繝・・繧ｿ繧ｹ螟画峩螻･豁ｴ 笏笏
+// 隨渉隨渉 郢ｧ・ｹ郢昴・繝ｻ郢ｧ・ｿ郢ｧ・ｹ陞溽判蟲ｩ陞ｻ・･雎・ｽｴ 隨渉隨渉
 model StatusHistory {
   id         String   @id @default(cuid())
   customerId String
@@ -358,7 +357,7 @@ model StatusHistory {
   createdAt  DateTime @default(now())
 }
 
-// 笏笏 逶｣譟ｻ繝ｭ繧ｰ 笏笏
+// 隨渉隨渉 騾ｶ・｣隴滂ｽｻ郢晢ｽｭ郢ｧ・ｰ 隨渉隨渉
 model AuditLog {
   id         String   @id @default(cuid())
   customerId String?
@@ -381,5 +380,3 @@ model LinePending {
   organizationId String   @default("org_default")
   createdAt      DateTime @default(now())
 }
-
-
