@@ -371,3 +371,13 @@ model AuditLog {
   newValue   String?
   createdAt  DateTime @default(now())
 }
+
+model LinePending {
+  id             String   @id @default(cuid())
+  lineUserId     String   @unique
+  displayName    String?
+  pictureUrl     String?
+  code           String
+  organizationId String   @default("org_default")
+  createdAt      DateTime @default(now())
+}
