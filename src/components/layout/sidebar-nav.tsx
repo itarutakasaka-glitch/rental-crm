@@ -35,7 +35,7 @@ export function SidebarNav({ user }: { user: AuthUser }) {
       </nav>
       <div className="p-3 border-t border-gray-100">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center text-xs text-blue-600 font-bold">{user.name[0]}</div>
+          <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-xs text-blue-600 font-bold">{user.name[0]}</div>
           <div className="flex-1 min-w-0">
             <div className="text-xs truncate">{user.name}</div>
             <div className="text-[10px] text-gray-500">{user.role === "ADMIN" ? "\u7BA1\u7406\u8005" : "\u30E1\u30F3\u30D0\u30FC"}</div>
