@@ -1,38 +1,94 @@
 "use client";
-import { Suspense, useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { signInWithEmail, signUpWithEmail } from "@/actions/auth";
 
-function LoginForm() {
-  const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [name, setName] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false); const [error, setError] = useState(""); const [isPending, start] = useTransition();
-  const router = useRouter(); const params = useSearchParams(); const redirectTo = params.get("redirect") || "/customers";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
-  const handleSubmit = () => { setError("");
-    start(async () => {
-      const res = isSignUp ? await signUpWithEmail({ email, password, name }) : await signInWithEmail({ email, password });
-      if (res?.error) setError(res.error); else router.push(redirectTo);
-    });
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) { setError("メールアドレスまたはパスワードが正しくありません"); return; }
+      router.push("/home");
+      router.refresh();
+    } catch { setError("ログインに失敗しました"); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-[380px]">
-        <h1 className="text-xl font-extrabold text-center mb-1">不動産CRM</h1>
-        <p className="text-xs text-gray-400 text-center mb-6">{isSignUp ? "アカウント作成" : "ログイン"}</p>
-        {error && <div className="mb-3 p-2 bg-red-50 text-red-500 text-xs rounded-lg">{error}</div>}
-        <div className="space-y-3">
-          {isSignUp && <input value={name} onChange={e => setName(e.target.value)} placeholder="氏名" className="w-full px-4 py-2.5 border rounded-lg text-sm" />}
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="メールアドレス" className="w-full px-4 py-2.5 border rounded-lg text-sm" />
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="パスワード" className="w-full px-4 py-2.5 border rounded-lg text-sm" />
-          <button onClick={handleSubmit} disabled={!email || !password || isPending} className="w-full py-2.5 bg-primary text-white rounded-lg font-semibold text-sm disabled:opacity-40">{isPending ? "..." : isSignUp ? "登録" : "ログイン"}</button>
+    <div style={{
+      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      background: "linear-gradient(135deg, #E3F2FD 0%, #F8F9FB 50%, #E8F5E9 100%)",
+    }}>
+      <div style={{
+        width: 380, background: "#fff", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+        padding: "40px 32px",
+      }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <h1 style={{
+            fontSize: 22, fontWeight: 700, color: "#29B6F6", marginBottom: 4,
+            letterSpacing: 1,
+          }}>たま不動産 CRM</h1>
+          <p style={{ fontSize: 12, color: "#9ca3af" }}>顧客管理システム</p>
         </div>
-        <button onClick={() => setIsSignUp(!isSignUp)} className="w-full text-center text-xs text-gray-400 mt-4">{isSignUp ? "ログインはこちら" : "新規登録はこちら"}</button>
+        <form onSubmit={handleLogin}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>
+              メールアドレス
+            </label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@example.com" required
+              style={{
+                width: "100%", padding: "10px 12px", fontSize: 13, border: "1px solid #d1d5db",
+                borderRadius: 6, outline: "none", boxSizing: "border-box",
+                transition: "border-color 0.15s",
+              }}
+              onFocus={(e) => e.target.style.borderColor = "#29B6F6"}
+              onBlur={(e) => e.target.style.borderColor = "#d1d5db"}
+            />
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>
+              パスワード
+            </label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="パスワードを入力" required
+              style={{
+                width: "100%", padding: "10px 12px", fontSize: 13, border: "1px solid #d1d5db",
+                borderRadius: 6, outline: "none", boxSizing: "border-box",
+                transition: "border-color 0.15s",
+              }}
+              onFocus={(e) => e.target.style.borderColor = "#29B6F6"}
+              onBlur={(e) => e.target.style.borderColor = "#d1d5db"}
+            />
+          </div>
+          {error && (
+            <div style={{
+              fontSize: 12, color: "#DC2626", background: "#FEE2E2",
+              padding: "8px 12px", borderRadius: 6, marginBottom: 14,
+            }}>{error}</div>
+          )}
+          <button type="submit" disabled={loading} style={{
+            width: "100%", padding: "10px", fontSize: 14, fontWeight: 600,
+            background: loading ? "#93C5FD" : "linear-gradient(90deg, #4FC3F7, #29B6F6)",
+            color: "#fff", border: "none", borderRadius: 6,
+            cursor: loading ? "not-allowed" : "pointer",
+            transition: "opacity 0.15s",
+          }}>
+            {loading ? "ログイン中..." : "ログイン"}
+          </button>
+        </form>
       </div>
     </div>
   );
-}
-
-export default function LoginPage() {
-  return <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-900"><div className="text-white">Loading...</div></div>}><LoginForm /></Suspense>;
 }
