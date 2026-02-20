@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 
 function Spinner({ size = 18 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" className="animate-spin">
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ animation: "spin 1s linear infinite" }}>
       <circle cx="12" cy="12" r="10" stroke="#29B6F6" strokeWidth="3" fill="none" opacity="0.2" />
       <path d="M12 2a10 10 0 0 1 10 10" stroke="#29B6F6" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </svg>
   );
 }
@@ -34,6 +35,10 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    const iv = setInterval(fetchData, 15000);
+    return () => clearInterval(iv);
+  }, [fetchData]);
 
   const needAction = customers.filter((c: any) => c.isNeedAction);
   const tabs = [
@@ -76,18 +81,11 @@ export default function HomePage() {
         ) : (
           <div>
             {filtered.map((c: any) => (
-              <a key={c.id} href={"/customers?id=" + c.id} style={{
-                display: "block", padding: "14px 16px", borderBottom: "1px solid #f3f4f6",
-                textDecoration: "none", color: "inherit",
-              }}>
+              <a key={c.id} href={"/customers?id=" + c.id} style={{ display: "block", padding: "14px 16px", borderBottom: "1px solid #f3f4f6", textDecoration: "none", color: "inherit" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
                   <div>
-                    <span style={{ fontSize: 11, color: "#9ca3af", marginRight: 8 }}>
-                      {c.lastMessage?.direction === "INBOUND" ? "受信" : "反響"}
-                    </span>
-                    <span style={{ fontSize: 11, color: "#6b7280", marginRight: 8 }}>
-                      担当者：{c.assignee?.name || "なし"}
-                    </span>
+                    <span style={{ fontSize: 11, color: "#9ca3af", marginRight: 8 }}>{c.lastMessage?.direction === "INBOUND" ? "受信" : "反響"}</span>
+                    <span style={{ fontSize: 11, color: "#6b7280", marginRight: 8 }}>担当者：{c.assignee?.name || "なし"}</span>
                     <span style={{ fontSize: 11, color: "#29B6F6" }}>{timeAgo(c.updatedAt)}</span>
                   </div>
                 </div>
@@ -96,36 +94,18 @@ export default function HomePage() {
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: "#2563eb" }}>{c.name}</span>
                       {c.status && (
-                        <span style={{
-                          fontSize: 10, padding: "1px 6px", borderRadius: 3, fontWeight: 600,
-                          color: c.status.color || "#6b7280",
-                          background: (c.status.color || "#6b7280") + "18",
-                        }}>{c.status.name}</span>
+                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, fontWeight: 600, color: c.status.color || "#6b7280", background: (c.status.color || "#6b7280") + "18" }}>{c.status.name}</span>
                       )}
-                      {c.sourcePortal && (
-                        <span style={{ fontSize: 10, color: "#6b7280" }}>反響元：{c.sourcePortal}</span>
-                      )}
+                      {c.sourcePortal && <span style={{ fontSize: 10, color: "#6b7280" }}>反響元：{c.sourcePortal}</span>}
                     </div>
                     {c.inquiryContent && (
-                      <div style={{
-                        fontSize: 12, color: "#374151", background: "#fff",
-                        border: "1px solid #e5e7eb", borderRadius: 6, padding: "8px 10px", marginTop: 4,
-                      }}>
-                        {c.inquiryContent}
-                      </div>
+                      <div style={{ fontSize: 12, color: "#374151", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 6, padding: "8px 10px", marginTop: 4 }}>{c.inquiryContent}</div>
                     )}
                   </div>
                   {c.lastMessage && (
                     <div style={{ width: 280, flexShrink: 0 }}>
-                      <div style={{
-                        fontSize: 12, color: "#374151",
-                        background: c.lastMessage.direction === "INBOUND" ? "#fff" : "#E8F5E9",
-                        border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px",
-                        maxHeight: 80, overflow: "hidden",
-                      }}>
-                        <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 2 }}>
-                          {c.lastMessage.direction === "INBOUND" ? "受信" : "送信"} · {timeAgo(c.lastMessage.createdAt)}
-                        </div>
+                      <div style={{ fontSize: 12, color: "#374151", background: c.lastMessage.direction === "INBOUND" ? "#fff" : "#E8F5E9", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", maxHeight: 80, overflow: "hidden" }}>
+                        <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 2 }}>{c.lastMessage.direction === "INBOUND" ? "受信" : "送信"} · {timeAgo(c.lastMessage.createdAt)}</div>
                         {c.lastMessage.subject && <div style={{ fontWeight: 600, fontSize: 11 }}>{c.lastMessage.subject}</div>}
                         <div style={{ fontSize: 11, lineHeight: 1.4 }}>{c.lastMessage.body?.substring(0, 100)}</div>
                       </div>
@@ -139,17 +119,11 @@ export default function HomePage() {
       </div>
       <div style={{ width: 320, flexShrink: 0 }}>
         <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", overflow: "hidden" }}>
-          <div style={{
-            padding: "10px 16px", background: "#F8F9FB", borderBottom: "1px solid #e5e7eb",
-          }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0 }}>
-              {dateStr}のスケジュール
-            </h3>
+          <div style={{ padding: "10px 16px", background: "#F8F9FB", borderBottom: "1px solid #e5e7eb" }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: 0 }}>{dateStr}のスケジュール</h3>
           </div>
           <div style={{ padding: 16 }}>
-            <div style={{ textAlign: "center", padding: 24, color: "#9ca3af", fontSize: 13 }}>
-              本日のスケジュールはありません
-            </div>
+            <div style={{ textAlign: "center", padding: 24, color: "#9ca3af", fontSize: 13 }}>本日のスケジュールはありません</div>
           </div>
         </div>
       </div>
