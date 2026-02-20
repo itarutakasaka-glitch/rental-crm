@@ -4,22 +4,21 @@
 
 body {
   @apply bg-[#F8F9FB] text-gray-700 antialiased;
-  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Noto Sans JP", "Yu Gothic", sans-serif;
+  font-family: "Inter", "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 13px;
   font-weight: 400;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection { @apply bg-blue-100 text-blue-900; }
 
 input, textarea, select {
-  @apply text-gray-600 text-sm font-normal;
+  @apply text-gray-600 text-sm;
+  font-family: "Inter", "Noto Sans JP", sans-serif;
 }
 
-h1, h2, h3, h4 {
-  font-weight: 500;
-}
+h1, h2, h3, h4 { font-weight: 500; }
 
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
