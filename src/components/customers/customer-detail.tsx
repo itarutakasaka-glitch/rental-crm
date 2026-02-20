@@ -68,7 +68,7 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
             <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">{c.name[0]}</div>
             <div>
               <div className="font-bold flex items-center gap-1.5">{c.name}
-                {c.isNeedAction && <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-600 rounded-full font-semibold">{"\u8981\u5BFE\u5FDC"}</span>}
+                <button onClick={async () => { const r = await fetch(`/api/customers/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isNeedAction: !c.isNeedAction }) }); if (r.ok) { window.location.reload(); } }} className={`text-[10px] px-2 py-0.5 rounded-full font-semibold cursor-pointer transition ${c.isNeedAction ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}>{c.isNeedAction ? "\u8981\u5BFE\u5FDC" : "\u5BFE\u5FDC\u6E08"}</button>
                 {c.lineUserId && <span className="w-5 h-5 rounded-full bg-[#06c755] flex items-center justify-center text-white text-[10px] font-bold ml-1">L</span>}
               </div>
               <div className="text-xs text-gray-400">{c.email} {"\u00B7"} {c.phone}</div>
