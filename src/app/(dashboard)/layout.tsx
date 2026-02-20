@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { LogoutButton } from "@/components/layout/logout-button";
 
 function Logo() {
   return (
@@ -23,7 +24,8 @@ function Logo() {
         <span style={{
           fontSize: 18, fontWeight: 300, letterSpacing: 3,
           fontFamily: "'Courier New', 'Lucida Console', monospace",
-          color: "rgba(255,255,255,0.7)",
+          color: "#F59E0B",
+          textShadow: "0 0 6px rgba(245,158,11,0.3)",
         }}>CLOUD</span>
       </div>
     </div>
@@ -62,12 +64,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 11, opacity: 0.5, fontFamily: "monospace" }}>{user.email}</span>
-          <div style={{
-            width: 30, height: 30, borderRadius: 4, background: "rgba(245,158,11,0.1)",
-            border: "1px solid rgba(245,158,11,0.3)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 12, fontWeight: 700, color: "#F59E0B", fontFamily: "monospace",
-          }}>{user.email?.charAt(0).toUpperCase()}</div>
+          <LogoutButton />
         </div>
       </header>
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>

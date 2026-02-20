@@ -28,15 +28,26 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { organizationId: true, role: true } });
     if (!dbUser || dbUser.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    const { name, email, role } = await request.json();
+    const { name, email, role, avatarUrl } = await request.json();
     if (!name || !email) return NextResponse.json({ error: "名前とメールは必須です" }, { status: 400 });
+
+    // Check if email already exists
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return NextResponse.json({ error: "このメールアドレスは既に登録されています" }, { status: 409 });
+
     const staff = await prisma.user.create({
-      data: { name, email, role: role || "MEMBER", organizationId: dbUser.organizationId! },
+      data: {
+        name,
+        email,
+        role: role || "MEMBER",
+        avatarUrl: avatarUrl || null,
+        organizationId: dbUser.organizationId!,
+      },
     });
     return NextResponse.json(staff, { status: 201 });
-  } catch (e) {
+  } catch (e: any) {
     console.error("[POST /api/staff]", e);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 });
   }
 }
 
@@ -59,8 +70,8 @@ export async function PATCH(request: NextRequest) {
       },
     });
     return NextResponse.json(updated);
-  } catch (e) {
+  } catch (e: any) {
     console.error("[PATCH /api/staff]", e);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 });
   }
 }
