@@ -4,22 +4,27 @@ import { SidebarNav } from "@/components/layout/sidebar-nav";
 
 function Logo() {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <rect width="28" height="28" rx="4" fill="rgba(255,255,255,0.2)" />
-        <path d="M14 4L6 8v4c0 5.55 3.42 10.74 8 12 4.58-1.26 8-6.45 8-12V8l-8-4z" fill="rgba(255,255,255,0.9)" />
-        <path d="M14 6.5L8 9.5v3c0 4.16 2.56 8.06 6 9 3.44-.94 6-4.84 6-9v-3l-6-3z" fill="none" stroke="rgba(255,200,100,0.8)" strokeWidth="0.5" />
-        <text x="14" y="18" textAnchor="middle" fontSize="9" fontWeight="900" fill="#D97706" fontFamily="Georgia,serif">C</text>
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <defs>
+          <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#FCD34D" />
+            <stop offset="100%" stopColor="#B45309" />
+          </linearGradient>
+        </defs>
+        <path d="M16 2L4 8v8c0 8.88 5.12 17.16 12 19.2 6.88-2.04 12-10.32 12-19.2V8L16 2z" fill="url(#sg)" />
+        <path d="M16 5L7 10v6c0 7.4 4.27 14.3 9 16 4.73-1.7 9-8.6 9-16v-6L16 5z" fill="rgba(255,255,255,0.15)" />
+        <text x="16" y="22" textAnchor="middle" fontSize="13" fontWeight="900" fill="#fff" fontFamily="Georgia,serif" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}>C</text>
       </svg>
-      <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={{
-          fontSize: 15, fontWeight: 800, letterSpacing: 3, fontFamily: "Georgia, 'Times New Roman', serif",
-          color: "#fff", textTransform: "uppercase" as const, textShadow: "0 1px 2px rgba(0,0,0,0.15)",
-        }}>CLAVDE</span>
+          fontSize: 17, fontWeight: 800, letterSpacing: 1.5, fontFamily: "Georgia, 'Times New Roman', serif",
+          color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.2)",
+        }}>Claude Cloud</span>
         <span style={{
-          fontSize: 8, fontWeight: 600, letterSpacing: 5, color: "rgba(255,255,255,0.7)",
-          textTransform: "uppercase" as const, marginTop: 1,
-        }}>CLOVD · CRM</span>
+          fontSize: 9, fontWeight: 600, letterSpacing: 2, color: "rgba(255,255,255,0.5)",
+          textTransform: "uppercase" as const,
+        }}>CRM</span>
       </div>
     </div>
   );
@@ -49,7 +54,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <a key={item.href} href={item.href} style={{
                 padding: "6px 16px", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.85)",
                 textDecoration: "none", borderRadius: 4, letterSpacing: 0.5,
-                transition: "background 0.2s",
               }}>{item.label}</a>
             ))}
           </nav>

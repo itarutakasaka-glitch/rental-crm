@@ -13,9 +13,9 @@ const menuItems = [
   {
     label: "設定", icon: "⚙️", href: "/settings",
     children: [
-      { label: "ステータス", href: "/settings/statuses" },
+      { label: "ステータス", href: "/settings/status" },
       { label: "定型文", href: "/settings/templates" },
-      { label: "ワークフロー", href: "/settings/workflows" },
+      { label: "ワークフロー", href: "/settings/workflow" },
       { label: "組織情報", href: "/settings/organization" },
       { label: "担当者", href: "/settings/staff" },
     ],
