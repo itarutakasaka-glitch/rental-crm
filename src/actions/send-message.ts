@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 import { prisma } from "@/lib/db/prisma";
 import { revalidatePath } from "next/cache";
 import { sendLineMessage } from "@/lib/channels/line";

@@ -65,10 +65,10 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
         <div className="px-4 py-3 border-b bg-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => router.push("/customers")} className="text-gray-400">{"\u2190"}</button>
-            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">{c.name[0]}</div>
+            <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">{c.name[0]}</div>
             <div>
               <div className="font-bold flex items-center gap-1.5">{c.name}
-                {c.isNeedAction && <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-500 rounded font-semibold">{"\u8981\u5BFE\u5FDC"}</span>}
+                {c.isNeedAction && <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-600 rounded-full font-semibold">{"\u8981\u5BFE\u5FDC"}</span>}
                 {c.lineUserId && <span className="w-5 h-5 rounded-full bg-[#06c755] flex items-center justify-center text-white text-[10px] font-bold ml-1">L</span>}
               </div>
               <div className="text-xs text-gray-400">{c.email} {"\u00B7"} {c.phone}</div>
@@ -76,7 +76,7 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
           </div>
           <span className="px-3 py-1 rounded-md text-xs font-semibold border-2" style={{ borderColor: st?.color, color: st?.color, background: st?.color + "10" }}>{st?.name}</span>
         </div>
-        <div className="flex-1 overflow-auto p-4 bg-gray-50/50 space-y-3">
+        <div className="flex-1 overflow-auto p-4 bg-slate-50/50 space-y-3">
           {c.messages.map((m: any) => {
             const chInfo = CH[m.channel as keyof typeof CH] || CH.NOTE;
             return (
@@ -85,7 +85,7 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
                   <div className="text-[10px] text-gray-400 mb-0.5" style={{ textAlign: m.direction === "OUTBOUND" ? "right" : "left" }}>
                     <span className={`inline-block px-1.5 py-0.5 rounded font-semibold text-white`} style={{ background: chInfo.color }}>{m.direction === "OUTBOUND" ? "\u9001\u4FE1" : "\u53D7\u4FE1"} {chInfo.label}</span> {m.subject && <span className="ml-1">{m.subject}</span>}
                   </div>
-                  <div className={`p-3 rounded-xl text-sm whitespace-pre-wrap leading-relaxed ${m.direction === "OUTBOUND" ? "bg-blue-500 text-white" : "bg-white border border-gray-200"}`}>{m.body}</div>
+                  <div className={`p-3 rounded-xl text-sm whitespace-pre-wrap leading-relaxed ${m.direction === "OUTBOUND" ? "bg-indigo-50 border border-indigo-200 text-slate-700" : "bg-white border border-slate-200 text-slate-700"}`}>{m.body}</div>
                   <div className="text-[10px] text-gray-400 mt-0.5" style={{ textAlign: m.direction === "OUTBOUND" ? "right" : "left" }}>
                     {new Date(m.createdAt).toLocaleString("ja-JP")} {"\u00B7"} {m.sender?.name || c.name}
                   </div>
@@ -186,7 +186,7 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
           </div>
         )}
         {c.tags?.length > 0 && (
-          <div className="flex gap-1 flex-wrap mt-3">{c.tags.map((t: any) => <span key={t.id} className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-semibold">{t.name}</span>)}</div>
+          <div className="flex gap-1 flex-wrap mt-3">{c.tags.map((t: any) => <span key={t.id} className="px-2 py-0.5 bg-indigo-50 text-primary rounded-full text-[10px] font-semibold">{t.name}</span>)}</div>
         )}
       </div>
     </div>
