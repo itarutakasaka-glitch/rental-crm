@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
 function calcNextRunAt(startedAt: Date, daysAfter: number, timeOfDay: string) {
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   const existing = await prisma.workflowRun.findFirst({ where: { customerId, status: "RUNNING" } });
   if (existing) {
-    await prisma.workflowRun.update({ where: { id: existing.id }, data: { status: "STOPPED", stoppedAt: new Date(), stopReason: "Replaced by new workflow" } });
+    await prisma.workflowRun.update({ where: { id: existing.id }, data: { status: "STOPPED_BY_REPLY", stoppedAt: new Date(), stopReason: "Replaced by new workflow" } });
   }
 
   const workflow = await prisma.workflow.findUnique({ where: { id: workflowId }, include: { steps: { orderBy: { order: "asc" } } } });
