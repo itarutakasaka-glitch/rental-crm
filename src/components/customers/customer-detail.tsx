@@ -28,10 +28,11 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
   const [body, setBody] = useState(""); const [subj, setSubj] = useState(""); const [ch, setCh] = useState("EMAIL");
   const [isPending, start] = useTransition(); const router = useRouter();
   const [lineCode, setLineCode] = useState(""); const [linkMsg, setLinkMsg] = useState("");
+  const [wfs, setWfs] = useState<any[]>([]); const [wfMsg, setWfMsg] = useState("");
   const [tpls, setTpls] = useState<Tpl[]>([]); const [showTpl, setShowTpl] = useState(false); const [org, setOrg] = useState<any>(null);
   const st = statuses.find((s: any) => s.id === c.statusId);
 
-  useEffect(() => { fetch("/api/templates").then(r => r.json()).then(d => setTpls(d.templates || [])); fetch("/api/organization").then(r => r.json()).then(d => setOrg(d)); }, []);
+  useEffect(() => { fetch("/api/templates").then(r => r.json()).then(d => setTpls(d.templates || [])); fetch("/api/organization").then(r => r.json()).then(d => setOrg(d)); fetch("/api/workflows").then(r => r.json()).then(d => setWfs(d.workflows || [])); }, []);
 
   const send = () => { if (!body.trim()) return;
     start(async () => {
@@ -146,6 +147,19 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
               {c.properties[0].address && <div className="text-gray-500">{c.properties[0].address}</div>}
               {c.properties[0].rent && <div className="text-gray-500">{c.properties[0].rent.toLocaleString()}{"\u5186"}</div>}
             </div>
+          </div>
+        )}
+        {wfs.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-bold mb-2">{"\u30B7\u30CA\u30EA\u30AA\u914D\u4FE1"}</h3>
+            {wfs.filter((w: any) => w.isActive).map((w: any) => (
+              <button key={w.id} onClick={async () => { setWfMsg("..."); const r = await fetch("/api/workflow-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customerId: c.id, workflowId: w.id }) }); setWfMsg(r.ok ? `${w.name} \u958B\u59CB` : "\u30A8\u30E9\u30FC"); setTimeout(() => setWfMsg(""), 3000); }}
+                className="w-full text-left p-2 border rounded-lg text-xs mb-1 hover:bg-blue-50">
+                <div className="font-semibold">{w.name}</div>
+                <div className="text-gray-400">{w.steps.length}{"\u30B9\u30C6\u30C3\u30D7"}</div>
+              </button>
+            ))}
+            {wfMsg && <div className="text-xs text-green-600 mt-1">{wfMsg}</div>}
           </div>
         )}
         {c.tags?.length > 0 && (
