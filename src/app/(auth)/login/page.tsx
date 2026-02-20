@@ -4,23 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-function ShieldLogo() {
-  return (
-    <svg width="72" height="72" viewBox="0 0 64 64" fill="none" style={{ marginBottom: 16 }}>
-      <defs>
-        <linearGradient id="shieldGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FCD34D" />
-          <stop offset="100%" stopColor="#92400E" />
-        </linearGradient>
-      </defs>
-      <path d="M32 4L8 16v12c0 13.32 8.22 25.78 24 28.8 15.78-3.02 24-15.48 24-28.8V16L32 4z" fill="url(#shieldGrad)" />
-      <path d="M32 8L12 18v10c0 11.1 6.84 21.48 20 24 13.16-2.52 20-12.9 20-24V18L32 8z" fill="rgba(255,255,255,0.12)" />
-      <text x="32" y="40" textAnchor="middle" fontSize="24" fontWeight="900" fill="#fff" fontFamily="Georgia,serif">C</text>
-      <line x1="20" y1="46" x2="44" y2="46" stroke="rgba(255,255,255,0.3)" strokeWidth="0.8" />
-    </svg>
-  );
-}
-
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,75 +26,91 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "linear-gradient(160deg, #1C1917 0%, #292524 40%, #44403C 100%)",
-      position: "relative", overflow: "hidden",
+      background: "#0a0a0a", position: "relative", overflow: "hidden",
     }}>
+      {/* Grid background */}
       <div style={{
-        position: "absolute", inset: 0, opacity: 0.03,
-        backgroundImage: "repeating-linear-gradient(45deg, #D97706 0, #D97706 1px, transparent 0, transparent 50%)",
-        backgroundSize: "40px 40px",
+        position: "absolute", inset: 0, opacity: 0.06,
+        backgroundImage: "linear-gradient(rgba(245,158,11,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(245,158,11,0.3) 1px, transparent 1px)",
+        backgroundSize: "50px 50px",
+      }} />
+      {/* Glow circle */}
+      <div style={{
+        position: "absolute", top: "30%", left: "50%", transform: "translate(-50%,-50%)",
+        width: 400, height: 400, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 70%)",
+      }} />
+      {/* Scan line */}
+      <style>{`@keyframes scanline { 0% { top: -10%; } 100% { top: 110%; } }`}</style>
+      <div style={{
+        position: "absolute", left: 0, right: 0, height: 2,
+        background: "linear-gradient(90deg, transparent, rgba(245,158,11,0.15), transparent)",
+        animation: "scanline 4s linear infinite",
       }} />
       <div style={{
-        position: "absolute", top: "-20%", left: "50%", transform: "translateX(-50%)",
-        width: 600, height: 600, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(217,119,6,0.08) 0%, transparent 70%)",
-      }} />
-      <div style={{
-        position: "relative", width: 400, background: "rgba(28,25,23,0.85)",
-        borderRadius: 16, padding: "48px 36px",
-        border: "1px solid rgba(217,119,6,0.2)",
-        boxShadow: "0 0 60px rgba(217,119,6,0.08), 0 20px 40px rgba(0,0,0,0.4)",
-        backdropFilter: "blur(20px)",
+        position: "relative", width: 380,
+        background: "rgba(10,10,10,0.9)",
+        border: "1px solid rgba(245,158,11,0.2)",
+        padding: "40px 32px",
       }}>
+        {/* Corner accents */}
+        <div style={{ position: "absolute", top: -1, left: -1, width: 20, height: 20, borderTop: "2px solid #F59E0B", borderLeft: "2px solid #F59E0B" }} />
+        <div style={{ position: "absolute", top: -1, right: -1, width: 20, height: 20, borderTop: "2px solid #F59E0B", borderRight: "2px solid #F59E0B" }} />
+        <div style={{ position: "absolute", bottom: -1, left: -1, width: 20, height: 20, borderBottom: "2px solid #F59E0B", borderLeft: "2px solid #F59E0B" }} />
+        <div style={{ position: "absolute", bottom: -1, right: -1, width: 20, height: 20, borderBottom: "2px solid #F59E0B", borderRight: "2px solid #F59E0B" }} />
+
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ display: "flex", justifyContent: "center" }}><ShieldLogo /></div>
-          <h1 style={{
-            fontSize: 28, fontWeight: 800, letterSpacing: 2,
-            fontFamily: "Georgia, 'Times New Roman', serif",
-            color: "#F59E0B", marginBottom: 4,
-            textShadow: "0 0 20px rgba(245,158,11,0.3)",
-          }}>Claude Cloud</h1>
-          <div style={{
-            fontSize: 10, letterSpacing: 4, color: "rgba(217,119,6,0.5)",
-            fontWeight: 600, textTransform: "uppercase" as const,
-          }}>Real Estate CRM</div>
-          <div style={{
-            width: 60, height: 1, background: "linear-gradient(90deg, transparent, #D97706, transparent)",
-            margin: "16px auto 0",
-          }} />
+          <svg width="48" height="48" viewBox="0 0 32 32" fill="none" style={{ marginBottom: 16 }}>
+            <rect x="1" y="1" width="30" height="30" rx="2" fill="none" stroke="#F59E0B" strokeWidth="1.5" />
+            <rect x="4" y="4" width="24" height="24" rx="1" fill="rgba(245,158,11,0.05)" stroke="#D97706" strokeWidth="0.5" strokeDasharray="2 1" />
+            <text x="16" y="21.5" textAnchor="middle" fontSize="16" fontWeight="900" fill="#F59E0B" fontFamily="'Courier New',monospace">C</text>
+            <circle cx="6" cy="6" r="1.5" fill="#F59E0B" opacity="0.6" />
+            <circle cx="26" cy="6" r="1.5" fill="#F59E0B" opacity="0.6" />
+          </svg>
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "baseline" }}>
+            <span style={{
+              fontSize: 26, fontWeight: 900, letterSpacing: 4,
+              fontFamily: "'Courier New', monospace", color: "#F59E0B",
+              textShadow: "0 0 12px rgba(245,158,11,0.5)",
+            }}>CLAUDE</span>
+            <span style={{
+              fontSize: 26, fontWeight: 300, letterSpacing: 4,
+              fontFamily: "'Courier New', monospace", color: "rgba(255,255,255,0.4)",
+            }}>CLOUD</span>
+          </div>
+          <div style={{ fontSize: 10, letterSpacing: 6, color: "rgba(245,158,11,0.3)", marginTop: 6, fontFamily: "monospace" }}>REAL ESTATE CRM</div>
+          <div style={{ width: "100%", height: 1, background: "linear-gradient(90deg, transparent, rgba(245,158,11,0.2), transparent)", margin: "16px 0 0" }} />
         </div>
         <form onSubmit={handleLogin}>
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, letterSpacing: 2, textTransform: "uppercase" as const }}>EMAIL</label>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 10, fontWeight: 600, color: "rgba(245,158,11,0.5)", display: "block", marginBottom: 6, letterSpacing: 3, fontFamily: "monospace" }}>EMAIL</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@example.com" required
               style={{
-                width: "100%", padding: "12px 14px", fontSize: 13, boxSizing: "border-box",
-                background: "rgba(255,255,255,0.05)", border: "1px solid rgba(217,119,6,0.2)",
-                borderRadius: 8, outline: "none", color: "#fff",
+                width: "100%", padding: "10px 12px", fontSize: 13, boxSizing: "border-box",
+                background: "rgba(245,158,11,0.03)", border: "1px solid rgba(245,158,11,0.15)",
+                outline: "none", color: "#F59E0B", fontFamily: "monospace",
               }} />
           </div>
           <div style={{ marginBottom: 24 }}>
-            <label style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6, letterSpacing: 2, textTransform: "uppercase" as const }}>PASSWORD</label>
+            <label style={{ fontSize: 10, fontWeight: 600, color: "rgba(245,158,11,0.5)", display: "block", marginBottom: 6, letterSpacing: 3, fontFamily: "monospace" }}>PASSWORD</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required
               style={{
-                width: "100%", padding: "12px 14px", fontSize: 13, boxSizing: "border-box",
-                background: "rgba(255,255,255,0.05)", border: "1px solid rgba(217,119,6,0.2)",
-                borderRadius: 8, outline: "none", color: "#fff",
+                width: "100%", padding: "10px 12px", fontSize: 13, boxSizing: "border-box",
+                background: "rgba(245,158,11,0.03)", border: "1px solid rgba(245,158,11,0.15)",
+                outline: "none", color: "#F59E0B", fontFamily: "monospace",
               }} />
           </div>
-          {error && <div style={{ fontSize: 12, color: "#FCA5A5", background: "rgba(220,38,38,0.15)", padding: "10px 14px", borderRadius: 8, marginBottom: 16, border: "1px solid rgba(220,38,38,0.2)" }}>{error}</div>}
+          {error && <div style={{ fontSize: 12, color: "#FCA5A5", background: "rgba(220,38,38,0.1)", padding: "8px 12px", border: "1px solid rgba(220,38,38,0.2)", marginBottom: 16, fontFamily: "monospace" }}>{error}</div>}
           <button type="submit" disabled={loading} style={{
-            width: "100%", padding: "12px", fontSize: 14, fontWeight: 700, letterSpacing: 1,
-            background: loading ? "rgba(217,119,6,0.3)" : "linear-gradient(135deg, #D97706, #B45309)",
-            color: "#fff", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8,
-            cursor: loading ? "not-allowed" : "pointer",
-            boxShadow: loading ? "none" : "0 4px 16px rgba(217,119,6,0.3)",
-          }}>{loading ? "ログイン中..." : "ログイン"}</button>
+            width: "100%", padding: "11px", fontSize: 13, fontWeight: 700, letterSpacing: 3,
+            background: loading ? "rgba(245,158,11,0.1)" : "rgba(245,158,11,0.15)",
+            color: "#F59E0B", border: "1px solid rgba(245,158,11,0.4)",
+            cursor: loading ? "not-allowed" : "pointer", fontFamily: "monospace",
+            textTransform: "uppercase" as const,
+            boxShadow: loading ? "none" : "0 0 15px rgba(245,158,11,0.1)",
+          }}>{loading ? "CONNECTING..." : "ACCESS"}</button>
         </form>
-        <div style={{
-          textAlign: "center", marginTop: 24, fontSize: 10, color: "rgba(255,255,255,0.2)",
-          letterSpacing: 1,
-        }}>© 2026 Claude Cloud</div>
+        <div style={{ textAlign: "center", marginTop: 20, fontSize: 10, color: "rgba(255,255,255,0.15)", fontFamily: "monospace", letterSpacing: 2 }}>SYS.2026 // SECURE</div>
       </div>
     </div>
   );

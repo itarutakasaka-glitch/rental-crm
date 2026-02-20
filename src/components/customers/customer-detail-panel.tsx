@@ -46,17 +46,13 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [editorDragging, setEditorDragging] = useState(false);
   const editorDragY = useRef(0);
   const editorDragH = useRef(0);
-
-  // Panel width resize
   const [panelW, setPanelW] = useState(520);
   const [panelDragging, setPanelDragging] = useState(false);
   const panelDragX = useRef(0);
   const panelDragW = useRef(0);
-
-  // Templates
   const [templates, setTemplates] = useState<any[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
-
+  const [callResult, setCallResult] = useState("success");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const fetchCustomer = useCallback(async () => {
@@ -75,49 +71,34 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   }, []);
 
   useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); }, [fetchCustomer, fetchTemplates]);
-  useEffect(() => {
-    const iv = setInterval(fetchCustomer, 10000);
-    return () => clearInterval(iv);
-  }, [fetchCustomer]);
+  useEffect(() => { const iv = setInterval(fetchCustomer, 10000); return () => clearInterval(iv); }, [fetchCustomer]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [customer?.messages]);
 
-  // Editor drag resize
   useEffect(() => {
     if (!editorDragging) return;
-    const onMove = (e: MouseEvent) => {
-      setEditorH(Math.max(50, Math.min(400, editorDragH.current + (editorDragY.current - e.clientY))));
-    };
+    const onMove = (e: MouseEvent) => setEditorH(Math.max(50, Math.min(400, editorDragH.current + (editorDragY.current - e.clientY))));
     const onUp = () => setEditorDragging(false);
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("mousemove", onMove); window.addEventListener("mouseup", onUp);
     return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
   }, [editorDragging]);
 
-  // Panel width drag resize
   useEffect(() => {
     if (!panelDragging) return;
-    const onMove = (e: MouseEvent) => {
-      setPanelW(Math.max(380, Math.min(900, panelDragW.current + (panelDragX.current - e.clientX))));
-    };
+    const onMove = (e: MouseEvent) => setPanelW(Math.max(380, Math.min(900, panelDragW.current + (panelDragX.current - e.clientX))));
     const onUp = () => setPanelDragging(false);
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("mousemove", onMove); window.addEventListener("mouseup", onUp);
     return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
   }, [panelDragging]);
 
   const patchCustomer = async (data: any) => {
     try {
-      await fetch("/api/customers/" + customerId, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      await fetch("/api/customers/" + customerId, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
       fetchCustomer(); onUpdated();
     } catch (e) { console.error(e); }
   };
 
   const applyTemplate = (t: any) => {
     setSubject(t.subject || "");
-    // Variable replacement
     let b = t.body || "";
     if (customer) {
       b = b.replace(/\{\{顧客名\}\}/g, customer.name || "")
@@ -125,27 +106,33 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
         .replace(/\{\{電話番号\}\}/g, customer.phone || "")
         .replace(/\{\{担当者名\}\}/g, customer.assignee?.name || "");
     }
-    setBody(b);
-    setShowTemplates(false);
+    setBody(b); setShowTemplates(false);
   };
 
   const handleSend = async () => {
     if (!body.trim()) return;
     setSending(true);
     try {
+      const payload: any = { customerId, channel: composeChannel, body: body.trim() };
       if (composeChannel === "EMAIL") {
         if (!customer?.email) { setSending(false); return; }
-        await fetch("/api/send-message", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ customerId, channel: "EMAIL", subject, body: body.trim(), to: customer.email }),
-        });
-      } else if (composeChannel === "NOTE" || composeChannel === "CALL") {
-        // Save as message record
-        await fetch("/api/send-message", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ customerId, channel: composeChannel, subject: composeChannel === "CALL" ? "架電記録" : "メモ", body: body.trim() }),
-        });
+        payload.to = customer.email;
+        payload.subject = subject;
+      } else if (composeChannel === "LINE") {
+        if (!customer?.lineUserId) { setSending(false); return; }
+        payload.lineUserId = customer.lineUserId;
+      } else if (composeChannel === "SMS") {
+        if (!customer?.phone) { setSending(false); return; }
+        payload.phone = customer.phone;
+      } else if (composeChannel === "CALL") {
+        payload.subject = "架電記録";
+        payload.callResult = callResult;
+      } else if (composeChannel === "NOTE") {
+        payload.subject = "メモ";
       }
+      await fetch("/api/send-message", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+      });
       setSubject(""); setBody("");
       fetchCustomer(); onUpdated();
     } catch (e) { console.error(e); }
@@ -169,7 +156,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
 
   const messages = customer.messages || [];
   const tabs = [
-    { id: "chat", label: "チャットビュー", icon: "💬" },
+    { id: "chat", label: "やりとり", icon: "💬" },
     { id: "record", label: "記録", icon: "📋" },
     { id: "schedule", label: "スケジュール", icon: "📅" },
     { id: "info", label: "顧客情報", icon: "👤" },
@@ -179,16 +166,10 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
 
   return (
     <div style={{ display: "flex", position: "relative" }}>
-      {/* Left drag handle for panel width */}
-      <div
-        onMouseDown={(e) => { setPanelDragging(true); panelDragX.current = e.clientX; panelDragW.current = panelW; }}
-        style={{
-          width: 5, cursor: "col-resize", background: panelDragging ? "#D97706" : "transparent",
-          transition: "background 0.2s", flexShrink: 0, zIndex: 2,
-        }}
+      <div onMouseDown={(e) => { setPanelDragging(true); panelDragX.current = e.clientX; panelDragW.current = panelW; }}
+        style={{ width: 5, cursor: "col-resize", background: panelDragging ? "#D97706" : "transparent", flexShrink: 0, zIndex: 2 }}
         onMouseEnter={(e) => { (e.target as HTMLElement).style.background = "#e5e7eb"; }}
-        onMouseLeave={(e) => { if (!panelDragging) (e.target as HTMLElement).style.background = "transparent"; }}
-      />
+        onMouseLeave={(e) => { if (!panelDragging) (e.target as HTMLElement).style.background = "transparent"; }} />
       <div style={{ width: panelW, minWidth: 380, borderLeft: "1px solid #e5e7eb", background: "#fff", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "10px 14px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
@@ -198,13 +179,9 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
               {customer.sourcePortal && <span style={{ fontSize: 11, color: "#9ca3af" }}>/ {customer.sourcePortal}</span>}
             </div>
             {customer.assignee && (
-              <div style={{
-                width: 28, height: 28, borderRadius: "50%", background: "#FEF3C7",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 700, color: "#B45309",
-              }}>{customer.assignee.avatarUrl ? (
-                <img src={customer.assignee.avatarUrl} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} />
-              ) : customer.assignee.name?.charAt(0)}</div>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#B45309" }}>
+                {customer.assignee.avatarUrl ? <img src={customer.assignee.avatarUrl} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} /> : customer.assignee.name?.charAt(0)}
+              </div>
             )}
           </div>
           <div style={{ marginBottom: 6 }}>
@@ -215,17 +192,11 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
               {customer.phone && <span style={{ fontSize: 12, color: "#374151" }}>📞 {customer.phone}</span>}
             </div>
           </div>
-          {customer.inquiryContent && (
-            <div style={{ fontSize: 11, color: "#374151", background: "#FEF3C7", borderRadius: 4, padding: "4px 8px", lineHeight: 1.5, marginBottom: 6, maxHeight: 36, overflow: "hidden" }}>
-              {customer.inquiryContent}
-            </div>
-          )}
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
             <button onClick={() => { setCustomer({ ...customer, isNeedAction: !customer.isNeedAction }); patchCustomer({ isNeedAction: !customer.isNeedAction }); }} style={{
               padding: "3px 10px", fontSize: 11, fontWeight: 700, border: "none", borderRadius: 4, cursor: "pointer",
               background: customer.isNeedAction ? "#DC2626" : "#e5e7eb", color: customer.isNeedAction ? "#fff" : "#6b7280",
             }}>{customer.isNeedAction ? "要対応" : "対応済"}</button>
-            <button style={{ padding: "3px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", color: "#374151", cursor: "pointer" }}>スケジュール追加</button>
             <select value={customer.statusId || ""} onChange={(e) => { setCustomer({ ...customer, statusId: e.target.value }); patchCustomer({ statusId: e.target.value }); }}
               style={{ padding: "3px 6px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", maxWidth: 140 }}>
               {statuses.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -247,15 +218,13 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
               fontWeight: activeTab === tab.id ? 600 : 400, whiteSpace: "nowrap",
               display: "flex", alignItems: "center", gap: 3,
             }}>
-              <span style={{ fontSize: 13 }}>{tab.icon}</span>
-              {tab.id === "chat" && tab.label}
+              <span style={{ fontSize: 13 }}>{tab.icon}</span>{tab.label}
             </button>
           ))}
         </div>
         {/* Content */}
         {activeTab === "chat" ? (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            {/* Messages */}
             <div style={{ flex: 1, overflow: "auto", padding: "12px 14px" }}>
               {messages.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 30, color: "#9ca3af", fontSize: 12 }}>メッセージはまだありません</div>
@@ -267,11 +236,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                   if (isNote || isCall) {
                     return (
                       <div key={msg.id} style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-                        <div style={{
-                          padding: "8px 14px", borderRadius: 8, fontSize: 12, lineHeight: 1.5,
-                          background: isCall ? "#FEF3C7" : "#f3f4f6", border: "1px solid #e5e7eb",
-                          maxWidth: "90%", color: "#374151",
-                        }}>
+                        <div style={{ padding: "8px 14px", borderRadius: 8, fontSize: 12, lineHeight: 1.5, background: isCall ? "#FEF3C7" : "#f3f4f6", border: "1px solid #e5e7eb", maxWidth: "90%", color: "#374151" }}>
                           <div style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", marginBottom: 2 }}>{isCall ? "📞 架電記録" : "📝 メモ"}</div>
                           <div style={{ whiteSpace: "pre-wrap" }}>{msg.body}</div>
                           <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{formatDate(msg.createdAt)}</div>
@@ -286,6 +251,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                           <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#6b7280" }}>👤</div>
                           <span style={{ fontSize: 11, fontWeight: 600, color: "#374151" }}>{customer.name}</span>
                           {msg.channel === "LINE" && <span style={{ fontSize: 9, color: "#06C755", fontWeight: 600 }}>LINE</span>}
+                          {msg.channel === "SMS" && <span style={{ fontSize: 9, color: "#2563eb", fontWeight: 600 }}>SMS</span>}
                         </div>
                       )}
                       <div style={{
@@ -298,11 +264,14 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         {msg.subject && <div style={{ fontSize: 11, fontWeight: 600, color: "#374151", marginBottom: 4 }}>{msg.subject}</div>}
                         <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{msg.body}</div>
                       </div>
-                      <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 3 }}>
-                        {msg.channel === "EMAIL" && <span style={{ marginRight: 4 }}>✉️</span>}
-                        {msg.channel === "LINE" && <span style={{ marginRight: 4 }}>💬</span>}
+                      <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
+                        {msg.channel === "EMAIL" && <span>✉️</span>}
+                        {msg.channel === "LINE" && <span>💬</span>}
+                        {msg.channel === "SMS" && <span>📱</span>}
                         {formatDate(msg.createdAt)}
-                        {out && <span style={{ marginLeft: 6, color: "#06C755" }}>✓</span>}
+                        {out && msg.openedAt && <span style={{ color: "#2563eb", fontWeight: 600, marginLeft: 4 }}>既読</span>}
+                        {out && msg.status === "DELIVERED" && !msg.openedAt && <span style={{ color: "#6b7280", marginLeft: 4 }}>配信済</span>}
+                        {out && msg.status === "SENT" && !msg.openedAt && <span style={{ color: "#9ca3af", marginLeft: 4 }}>送信済</span>}
                       </div>
                     </div>
                   );
@@ -312,12 +281,10 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
             </div>
             {/* Compose */}
             <div style={{ borderTop: "1px solid #e5e7eb", flexShrink: 0 }}>
-              {/* Editor drag handle */}
               <div onMouseDown={(e) => { setEditorDragging(true); editorDragY.current = e.clientY; editorDragH.current = editorH; }}
                 style={{ height: 6, cursor: "ns-resize", background: "#F8F9FB", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <div style={{ width: 30, height: 3, borderRadius: 2, background: "#d1d5db" }} />
               </div>
-              {/* Channel tabs */}
               <div style={{ display: "flex", borderBottom: "1px solid #e5e7eb", background: "#F8F9FB" }}>
                 {channelTabs.map((ch) => (
                   <button key={ch.id} onClick={() => setComposeChannel(ch.id)} style={{
@@ -370,39 +337,76 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                       </div>
                     </>
                   ) : (
-                    <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", padding: 10 }}>メールアドレス未登録のため送信不可</div>
+                    <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", padding: 10 }}>メールアドレス未登録</div>
                   )
                 ) : composeChannel === "LINE" ? (
                   customer.lineUserId ? (
                     <>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <button onClick={() => setShowTemplates(!showTemplates)} style={{
+                          padding: "5px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4,
+                          background: showTemplates ? "#FEF3C7" : "#fff", color: "#374151", cursor: "pointer",
+                        }}>📄 定型文</button>
+                      </div>
+                      {showTemplates && templates.length > 0 && (
+                        <div style={{ marginBottom: 6, maxHeight: 120, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 4, background: "#fff" }}>
+                          {templates.map((t: any) => (
+                            <button key={t.id} onClick={() => applyTemplate(t)} style={{
+                              display: "block", width: "100%", padding: "6px 10px", fontSize: 11,
+                              border: "none", borderBottom: "1px solid #f3f4f6", background: "transparent",
+                              textAlign: "left", cursor: "pointer", color: "#374151",
+                            }}>
+                              <span style={{ fontWeight: 600 }}>{t.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="LINEメッセージを入力..."
                         style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
-                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
-                        <button disabled style={{ padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4, background: "#d1d5db", color: "#fff", cursor: "not-allowed" }}>LINE送信（準備中）</button>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                        <span style={{ fontSize: 10, color: "#06C755" }}>LINE: {customer.lineDisplayName || "連携済"}</span>
+                        <button onClick={handleSend} disabled={sending || !body.trim()} style={{
+                          padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
+                          cursor: sending || !body.trim() ? "not-allowed" : "pointer",
+                          background: sending || !body.trim() ? "#d1d5db" : "#06C755", color: "#fff",
+                        }}>{sending ? "送信中..." : "LINE送信"}</button>
                       </div>
                     </>
                   ) : (
                     <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", padding: 10 }}>LINE未連携</div>
                   )
                 ) : composeChannel === "SMS" ? (
-                  <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", padding: 10 }}>SMS送信機能（準備中）</div>
+                  customer.phone ? (
+                    <>
+                      <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="SMSメッセージを入力（70文字以内推奨）..."
+                        style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                        <span style={{ fontSize: 10, color: "#9ca3af" }}>送信先: {customer.phone}（{body.length}文字）</span>
+                        <button onClick={handleSend} disabled={sending || !body.trim()} style={{
+                          padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
+                          cursor: sending || !body.trim() ? "not-allowed" : "pointer",
+                          background: sending || !body.trim() ? "#d1d5db" : "#2563eb", color: "#fff",
+                        }}>{sending ? "送信中..." : "SMS送信"}</button>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", padding: 10 }}>電話番号未登録</div>
+                  )
                 ) : (
                   <>
+                    {composeChannel === "CALL" && (
+                      <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                        {[{ v: "success", l: "成功（通話あり）" }, { v: "noanswer", l: "不在" }, { v: "busy", l: "話し中" }].map((r) => (
+                          <label key={r.v} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 3, color: "#374151", cursor: "pointer" }}>
+                            <input type="radio" name="callResult" value={r.v} checked={callResult === r.v} onChange={() => setCallResult(r.v)} style={{ accentColor: "#D97706" }} />{r.l}
+                          </label>
+                        ))}
+                      </div>
+                    )}
                     <textarea value={body} onChange={(e) => setBody(e.target.value)}
-                      placeholder={composeChannel === "CALL" ? "架電結果を記録..." : "メモを入力..."}
+                      placeholder={composeChannel === "CALL" ? "架電内容を記録..." : "メモを入力..."}
                       style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-                      {composeChannel === "CALL" && (
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <label style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 3, color: "#374151" }}>
-                            <input type="radio" name="callResult" defaultChecked style={{ accentColor: "#D97706" }} /> 成功
-                          </label>
-                          <label style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 3, color: "#374151" }}>
-                            <input type="radio" name="callResult" style={{ accentColor: "#D97706" }} /> 不在
-                          </label>
-                        </div>
-                      )}
-                      {composeChannel === "NOTE" && <span />}
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
                       <button onClick={handleSend} disabled={sending || !body.trim()} style={{
                         padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                         cursor: sending || !body.trim() ? "not-allowed" : "pointer",
