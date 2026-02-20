@@ -133,6 +133,7 @@ model InquiryProperty {
   customerId  String
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   name        String
+  url         String?
   address     String?
   station     String?
   roomNumber  String?
