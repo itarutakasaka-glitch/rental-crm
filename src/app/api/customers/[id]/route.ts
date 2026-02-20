@@ -47,8 +47,8 @@ export async function GET(
           orderBy: { createdAt: "asc" },
           select: { id: true, direction: true, channel: true, subject: true, body: true, status: true, createdAt: true, sender: { select: { id: true, name: true } } },
         },
-        inquiryProperties: true,
-        workflowRuns: { include: { workflow: { select: { id: true, name: true } } }, take: 5 },
+        
+        
       },
     });
     if (!customer) return NextResponse.json({ error: "Not found" }, { status: 404 });
