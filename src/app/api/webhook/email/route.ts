@@ -105,9 +105,9 @@ export async function POST(request) {
           await prisma.inquiryProperty.create({
             data: {
               customerId: customer.id, name: parsed.propertyName,
-              address: parsed.propertyAddress || null, station: parsed.propertyStation || null,
-              roomNumber: parsed.propertyRoom || null, area: parsed.propertyArea || null,
-              rent: parsed.propertyRent || null, portalUrl: parsed.propertyUrl || null,
+              address: ("propertyAddress" in parsed ? parsed.propertyAddress : null) || null, station: ("propertyStation" in parsed ? parsed.propertyStation : null) || null,
+              roomNumber: ("propertyRoom" in parsed ? parsed.propertyRoom : null) || null, area: ("propertyArea" in parsed ? parsed.propertyArea : null) || null,
+              rent: ("propertyRent" in parsed ? parsed.propertyRent : null) || null, portalUrl: ("propertyUrl" in parsed ? parsed.propertyUrl : null) || null,
             },
           });
         }
