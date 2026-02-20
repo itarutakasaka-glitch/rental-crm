@@ -1,185 +1,139 @@
-﻿import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db/prisma";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-function parseSuumo(body: string) {
-  const lines = body.split(/\r?\n/);
-  const get = (key: string) => {
-    const line = lines.find(l => l.includes(key));
-    if (!line) return "";
-    const idx = line.indexOf(key);
-    const after = line.slice(idx + key.length);
-    return after.replace(/^[：:\s]+/, "").trim();
-  };
-  return {
-    name: get("\u540D\u524D(\u6F22\u5B57)"),
-    email: get("\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9"),
-    phone: get("TEL"),
-    propertyName: get("\u7269\u4EF6\u540D"),
-    propertyUrl: (body.match(/https:\/\/suumo\.jp\/[^\s]+/) || [""])[0],
-    inquiry: get("\u304A\u554F\u5408\u305B\u5185\u5BB9") + " " + get("\u304A\u554F\u5408\u305B\u5185\u5BB9\u30B3\u30E1\u30F3\u30C8"),
-    rent: get("\u8CC3\u6599"),
-    address: get("\u6240\u5728\u5730"),
-    layout: get("\u9593\u53D6\u308A"),
-  };
+function parseSuumo(text) {
+  if (!/suumo|SUUMO|ＳＵＵＭＯ|お客様からの反響です/i.test(text)) return null;
+  const name = (text.match(/名前（漢字）[：:]\s*(.+)/) || text.match(/名前\(漢字\)[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const nameKana = (text.match(/名前（カナ）[：:]\s*(.+)/) || text.match(/名前\(カナ\)[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const email = (text.match(/メールアドレス[：:]\s*(\S+)/) || [])[1]?.trim() || "";
+  const phone = (text.match(/[ＴTｔ][ＥEｅ][ＬLｌ][：:]\s*(\S+)/) || text.match(/電話番号[：:]\s*(\S+)/) || [])[1]?.trim() || "";
+  const propertyName = (text.match(/物件名[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyUrl = (text.match(/物件詳細画面[：:]\s*(https?:\/\/\S+)/) || text.match(/(https?:\/\/suumo\.jp\S+)/) || [])[1]?.trim() || "";
+  const inquiryContent = (text.match(/お問合せ内容[：:]\s*(.+)/) || text.match(/お問い合わせ内容[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const station = (text.match(/最寄り駅[：:]\s*(.+)/) || text.match(/最寄駅[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const address = (text.match(/所在地[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const rent = (text.match(/賃料[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const layout = (text.match(/間取り[：:]\s*(.+)/) || text.match(/間取[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const area = (text.match(/専有面積[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  if (!name && !email) return null;
+  return { name, nameKana, email, phone, source: "SUUMO", inquiryContent, propertyName, propertyUrl, propertyStation: station, propertyAddress: address, propertyRent: rent, propertyLayout: layout, propertyArea: area };
 }
 
-function parseApamanshop(body: string) {
-  const lines = body.split(/\r?\n/);
-  const get = (key: string) => {
-    const line = lines.find(l => l.includes(key));
-    if (!line) return "";
-    const m = line.match(/[】\]]\s*(.*)/);
-    return m ? m[1].trim() : line.split(/[：:]/)[1]?.trim() || "";
-  };
-  const getName = () => {
-    const idx = lines.findIndex(l => l.includes("\u3010\u540D\u524D\u3011"));
-    if (idx >= 0) { const after = lines[idx].replace(/.*\u3010\u540D\u524D\u3011\s*/, ""); return after.trim() || (lines[idx+1]?.trim() || ""); }
-    return "";
-  };
-  const getEmail = () => {
-    const idx = lines.findIndex(l => l.includes("\u3010\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9\u3011"));
-    if (idx >= 0) { const after = lines[idx].replace(/.*\u3010\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9\u3011\s*/, ""); return after.trim() || (lines[idx+1]?.trim() || ""); }
-    return "";
-  };
-  const getPhone = () => {
-    const idx = lines.findIndex(l => l.includes("\u3010\u96FB\u8A71\u756A\u53F7\u3011"));
-    if (idx >= 0) { const after = lines[idx].replace(/.*\u3010\u96FB\u8A71\u756A\u53F7\u3011\s*/, ""); return after.trim() || (lines[idx+1]?.trim() || ""); }
-    return "";
-  };
-  const propertyLine = lines.find(l => l.includes("\u3014\u7269\u4EF6\u540D\u3015") || l.includes("\u3014\u7269 \u4EF6 \u540D\u3015"));
-  const propertyName = propertyLine ? propertyLine.replace(/.*\u3015\s*/, "").trim() : (lines.find(l => l.includes("\u3008\u7269\u4EF6\u540D\u3009"))?.replace(/.*\u3009\s*/, "").trim() || "");
-  const inquiryLines: string[] = [];
-  let inInquiry = false;
-  for (const l of lines) {
-    if (l.includes("\u3010\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9\u3011")) { inInquiry = true; continue; }
-    if (inInquiry) { if (l.includes("\u25A0") || l.includes("\u203B") || l.trim() === "") break; inquiryLines.push(l.trim()); }
+function parseApamanshop(text) {
+  if (!/アパマンショップ|apamanshop/i.test(text)) return null;
+  const name = (text.match(/【名前】\s*(.+)/) || text.match(/〔お名前〕\s*(.+)/) || [])[1]?.trim() || "";
+  const nameKana = (text.match(/【名前カナ】\s*(.+)/) || [])[1]?.trim() || "";
+  const email = (text.match(/【メールアドレス】\s*(\S+)/) || text.match(/〔メールアドレス〕\s*(\S+)/) || [])[1]?.trim() || "";
+  const phone = (text.match(/【電話番号】\s*(.+)/) || text.match(/〔電話番号〕\s*(.+)/) || [])[1]?.trim() || "";
+  const inquiryContent = (text.match(/【お問い合わせ内容】\s*([\s\S]*?)(?:【)/) || [])[1]?.trim() || "";
+  const propertyName = (text.match(/（物件 名）\s*(.+)/) || text.match(/〔物 件 名〕\s*(.+)/) || text.match(/【物件名】\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyAddress = (text.match(/（物件住所）\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyStation = (text.match(/（最寄り駅）\s*(.+)/) || text.match(/（最寄駅）\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyRoom = (text.match(/（号 室）\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyArea = (text.match(/（専有面積）\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyRent = (text.match(/（賃 料）\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyUrl = (text.match(/(https?:\/\/www\.apamanshop\.com\S+)/) || [])[1]?.trim() || "";
+  if (!name && !email) return null;
+  return { name, nameKana, email, phone, source: "アパマンショップ", inquiryContent, propertyName, propertyAddress, propertyStation, propertyRoom, propertyArea, propertyRent, propertyUrl };
+}
+
+function parseHomes(text) {
+  if (!/LIFULL HOME'S|HOME'S|homes\.co\.jp/i.test(text)) return null;
+  const name = (text.match(/[\s　]+名前[：:]\s*(.+)/) || text.match(/名前[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const email = (text.match(/メールアドレス[：:]\s*(\S+)/) || [])[1]?.trim() || "";
+  const phone = (text.match(/[\s　]+電話番号[：:]\s*(\S+)/) || text.match(/電話番号[：:]\s*(\S+)/) || [])[1]?.trim() || "";
+  const propertyName = (text.match(/[\s　]+物件名[：:]\s*(.+)/) || text.match(/物件名[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyRent = (text.match(/[\s　]+賃料[：:]\s*(.+)/) || text.match(/賃料[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyAddress = (text.match(/[\s　]+所在地[：:]\s*(.+)/) || text.match(/所在地[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyStation = (text.match(/[\s　]+交通[：:]\s*(.+)/) || text.match(/交通[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyArea = (text.match(/[\s　]+面積[：:]\s*(.+)/) || text.match(/面積[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyLayout = (text.match(/[\s　]+間取[：:]\s*(.+)/) || text.match(/間取[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const inquiryContent = (text.match(/お問合せ内容[：:]\s*(.+)/) || text.match(/お問い合わせ内容[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const note = (text.match(/[\s　]+備考[：:]\s*(.+)/) || text.match(/備考[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyUrl = (text.match(/(https?:\/\/www\.homes\.co\.jp\/chintai\/\S+)/) || [])[1]?.trim() || "";
+  if (!name && !email) return null;
+  const fullInquiry = [inquiryContent, note].filter(Boolean).join("\n");
+  return { name, email, phone, source: "HOME'S", inquiryContent: fullInquiry, propertyName, propertyRent, propertyUrl, propertyAddress, propertyStation, propertyArea, propertyLayout };
+}
+
+function parsePortalEmail(subject, body) {
+  const fullText = subject + "\n" + body;
+  for (const parser of [parseSuumo, parseApamanshop, parseHomes]) {
+    const result = parser(fullText);
+    if (result) return result;
   }
-  return {
-    name: getName(),
-    email: getEmail(),
-    phone: getPhone(),
-    propertyName: propertyName || lines.find(l => l.match(/^\u3014\u7269/))?. replace(/.*\u3015\s*/, "").trim() || "",
-    propertyUrl: (body.match(/https:\/\/www\.apamanshop\.com\/[^\s]+/) || [""])[0],
-    inquiry: inquiryLines.join(" ").trim(),
-    rent: (lines.find(l => l.includes("\u3014 \u8CC3 \u6599 \u3015") || l.includes("\u3014\u8CC3\u6599\u3015")) || "").replace(/.*\u3015\s*/, "").trim(),
-  };
-}
-
-function parseHomes(body: string) {
-  const lines = body.split(/\r?\n/);
-  const get = (key: string) => {
-    const line = lines.find(l => l.startsWith(key) || l.includes(key));
-    if (!line) return "";
-    return line.split(/[：:]/)[1]?.trim() || "";
-  };
-  const inquiryStart = lines.findIndex(l => l.includes("\u304A\u554F\u5408\u305B\u5185\u5BB9"));
-  let inquiry = get("\u304A\u554F\u5408\u305B\u5185\u5BB9");
-  if (inquiryStart >= 0 && lines[inquiryStart + 1]) inquiry += " " + lines[inquiryStart + 1].trim();
-  return {
-    name: get("\u540D\u524D"),
-    email: get("\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9"),
-    phone: "",
-    propertyName: get("\u7269\u4EF6\u540D"),
-    propertyUrl: (body.match(/https:\/\/www\.homes\.co\.jp\/[^\s]+/) || [""])[0],
-    inquiry: inquiry.trim(),
-    rent: get("\u8CC3\u6599"),
-    address: get("\u6240\u5728\u5730"),
-  };
-}
-
-function detectPortal(from: string, subject: string, body: string): string | null {
-  if (from.includes("suumo") || subject.includes("SUUMO") || body.includes("suumo.jp") || body.includes("\u304A\u554F\u5408\u305B\u4F01\u753B:SUUMO")) return "SUUMO";
-  if (from.includes("apamanshop") || subject.includes("\u30A2\u30D1\u30DE\u30F3") || body.includes("\u30A2\u30D1\u30DE\u30F3\u30B7\u30E7\u30C3\u30D7\u30DB\u30FC\u30E0\u30DA\u30FC\u30B8")) return "APAMANSHOP";
-  if (from.includes("homes") || subject.includes("HOME'S") || body.includes("homes.co.jp") || body.includes("LIFULLHOME")) return "HOME'S";
-  if (from.includes("athome") || subject.includes("\u30A2\u30C3\u30C8\u30DB\u30FC\u30E0")) return "\u30A2\u30C3\u30C8\u30DB\u30FC\u30E0";
-  if (from.includes("chintai") || subject.includes("CHINTAI")) return "CHINTAI";
   return null;
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(request) {
   try {
-    const event = await req.json();
-    if (event.type !== "email.received") return NextResponse.json({ ok: true });
+    const payload = await request.json();
+    const { from, subject, text: bodyText, html: bodyHtml } = payload;
+    const body = bodyText || bodyHtml || "";
+    const fromAddress = typeof from === "string" ? from : from?.address || from?.[0]?.address || "";
 
-    const d = event.data;
-    const fromRaw = d.from || "";
-    const fromEmail = fromRaw.replace(/.*</, "").replace(/>.*/, "").trim().toLowerCase();
-    const fromName = fromRaw.replace(/<.*>/, "").trim();
-    const subject = d.subject || "(No subject)";
-    const emailId = d.email_id;
+    console.log("[Email Webhook] From:", fromAddress, "Subject:", subject);
 
-    if (!fromEmail) return NextResponse.json({ error: "No from email" }, { status: 400 });
+    const org = await prisma.organization.findFirst();
+    if (!org) return NextResponse.json({ error: "No organization" }, { status: 400 });
 
-    let body = "";
-    if (emailId && process.env.RESEND_API_KEY) {
-      try {
-        const res = await fetch(`https://api.resend.com/emails/${emailId}`, {
-          headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-        });
-        if (res.ok) {
-          const emailData = await res.json();
-          body = emailData.text || emailData.html?.replace(/<[^>]+>/g, "") || "";
-        }
-      } catch (e) { console.error("Failed to fetch email body:", e); }
-    }
+    const defaultStatus = await prisma.status.findFirst({
+      where: { organizationId: org.id, isDefault: true },
+    }) || await prisma.status.findFirst({
+      where: { organizationId: org.id },
+      orderBy: { order: "asc" },
+    });
+    if (!defaultStatus) return NextResponse.json({ error: "No default status" }, { status: 400 });
 
-    const portal = detectPortal(fromEmail, subject, body);
-    let parsed = null;
-    if (portal === "SUUMO") parsed = parseSuumo(body);
-    else if (portal === "APAMANSHOP") parsed = parseApamanshop(body);
-    else if (portal === "HOME'S") parsed = parseHomes(body);
+    const parsed = parsePortalEmail(subject || "", body);
 
-    if (parsed && parsed.email) {
-      let customer = await prisma.customer.findFirst({
-        where: { email: { equals: parsed.email, mode: "insensitive" }, organizationId: "org_default" },
-      });
+    if (parsed) {
+      console.log("[Email Webhook] Portal:", parsed.source, "-", parsed.name);
+      let customer = parsed.email ? await prisma.customer.findFirst({ where: { email: parsed.email, organizationId: org.id } }) : null;
+
       if (!customer) {
-        const defaultStatus = await prisma.status.findFirst({ where: { organizationId: "org_default", isDefault: true } })
-          || await prisma.status.findFirst({ where: { organizationId: "org_default" }, orderBy: { order: "asc" } });
         customer = await prisma.customer.create({
           data: {
-            organizationId: "org_default", name: parsed.name || parsed.email, email: parsed.email,
-            phone: parsed.phone || null, sourcePortal: portal, inquiryContent: parsed.inquiry || null,
-            statusId: defaultStatus!.id, isNeedAction: true,
+            name: parsed.name || "名前不明", nameKana: parsed.nameKana || null,
+            email: parsed.email || null, phone: parsed.phone || null,
+            statusId: defaultStatus.id, sourcePortal: parsed.source,
+            inquiryContent: parsed.inquiryContent || null,
+            isNeedAction: true, organizationId: org.id,
           },
         });
+        if (parsed.propertyName) {
+          await prisma.inquiryProperty.create({
+            data: {
+              customerId: customer.id, name: parsed.propertyName,
+              address: parsed.propertyAddress || null, station: parsed.propertyStation || null,
+              roomNumber: parsed.propertyRoom || null, area: parsed.propertyArea || null,
+              rent: parsed.propertyRent || null, portalUrl: parsed.propertyUrl || null,
+            },
+          });
+        }
       } else {
-        await prisma.customer.update({ where: { id: customer.id }, data: { isNeedAction: true } });
+        await prisma.customer.update({ where: { id: customer.id }, data: { isNeedAction: true, updatedAt: new Date() } });
       }
-      if (parsed.propertyName) {
-        await prisma.inquiryProperty.create({
-          data: { customerId: customer.id, name: parsed.propertyName, url: parsed.propertyUrl || null },
-        });
-      }
+
       await prisma.message.create({
-        data: { customerId: customer.id, direction: "INBOUND", channel: "EMAIL", subject: `[${portal}] ${subject}`, body: body || subject, status: "DELIVERED" },
+        data: { customerId: customer.id, direction: "INBOUND", channel: "EMAIL", subject: subject || parsed.source + "からのお問い合わせ", body, status: "DELIVERED" },
       });
-      return NextResponse.json({ ok: true, action: "portal_inquiry", portal, customerId: customer.id });
+      return NextResponse.json({ success: true, type: "portal", source: parsed.source, customerId: customer.id });
     }
 
-    // Regular email
-    let customer = await prisma.customer.findFirst({
-      where: { email: { equals: fromEmail, mode: "insensitive" }, organizationId: "org_default" },
-    });
-    if (!customer) {
-      const defaultStatus = await prisma.status.findFirst({ where: { organizationId: "org_default", isDefault: true } })
-        || await prisma.status.findFirst({ where: { organizationId: "org_default" }, orderBy: { order: "asc" } });
-      customer = await prisma.customer.create({
-        data: { organizationId: "org_default", name: fromName || fromEmail, email: fromEmail, statusId: defaultStatus!.id, isNeedAction: true },
+    const existingCustomer = await prisma.customer.findFirst({ where: { email: fromAddress, organizationId: org.id } });
+    if (existingCustomer) {
+      await prisma.message.create({
+        data: { customerId: existingCustomer.id, direction: "INBOUND", channel: "EMAIL", subject: subject || null, body, status: "DELIVERED" },
       });
-    } else {
-      await prisma.customer.update({ where: { id: customer.id }, data: { isNeedAction: true } });
+      await prisma.customer.update({ where: { id: existingCustomer.id }, data: { isNeedAction: true, updatedAt: new Date() } });
+      await prisma.workflowRun.updateMany({ where: { customerId: existingCustomer.id, status: "RUNNING" }, data: { status: "STOPPED_BY_REPLY" } });
+      return NextResponse.json({ success: true, type: "reply", customerId: existingCustomer.id });
     }
-    await prisma.message.create({
-      data: { customerId: customer.id, direction: "INBOUND", channel: "EMAIL", subject, body: body || `[${subject}]`, status: "DELIVERED" },
-    });
-    const activeRun = await prisma.workflowRun.findFirst({ where: { customerId: customer.id, status: "RUNNING" } });
-    if (activeRun) {
-      await prisma.workflowRun.update({ where: { id: activeRun.id }, data: { status: "STOPPED_BY_REPLY", stoppedAt: new Date(), stopReason: "Customer replied by email" } });
-    }
-    return NextResponse.json({ ok: true, action: "regular_email", customerId: customer.id });
-  } catch (e: any) {
-    console.error("Email webhook error:", e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+
+    return NextResponse.json({ success: true, type: "unknown" });
+  } catch (error) {
+    console.error("[Email Webhook] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
