@@ -66,7 +66,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const fetchTemplates = useCallback(async () => {
     try {
       const res = await fetch("/api/templates");
-      if (res.ok) setTemplates(await res.json());
+      if (res.ok) { const data = await res.json(); setTemplates(data.templates || data); }
     } catch (e) { console.error(e); }
   }, []);
 
@@ -271,7 +271,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         {formatDate(msg.createdAt)}
                         {out && msg.openedAt && <span style={{ color: "#2563eb", fontWeight: 600, marginLeft: 4 }}>既読</span>}
                         {out && msg.status === "DELIVERED" && !msg.openedAt && <span style={{ color: "#6b7280", marginLeft: 4 }}>配信済</span>}
-                        {out && msg.status === "SENT" && !msg.openedAt && <span style={{ color: "#9ca3af", marginLeft: 4 }}>送信済</span>}
+                        {out && msg.status === "SENT" && !msg.openedAt && <span style={{ color: "#9ca3af", marginLeft: 4 }}>{msg.channel === "LINE" ? "送信済" : msg.channel === "SMS" ? "SMS送信済" : "送信済"}</span>}
                       </div>
                     </div>
                   );

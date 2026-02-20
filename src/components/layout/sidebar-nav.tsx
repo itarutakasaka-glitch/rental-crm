@@ -5,10 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 const menuItems = [
-  {
-    label: "顧客一覧", icon: "👤", href: "/customers",
-    children: [{ label: "リスト表示", href: "/customers" }],
-  },
+  { label: "顧客一覧", icon: "👤", href: "/customers" },
   { label: "一斉送信", icon: "📨", href: "/broadcast" },
   {
     label: "設定", icon: "⚙️", href: "/settings",
@@ -24,7 +21,7 @@ const menuItems = [
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const [expanded, setExpanded] = useState<string[]>(["/customers", "/settings"]);
+  const [expanded, setExpanded] = useState<string[]>(["/settings"]);
 
   const toggle = (href: string) => {
     setExpanded((prev) => prev.includes(href) ? prev.filter((h) => h !== href) : [...prev, href]);
@@ -36,11 +33,12 @@ export function SidebarNav() {
       overflow: "auto", padding: "12px 0", flexShrink: 0,
     }}>
       {menuItems.map((item) => {
+        const hasChildren = "children" in item && !!item.children;
         const isActive = pathname.startsWith(item.href);
         const isOpen = expanded.includes(item.href);
         return (
           <div key={item.href}>
-            <div onClick={() => item.children ? toggle(item.href) : null} style={{ cursor: "pointer" }}>
+            <div onClick={() => hasChildren ? toggle(item.href) : null} style={{ cursor: "pointer" }}>
               <Link href={item.href} style={{
                 display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
                 fontSize: 13, fontWeight: isActive ? 600 : 400,
@@ -53,9 +51,9 @@ export function SidebarNav() {
                 {item.label}
               </Link>
             </div>
-            {item.children && isOpen && (
+            {hasChildren && isOpen && (
               <div style={{ paddingLeft: 20 }}>
-                {item.children.map((child) => {
+                {item.children!.map((child) => {
                   const childActive = pathname === child.href;
                   return (
                     <Link key={child.href} href={child.href} style={{
