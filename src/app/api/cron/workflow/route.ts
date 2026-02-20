@@ -3,11 +3,12 @@ import { prisma } from "@/lib/db/prisma";
 import { sendLineMessage } from "@/lib/channels/line";
 
 function calcNextRunAt(startedAt: Date, daysAfter: number, timeOfDay: string) {
-  const d = new Date(startedAt);
-  d.setDate(d.getDate() + daysAfter);
+  const jstOffset = 9 * 60 * 60 * 1000;
+  const startJST = new Date(startedAt.getTime() + jstOffset);
+  startJST.setDate(startJST.getDate() + daysAfter);
   const [h, m] = timeOfDay.split(":").map(Number);
-  d.setHours(h, m, 0, 0);
-  return d;
+  startJST.setHours(h, m, 0, 0);
+  return new Date(startJST.getTime() - jstOffset);
 }
 
 async function resolveAndSend(step: any, template: any, customer: any, org: any) {
