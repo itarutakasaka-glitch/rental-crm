@@ -83,9 +83,9 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
               <div key={m.id} className={`flex ${m.direction === "OUTBOUND" ? "justify-end" : "justify-start"}`}>
                 <div className="max-w-[70%]">
                   <div className="text-[10px] text-gray-400 mb-0.5" style={{ textAlign: m.direction === "OUTBOUND" ? "right" : "left" }}>
-                    <span className="font-semibold" style={{ color: chInfo.color }}>{chInfo.label}</span> {m.subject && `- ${m.subject}`}
+                    <span className={`inline-block px-1.5 py-0.5 rounded font-semibold text-white`} style={{ background: chInfo.color }}>{m.direction === "OUTBOUND" ? "\u9001\u4FE1" : "\u53D7\u4FE1"} {chInfo.label}</span> {m.subject && <span className="ml-1">{m.subject}</span>}
                   </div>
-                  <div className={`p-3 rounded-xl text-sm whitespace-pre-wrap leading-relaxed ${m.direction === "OUTBOUND" ? "bg-blue-50 border border-blue-100" : "bg-white border"}`}>{m.body}</div>
+                  <div className={`p-3 rounded-xl text-sm whitespace-pre-wrap leading-relaxed ${m.direction === "OUTBOUND" ? "bg-blue-500 text-white" : "bg-white border border-gray-200"}`}>{m.body}</div>
                   <div className="text-[10px] text-gray-400 mt-0.5" style={{ textAlign: m.direction === "OUTBOUND" ? "right" : "left" }}>
                     {new Date(m.createdAt).toLocaleString("ja-JP")} {"\u00B7"} {m.sender?.name || c.name}
                   </div>
