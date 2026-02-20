@@ -316,6 +316,8 @@ model WorkflowRun {
   workflow    Workflow     @relation(fields: [workflowId], references: [id])
   status      WFRunStatus @default(RUNNING)
   startedAt   DateTime    @default(now())
+  currentStepIndex Int          @default(0)
+  nextRunAt   DateTime?
   stoppedAt   DateTime?
   stopReason  String?
   stepRuns    WorkflowStepRun[]
