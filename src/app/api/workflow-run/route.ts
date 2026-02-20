@@ -9,6 +9,23 @@ function calcNextRunAt(startedAt: Date, daysAfter: number, timeOfDay: string) {
   return d;
 }
 
+export async function GET(req: NextRequest) {
+  const customerId = req.nextUrl.searchParams.get("customerId");
+  if (!customerId) return NextResponse.json({ run: null });
+  const run = await prisma.workflowRun.findFirst({
+    where: { customerId, status: "RUNNING" },
+    include: { workflow: { include: { steps: { orderBy: { order: "asc" } } } } },
+    orderBy: { startedAt: "desc" },
+  });
+  return NextResponse.json({ run });
+}
+
+export async function DELETE(req: NextRequest) {
+  const { runId } = await req.json();
+  await prisma.workflowRun.update({ where: { id: runId }, data: { status: "STOPPED_BY_REPLY", stoppedAt: new Date(), stopReason: "Manual stop" } });
+  return NextResponse.json({ ok: true });
+}
+
 export async function POST(req: NextRequest) {
   const { customerId, workflowId } = await req.json();
   if (!customerId || !workflowId) return NextResponse.json({ error: "Missing params" }, { status: 400 });

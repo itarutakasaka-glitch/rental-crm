@@ -28,11 +28,11 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
   const [body, setBody] = useState(""); const [subj, setSubj] = useState(""); const [ch, setCh] = useState("EMAIL");
   const [isPending, start] = useTransition(); const router = useRouter();
   const [lineCode, setLineCode] = useState(""); const [linkMsg, setLinkMsg] = useState("");
-  const [wfs, setWfs] = useState<any[]>([]); const [wfMsg, setWfMsg] = useState("");
+  const [wfs, setWfs] = useState<any[]>([]); const [wfMsg, setWfMsg] = useState(""); const [activeRun, setActiveRun] = useState<any>(null);
   const [tpls, setTpls] = useState<Tpl[]>([]); const [showTpl, setShowTpl] = useState(false); const [org, setOrg] = useState<any>(null);
   const st = statuses.find((s: any) => s.id === c.statusId);
 
-  useEffect(() => { fetch("/api/templates").then(r => r.json()).then(d => setTpls(d.templates || [])); fetch("/api/organization").then(r => r.json()).then(d => setOrg(d)); fetch("/api/workflows").then(r => r.json()).then(d => setWfs(d.workflows || [])); }, []);
+  useEffect(() => { fetch("/api/templates").then(r => r.json()).then(d => setTpls(d.templates || [])); fetch("/api/organization").then(r => r.json()).then(d => setOrg(d)); fetch("/api/workflows").then(r => r.json()).then(d => setWfs(d.workflows || [])); fetch(`/api/workflow-run?customerId=${c.id}`).then(r => r.json()).then(d => setActiveRun(d.run || null)); }, []);
 
   const send = () => { if (!body.trim()) return;
     start(async () => {
@@ -149,11 +149,25 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
             </div>
           </div>
         )}
-        {wfs.length > 0 && (
+        {(wfs.length > 0 || activeRun) && (
           <div className="mt-4">
             <h3 className="text-sm font-bold mb-2">{"\u30B7\u30CA\u30EA\u30AA\u914D\u4FE1"}</h3>
-            {wfs.filter((w: any) => w.isActive).map((w: any) => (
-              <button key={w.id} onClick={async () => { setWfMsg("..."); const r = await fetch("/api/workflow-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customerId: c.id, workflowId: w.id }) }); setWfMsg(r.ok ? `${w.name} \u958B\u59CB` : "\u30A8\u30E9\u30FC"); setTimeout(() => setWfMsg(""), 3000); }}
+            {activeRun && (
+              <div className="p-2.5 border-2 border-blue-200 bg-blue-50 rounded-lg mb-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold text-blue-700">{activeRun.workflow?.name}</div>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded font-semibold">{activeRun.status === "RUNNING" ? "\u5B9F\u884C\u4E2D" : activeRun.status === "COMPLETED" ? "\u5B8C\u4E86" : "\u505C\u6B62"}</span>
+                </div>
+                <div className="text-[10px] text-blue-600 mt-1">{"\u30B9\u30C6\u30C3\u30D7"} {activeRun.currentStepIndex + 1} / {activeRun.workflow?.steps?.length || "?"}</div>
+                {activeRun.nextRunAt && <div className="text-[10px] text-blue-500 mt-0.5">{"\u6B21\u56DE\u914D\u4FE1"}: {new Date(activeRun.nextRunAt).toLocaleString("ja-JP")}</div>}
+                {activeRun.status === "RUNNING" && (
+                  <button onClick={async () => { await fetch("/api/workflow-run", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ runId: activeRun.id }) }); setActiveRun(null); setWfMsg("\u505C\u6B62\u3057\u307E\u3057\u305F"); setTimeout(() => setWfMsg(""), 3000); }}
+                    className="mt-1.5 text-[10px] text-red-500 hover:underline">{"\u25A0 \u30B7\u30CA\u30EA\u30AA\u505C\u6B62"}</button>
+                )}
+              </div>
+            )}
+            {!activeRun && wfs.filter((w: any) => w.isActive).map((w: any) => (
+              <button key={w.id} onClick={async () => { setWfMsg("..."); const r = await fetch("/api/workflow-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customerId: c.id, workflowId: w.id }) }); const d = await r.json(); if (r.ok) { setActiveRun(d); setWfMsg(`${w.name} \u958B\u59CB`); } else { setWfMsg("\u30A8\u30E9\u30FC"); } setTimeout(() => setWfMsg(""), 3000); }}
                 className="w-full text-left p-2 border rounded-lg text-xs mb-1 hover:bg-blue-50">
                 <div className="font-semibold">{w.name}</div>
                 <div className="text-gray-400">{w.steps.length}{"\u30B9\u30C6\u30C3\u30D7"}</div>
