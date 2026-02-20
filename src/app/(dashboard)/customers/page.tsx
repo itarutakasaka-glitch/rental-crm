@@ -8,8 +8,8 @@ import { CustomerAddModal } from "@/components/customers/customer-add-modal";
 function Spinner({ size = 20 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ animation: "spin 1s linear infinite" }}>
-      <circle cx="12" cy="12" r="10" stroke="#29B6F6" strokeWidth="3" fill="none" opacity="0.2" />
-      <path d="M12 2a10 10 0 0 1 10 10" stroke="#29B6F6" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="10" stroke="#D97706" strokeWidth="3" fill="none" opacity="0.2" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="#D97706" strokeWidth="3" fill="none" strokeLinecap="round" />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </svg>
   );
@@ -113,15 +113,15 @@ export default function CustomersPage() {
                 style={{ padding: "5px 10px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 5, width: 150, outline: "none" }} />
               <button onClick={() => setShowAddModal(true)} style={{
                 padding: "5px 14px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 5,
-                background: "#29B6F6", color: "#fff", cursor: "pointer",
+                background: "#D97706", color: "#fff", cursor: "pointer",
               }}>顧客追加</button>
             </div>
           </div>
           {/* View tabs */}
           <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e5e7eb" }}>
             <button style={{
-              padding: "6px 16px", fontSize: 12, fontWeight: 600, color: "#29B6F6",
-              background: "transparent", border: "none", borderBottom: "2px solid #29B6F6",
+              padding: "6px 16px", fontSize: 12, fontWeight: 600, color: "#D97706",
+              background: "transparent", border: "none", borderBottom: "2px solid #D97706",
               marginBottom: -2, cursor: "pointer",
             }}>すべての顧客</button>
             <button style={{
@@ -154,7 +154,7 @@ export default function CustomersPage() {
               ) : filtered.map((c: any) => (
                 <tr key={c.id} onClick={() => selectCustomer(c.id)} style={{
                   cursor: "pointer", borderBottom: "1px solid #f3f4f6",
-                  background: selectedId === c.id ? "#EBF5FF" : c.isNeedAction ? "#FFFBEB" : "#fff",
+                  background: selectedId === c.id ? "#FEF3C7" : c.isNeedAction ? "#FFFBEB" : "#fff",
                   transition: "background 0.1s",
                 }}>
                   <td style={{ padding: "10px 12px" }}>
@@ -164,7 +164,7 @@ export default function CustomersPage() {
                         {c.nameKana && <div style={{ fontSize: 10, color: "#9ca3af" }}>{c.nameKana}</div>}
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</div>
                         <div style={{ display: "flex", gap: 4, marginTop: 2 }}>
-                          {c.email && <span style={{ fontSize: 10, color: "#93C5FD" }}>✉️</span>}
+                          {c.email && <span style={{ fontSize: 10, color: "#FCD34D" }}>✉️</span>}
                           {c.lineUserId && <span style={{ fontSize: 10, color: "#06C755" }}>💬</span>}
                           {c.phone && <span style={{ fontSize: 10, color: "#F472B6" }}>📞</span>}
                         </div>

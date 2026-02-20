@@ -109,7 +109,7 @@ export function CustomerAddModal({ statuses, staffList, onClose, onCreated }: Pr
             }}>キャンセル</button>
             <button onClick={handleSave} disabled={saving} style={{
               padding: "7px 20px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 5,
-              background: saving ? "#9ca3af" : "#29B6F6", color: "#fff",
+              background: saving ? "#9ca3af" : "#D97706", color: "#fff",
               cursor: saving ? "not-allowed" : "pointer",
             }}>{saving ? "作成中..." : "作成する"}</button>
           </div>

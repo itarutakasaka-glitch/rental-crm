@@ -26,11 +26,11 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "linear-gradient(135deg, #E3F2FD 0%, #F8F9FB 50%, #E8F5E9 100%)",
+      background: "linear-gradient(135deg, #FEF3C7 0%, #F8F9FB 50%, #E8F5E9 100%)",
     }}>
       <div style={{ width: 380, background: "#fff", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.08)", padding: "40px 32px" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: "#29B6F6", marginBottom: 4, letterSpacing: 1 }}>Claude Cloud</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: "#D97706", marginBottom: 4, letterSpacing: 1 }}>Claude Cloud</h1>
           <p style={{ fontSize: 12, color: "#9ca3af" }}>不動産CRM</p>
         </div>
         <form onSubmit={handleLogin}>
@@ -47,7 +47,7 @@ export default function LoginPage() {
           {error && <div style={{ fontSize: 12, color: "#DC2626", background: "#FEE2E2", padding: "8px 12px", borderRadius: 6, marginBottom: 14 }}>{error}</div>}
           <button type="submit" disabled={loading} style={{
             width: "100%", padding: "10px", fontSize: 14, fontWeight: 600,
-            background: loading ? "#93C5FD" : "linear-gradient(90deg, #4FC3F7, #29B6F6)",
+            background: loading ? "#FCD34D" : "linear-gradient(90deg, #F59E0B, #D97706)",
             color: "#fff", border: "none", borderRadius: 6, cursor: loading ? "not-allowed" : "pointer",
           }}>{loading ? "ログイン中..." : "ログイン"}</button>
         </form>

@@ -11,7 +11,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
       <header style={{
         height: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "space-between",
-        background: "linear-gradient(90deg, #4FC3F7 0%, #29B6F6 100%)", padding: "0 20px", color: "#fff", flexShrink: 0,
+        background: "linear-gradient(90deg, #F59E0B 0%, #D97706 100%)", padding: "0 20px", color: "#fff", flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
           <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: 1 }}>Claude Cloud</span>

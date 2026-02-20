@@ -5,8 +5,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 function Spinner({ size = 18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ animation: "spin 1s linear infinite" }}>
-      <circle cx="12" cy="12" r="10" stroke="#29B6F6" strokeWidth="3" fill="none" opacity="0.2" />
-      <path d="M12 2a10 10 0 0 1 10 10" stroke="#29B6F6" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="10" stroke="#D97706" strokeWidth="3" fill="none" opacity="0.2" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="#D97706" strokeWidth="3" fill="none" strokeLinecap="round" />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </svg>
   );
@@ -125,21 +125,21 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
             {customer.sourcePortal && <span style={{ fontSize: 11, color: "#9ca3af" }}>/ {customer.sourcePortal}</span>}
           </div>
           <div style={{
-            width: 28, height: 28, borderRadius: "50%", background: "#E3F2FD",
+            width: 28, height: 28, borderRadius: "50%", background: "#FEF3C7",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 11, fontWeight: 700, color: "#1976D2",
+            fontSize: 11, fontWeight: 700, color: "#B45309",
           }}>{customer.assignee?.name?.charAt(0) || "?"}</div>
         </div>
         <div style={{ marginBottom: 6 }}>
           <div style={{ fontSize: 17, fontWeight: 700, color: "#111827" }}>{customer.name}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
-            {customer.email && <span style={{ fontSize: 11, color: "#29B6F6" }}>✉️</span>}
+            {customer.email && <span style={{ fontSize: 11, color: "#D97706" }}>✉️</span>}
             {customer.lineUserId && <span style={{ fontSize: 11, color: "#06C755" }}>💬</span>}
             {customer.phone && <span style={{ fontSize: 12, color: "#374151" }}>📞 {customer.phone}</span>}
           </div>
         </div>
         {customer.inquiryContent && (
-          <div style={{ fontSize: 11, color: "#374151", background: "#E3F2FD", borderRadius: 4, padding: "4px 8px", lineHeight: 1.5, marginBottom: 6, maxHeight: 36, overflow: "hidden" }}>
+          <div style={{ fontSize: 11, color: "#374151", background: "#FEF3C7", borderRadius: 4, padding: "4px 8px", lineHeight: 1.5, marginBottom: 6, maxHeight: 36, overflow: "hidden" }}>
             {customer.inquiryContent}
           </div>
         )}
@@ -165,8 +165,8 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
         {tabs.map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
             padding: "8px 10px", fontSize: 11, border: "none", background: "transparent",
-            color: activeTab === tab.id ? "#29B6F6" : "#9ca3af", cursor: "pointer",
-            borderBottom: activeTab === tab.id ? "2px solid #29B6F6" : "2px solid transparent",
+            color: activeTab === tab.id ? "#D97706" : "#9ca3af", cursor: "pointer",
+            borderBottom: activeTab === tab.id ? "2px solid #D97706" : "2px solid transparent",
             fontWeight: activeTab === tab.id ? 600 : 400, whiteSpace: "nowrap",
             display: "flex", alignItems: "center", gap: 3,
           }}>
@@ -231,7 +231,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                     <button onClick={handleSend} disabled={sending || !body.trim()} style={{
                       padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                       cursor: sending || !body.trim() ? "not-allowed" : "pointer",
-                      background: sending || !body.trim() ? "#d1d5db" : "#29B6F6", color: "#fff",
+                      background: sending || !body.trim() ? "#d1d5db" : "#D97706", color: "#fff",
                     }}>{sending ? "送信中..." : "送信"}</button>
                   </div>
                 </>

@@ -5,8 +5,8 @@ import { useState, useEffect, useCallback } from "react";
 function Spinner({ size = 18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ animation: "spin 1s linear infinite" }}>
-      <circle cx="12" cy="12" r="10" stroke="#29B6F6" strokeWidth="3" fill="none" opacity="0.2" />
-      <path d="M12 2a10 10 0 0 1 10 10" stroke="#29B6F6" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="10" stroke="#D97706" strokeWidth="3" fill="none" opacity="0.2" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="#D97706" strokeWidth="3" fill="none" strokeLinecap="round" />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </svg>
   );
@@ -62,12 +62,12 @@ export default function HomePage() {
           {tabs.map((tab) => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
               padding: "8px 20px", fontSize: 13, fontWeight: activeTab === tab.id ? 600 : 400,
-              color: activeTab === tab.id ? "#29B6F6" : "#6b7280", background: "transparent", border: "none",
-              borderBottom: activeTab === tab.id ? "2px solid #29B6F6" : "2px solid transparent",
+              color: activeTab === tab.id ? "#D97706" : "#6b7280", background: "transparent", border: "none",
+              borderBottom: activeTab === tab.id ? "2px solid #D97706" : "2px solid transparent",
               marginBottom: -2, cursor: "pointer", whiteSpace: "nowrap",
             }}>
               {tab.label} <span style={{
-                marginLeft: 4, fontSize: 11, background: activeTab === tab.id ? "#29B6F6" : "#e5e7eb",
+                marginLeft: 4, fontSize: 11, background: activeTab === tab.id ? "#D97706" : "#e5e7eb",
                 color: activeTab === tab.id ? "#fff" : "#6b7280",
                 padding: "1px 6px", borderRadius: 8, fontWeight: 600,
               }}>{tab.count}</span>
@@ -86,7 +86,7 @@ export default function HomePage() {
                   <div>
                     <span style={{ fontSize: 11, color: "#9ca3af", marginRight: 8 }}>{c.lastMessage?.direction === "INBOUND" ? "受信" : "反響"}</span>
                     <span style={{ fontSize: 11, color: "#6b7280", marginRight: 8 }}>担当者：{c.assignee?.name || "なし"}</span>
-                    <span style={{ fontSize: 11, color: "#29B6F6" }}>{timeAgo(c.updatedAt)}</span>
+                    <span style={{ fontSize: 11, color: "#D97706" }}>{timeAgo(c.updatedAt)}</span>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 16 }}>
