@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
 export async function POST(req: NextRequest) {
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     await prisma.message.create({
-      data: { customerId: customer.id, direction: "INBOUND", channel: "EMAIL", subject, body: body || `[${subject}]`, status: "RECEIVED" },
+      data: { customerId: customer.id, direction: "INBOUND", channel: "EMAIL", subject, body: body || `[${subject}]`, status: "DELIVERED" },
     });
     await prisma.customer.update({ where: { id: customer.id }, data: { isNeedAction: true } });
 
