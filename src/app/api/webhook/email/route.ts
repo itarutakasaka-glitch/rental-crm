@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 
 function parseSuumo(text) {
   if (!/suumo|SUUMO|ＳＵＵＭＯ|お客様からの反響です/i.test(text)) return null;
