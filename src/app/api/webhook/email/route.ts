@@ -94,7 +94,7 @@ export async function POST(request) {
       if (!customer) {
         customer = await prisma.customer.create({
           data: {
-            name: parsed.name || "名前不明", nameKana: parsed.nameKana || null,
+            name: parsed.name || "名前不明", nameKana: ("nameKana" in parsed ? parsed.nameKana : null) || null,
             email: parsed.email || null, phone: parsed.phone || null,
             statusId: defaultStatus.id, sourcePortal: parsed.source,
             inquiryContent: parsed.inquiryContent || null,
