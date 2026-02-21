@@ -72,16 +72,16 @@ async function executeImmediateStep(run: any, step: any, customer: any, org: any
 
 export async function GET(req: NextRequest) {
   const customerId = req.nextUrl.searchParams.get("customerId");
-  if (!customerId) return NextResponse.json({ run: null });
-  const run = await prisma.workflowRun.findFirst({
-    where: { customerId, status: "RUNNING" },
+  if (!customerId) return NextResponse.json([]);
+  const runs = await prisma.workflowRun.findMany({
+    where: { customerId },
     include: { workflow: { include: { steps: { orderBy: { order: "asc" } } } } },
     orderBy: { startedAt: "desc" },
   });
-  return NextResponse.json({ run });
+  return NextResponse.json(runs);
 }
 
-export async function DELETE(req: NextRequest) {
+export async function PATCH(req: NextRequest) {
   const { runId } = await req.json();
   await prisma.workflowRun.update({ where: { id: runId }, data: { status: "STOPPED_BY_REPLY", stoppedAt: new Date(), stopReason: "Manual stop" } });
   return NextResponse.json({ ok: true });
