@@ -67,7 +67,9 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [schStartAt, setSchStartAt] = useState("");
   const [schDesc, setSchDesc] = useState("");
   const [schSaving, setSchSaving] = useState(false);
+  const [schEndAt, setSchEndAt] = useState("");
   const [schStaff, setSchStaff] = useState("");
+  const [schEndAt, setSchEndAt] = useState("");
   const [schStaff, setSchStaff] = useState("");
 
   const fetchSchedules = useCallback(async () => {
@@ -91,10 +93,11 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
           startAt: schStartAt,
           description: schDesc.trim() || null,
           organizationId: orgId,
+          endAt: schEndAt || null,
           userId: schStaff || null,
         }),
       });
-      setSchTitle(""); setSchDesc(""); setSchStartAt(""); setSchStaff(""); setSchStaff("");
+      setSchTitle(""); setSchDesc(""); setSchStartAt(""); setSchEndAt(""); setSchStaff(""); setSchStaff("");
       fetchSchedules();
     } catch (e) { console.error(e); }
     finally { setSchSaving(false); }
@@ -805,8 +808,18 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
               </div>
               <input value={schTitle} onChange={(e) => setSchTitle(e.target.value)} placeholder={"\u30BF\u30A4\u30C8\u30EB"}
                 style={{ width: "100%", padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6, boxSizing: "border-box" as const }} />
-              <input type="datetime-local" value={schStartAt} onChange={(e) => setSchStartAt(e.target.value)}
-                style={{ padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6 }} />
+              <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}>{"\u958B\u59CB"}</div>
+                  <input type="datetime-local" value={schStartAt} onChange={(e) => setSchStartAt(e.target.value)}
+                    style={{ width: "100%", padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", boxSizing: "border-box" as const }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}>{"\u7D42\u4E86"}</div>
+                  <input type="datetime-local" value={schEndAt} onChange={(e) => setSchEndAt(e.target.value)}
+                    style={{ width: "100%", padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", boxSizing: "border-box" as const }} />
+                </div>
+              </div>
               <select value={schStaff} onChange={(e) => setSchStaff(e.target.value)}
                 style={{ width: "100%", padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6, boxSizing: "border-box" as const }}>
                 <option value="">{"\u62C5\u5F53\u8005\u306A\u3057"}</option>
@@ -841,7 +854,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{icon} {sch.title}</span>
                         <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "#FEF3C7", color: "#B45309" }}>{typeLabel}</span>
                       </div>
-                      <div style={{ fontSize: 11, color: "#2563eb", marginBottom: 2 }}>{"\uD83D\uDCC5"} {formatDate(sch.startAt)}</div>
+                      <div style={{ fontSize: 11, color: "#2563eb", marginBottom: 2 }}>{"\uD83D\uDCC5"} {formatDate(sch.startAt)}{sch.endAt ? " - " + new Date(sch.endAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : ""}</div>
                       {sch.user && <div style={{ fontSize: 10, color: "#6b7280" }}>{"\uD83D\uDC64"} {sch.user.name}</div>}
                       {sch.description && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>{sch.description}</div>}
                     </div>
