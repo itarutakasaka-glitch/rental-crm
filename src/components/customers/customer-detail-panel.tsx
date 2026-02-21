@@ -68,6 +68,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [schDesc, setSchDesc] = useState("");
   const [schSaving, setSchSaving] = useState(false);
   const [schStaff, setSchStaff] = useState("");
+  const [schStaff, setSchStaff] = useState("");
 
   const fetchSchedules = useCallback(async () => {
     try {
@@ -93,7 +94,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
           userId: schStaff || null,
         }),
       });
-      setSchTitle(""); setSchDesc(""); setSchStartAt(""); setSchStaff("");
+      setSchTitle(""); setSchDesc(""); setSchStartAt(""); setSchStaff(""); setSchStaff("");
       fetchSchedules();
     } catch (e) { console.error(e); }
     finally { setSchSaving(false); }
@@ -806,6 +807,11 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 style={{ width: "100%", padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6, boxSizing: "border-box" as const }} />
               <input type="datetime-local" value={schStartAt} onChange={(e) => setSchStartAt(e.target.value)}
                 style={{ padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6 }} />
+              <select value={schStaff} onChange={(e) => setSchStaff(e.target.value)}
+                style={{ width: "100%", padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6, boxSizing: "border-box" as const }}>
+                <option value="">{"\u62C5\u5F53\u8005\u306A\u3057"}</option>
+                {staffList.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
               <select value={schStaff} onChange={(e) => setSchStaff(e.target.value)}
                 style={{ width: "100%", padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6, boxSizing: "border-box" as const }}>
                 <option value="">{"\u62C5\u5F53\u8005\u306A\u3057"}</option>
