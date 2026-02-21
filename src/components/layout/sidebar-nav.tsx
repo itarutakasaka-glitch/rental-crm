@@ -5,16 +5,16 @@ import Link from "next/link";
 import { useState } from "react";
 
 const menuItems = [
-  { label: "顧客一覧", icon: "👤", href: "/customers" },
-  { label: "一斉送信", icon: "📨", href: "/broadcast" },
+  { label: "鬘ｧ螳｢荳隕ｧ", icon: "側", href: "/customers" },
+  { label: "荳譁蛾∽ｿ｡", icon: "鐙", href: "/broadcast" },
   {
-    label: "設定", icon: "⚙️", href: "/settings",
+    label: "險ｭ螳・, icon: "笞呻ｸ・, href: "/settings",
     children: [
-      { label: "ステータス", href: "/settings/status" },
-      { label: "定型文", href: "/settings/templates" },
-      { label: "ワークフロー", href: "/settings/workflow" },
-      { label: "組織情報", href: "/settings/organization" },
-      { label: "担当者", href: "/settings/staff" },
+      { label: "繧ｹ繝・・繧ｿ繧ｹ", href: "/settings/status" },
+      { label: "螳壼梛譁・, href: "/settings/templates" },
+      { label: "繝ｯ繝ｼ繧ｯ繝輔Ο繝ｼ", href: "/settings/workflow" },
+      { label: "邨・ｹ疲ュ蝣ｱ", href: "/settings/organization" },
+      { label: "諡・ｽ楢・, href: "/settings/staff" },
     ],
   },
 ];
