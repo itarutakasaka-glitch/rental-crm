@@ -67,6 +67,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [schStartAt, setSchStartAt] = useState("");
   const [schDesc, setSchDesc] = useState("");
   const [schSaving, setSchSaving] = useState(false);
+  const [schStaff, setSchStaff] = useState("");
 
   const fetchSchedules = useCallback(async () => {
     try {
@@ -89,9 +90,10 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
           startAt: schStartAt,
           description: schDesc.trim() || null,
           organizationId: orgId,
+          userId: schStaff || null,
         }),
       });
-      setSchTitle(""); setSchDesc(""); setSchStartAt("");
+      setSchTitle(""); setSchDesc(""); setSchStartAt(""); setSchStaff("");
       fetchSchedules();
     } catch (e) { console.error(e); }
     finally { setSchSaving(false); }
@@ -804,6 +806,11 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 style={{ width: "100%", padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6, boxSizing: "border-box" as const }} />
               <input type="datetime-local" value={schStartAt} onChange={(e) => setSchStartAt(e.target.value)}
                 style={{ padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6 }} />
+              <select value={schStaff} onChange={(e) => setSchStaff(e.target.value)}
+                style={{ width: "100%", padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6, boxSizing: "border-box" as const }}>
+                <option value="">{"\u62C5\u5F53\u8005\u306A\u3057"}</option>
+                {staffList.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
               <textarea value={schDesc} onChange={(e) => setSchDesc(e.target.value)} placeholder={"\u5099\u8003"}
                 style={{ width: "100%", height: 40, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box" as const, lineHeight: 1.5 }} />
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
