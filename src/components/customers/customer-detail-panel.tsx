@@ -60,6 +60,43 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [infoSaving, setInfoSaving] = useState(false);
   const [infoSaved, setInfoSaved] = useState(false);
 
+  // Records tab state
+  const [records, setRecords] = useState<any[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+  const [recType, setRecType] = useState("CALL");
+  const [recCallResult, setRecCallResult] = useState("success");
+  const [recBody, setRecBody] = useState("");
+  const [recVisitDate, setRecVisitDate] = useState("");
+  const [recSaving, setRecSaving] = useState(false);
+
+  const fetchRecords = useCallback(async () => {
+    try {
+      const res = await fetch("/api/customers/" + customerId + "/records");
+      if (res.ok) setRecords(await res.json());
+    } catch (e) { console.error(e); }
+  }, [customerId]);
+
+  const handleRecordSave = async () => {
+    if (!recBody.trim() && recType !== "CALL") return;
+    setRecSaving(true);
+    try {
+      await fetch("/api/customers/" + customerId + "/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: recType,
+          callResult: recType === "CALL" ? recCallResult : null,
+          title: recType === "CALL" ? "\u67B6\u96FB\u8A18\u9332" : recType === "MEMO" ? "\u30E1\u30E2" : recType === "VISIT" ? "\u6765\u5E97\u8A18\u9332" : "\u304A\u90E8\u5C4B\u63A2\u3057\u8A18\u9332",
+          body: recBody.trim() || null,
+          visitDate: recType === "VISIT" && recVisitDate ? recVisitDate : null,
+        }),
+      });
+      setRecBody(""); setRecVisitDate("");
+      fetchRecords(); fetchCustomer(); onUpdated();
+    } catch (e) { console.error(e); }
+    finally { setRecSaving(false); }
+  };
+
   const fetchCustomer = useCallback(async () => {
     try {
       const res = await fetch("/api/customers/" + customerId);
@@ -86,7 +123,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     } catch (e) { console.error(e); }
   }, []);
 
-  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); }, [fetchCustomer, fetchTemplates]);
+  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchRecords(); }, [fetchCustomer, fetchTemplates, fetchRecords]);
   useEffect(() => { const iv = setInterval(fetchCustomer, 10000); return () => clearInterval(iv); }, [fetchCustomer]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [customer?.messages]);
 
@@ -552,6 +589,86 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 cursor: infoSaving ? "not-allowed" : "pointer",
                 background: infoSaving ? "#d1d5db" : "#D97706", color: "#fff",
               }}>{infoSaving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
+            </div>
+          </div>
+
+        /* ============ RECORD TAB ============ */
+        ) : activeTab === "record" ? (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            {/* Record form */}
+            <div style={{ padding: "12px 14px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                {[
+                  { v: "CALL", l: "\uD83D\uDCDE \u67B6\u96FB" },
+                  { v: "MEMO", l: "\uD83D\uDCDD \u30E1\u30E2" },
+                  { v: "VISIT", l: "\uD83C\uDFE0 \u6765\u5E97" },
+                  { v: "ROOM_SEARCH", l: "\uD83D\uDD0D \u304A\u90E8\u5C4B\u63A2\u3057" },
+                ].map((t) => (
+                  <button key={t.v} onClick={() => setRecType(t.v)} style={{
+                    padding: "4px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4,
+                    background: recType === t.v ? "#FEF3C7" : "#fff",
+                    color: recType === t.v ? "#B45309" : "#6b7280",
+                    fontWeight: recType === t.v ? 600 : 400, cursor: "pointer",
+                  }}>{t.l}</button>
+                ))}
+              </div>
+              {recType === "CALL" && (
+                <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                  {[{ v: "success", l: "\u2705 \u6210\u529F" }, { v: "noanswer", l: "\u274C \u4E0D\u5728" }, { v: "busy", l: "\uD83D\uDCF5 \u8A71\u3057\u4E2D" }].map((r) => (
+                    <label key={r.v} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 3, color: "#374151", cursor: "pointer" }}>
+                      <input type="radio" name="recCallResult" value={r.v} checked={recCallResult === r.v} onChange={() => setRecCallResult(r.v)} style={{ accentColor: "#D97706" }} />{r.l}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {recType === "VISIT" && (
+                <div style={{ marginBottom: 6 }}>
+                  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 3 }}>{"\u6765\u5E97\u65E5\u6642"}</label>
+                  <input type="datetime-local" value={recVisitDate} onChange={(e) => setRecVisitDate(e.target.value)}
+                    style={{ padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none" }} />
+                </div>
+              )}
+              <textarea value={recBody} onChange={(e) => setRecBody(e.target.value)}
+                placeholder={recType === "CALL" ? "\u901A\u8A71\u5185\u5BB9\u3092\u8A18\u9332..." : recType === "MEMO" ? "\u30E1\u30E2\u3092\u5165\u529B..." : recType === "VISIT" ? "\u6765\u5E97\u6642\u306E\u5185\u5BB9..." : "\u304A\u90E8\u5C4B\u63A2\u3057\u306E\u5185\u5BB9..."}
+                style={{ width: "100%", height: 60, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+                <button onClick={handleRecordSave} disabled={recSaving} style={{
+                  padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
+                  cursor: recSaving ? "not-allowed" : "pointer",
+                  background: recSaving ? "#d1d5db" : "#D97706", color: "#fff",
+                }}>{recSaving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
+              </div>
+            </div>
+            {/* Records timeline */}
+            <div style={{ flex: 1, overflow: "auto", padding: "12px 14px" }}>
+              {records.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 30, color: "#9ca3af", fontSize: 12 }}>{"\u8A18\u9332\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093"}</div>
+              ) : (
+                records.map((rec: any) => {
+                  const icon = rec.type === "CALL" ? "\uD83D\uDCDE" : rec.type === "MEMO" ? "\uD83D\uDCDD" : rec.type === "VISIT" ? "\uD83C\uDFE0" : "\uD83D\uDD0D";
+                  const typeLabel = rec.type === "CALL" ? "\u67B6\u96FB" : rec.type === "MEMO" ? "\u30E1\u30E2" : rec.type === "VISIT" ? "\u6765\u5E97" : "\u304A\u90E8\u5C4B\u63A2\u3057";
+                  const bgColor = rec.type === "CALL" ? (rec.callResult === "success" ? "#ECFDF5" : "#FEF2F2") : rec.type === "VISIT" ? "#EFF6FF" : "#f3f4f6";
+                  return (
+                    <div key={rec.id} style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 8, background: bgColor, border: "1px solid #e5e7eb" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "#374151" }}>
+                          {icon} {typeLabel}
+                          {rec.type === "CALL" && rec.callResult && (
+                            <span style={{ marginLeft: 6, fontSize: 10, color: rec.callResult === "success" ? "#16a34a" : "#dc2626" }}>
+                              {rec.callResult === "success" ? "\u2705\u6210\u529F" : rec.callResult === "noanswer" ? "\u274C\u4E0D\u5728" : "\uD83D\uDCF5\u8A71\u3057\u4E2D"}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 10, color: "#9ca3af" }}>{formatDate(rec.createdAt)}</span>
+                      </div>
+                      {rec.type === "VISIT" && rec.visitDate && (
+                        <div style={{ fontSize: 11, color: "#2563eb", marginBottom: 3 }}>{"\uD83D\uDCC5"} {formatDate(rec.visitDate)}</div>
+                      )}
+                      {rec.body && <div style={{ fontSize: 12, color: "#111827", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{rec.body}</div>}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
