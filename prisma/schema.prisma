@@ -43,7 +43,7 @@ model User {
   organization   Organization @relation(fields: [organizationId], references: [id])
   email          String       @unique
   name           String
-  role           UserRole     @default(MEMBER)
+  role           String       @default("MEMBER")
   avatarUrl      String?
   createdAt      DateTime     @default(now())
   assignedCustomers Customer[] @relation("AssignedCustomers")
@@ -52,10 +52,7 @@ model User {
   schedules         Schedule[]
 }
 
-enum UserRole {
-  ADMIN
-  MEMBER
-}
+// UserRole removed - using String
 
 // 鬯ｯ・ｮ繝ｻ・ｫ郢晢ｽｻ繝ｻ・ｨ鬮ｮ荵晢ｽ・弱・・ｾ縺､ﾂ鬯ｯ・ｮ繝ｻ・ｫ郢晢ｽｻ繝ｻ・ｨ鬮ｮ荵晢ｽ・弱・・ｾ縺､ﾂ 鬯ｯ・ｯ繝ｻ・ｯ郢晢ｽｻ繝ｻ・ｯ鬮ｯ蜿･・ｸ蜷ｶ繝ｻ郢晢ｽｻ繝ｻ・ｽ郢晢ｽｻ繝ｻ・ｽ驛｢譎｢・ｽ・ｻ郢晢ｽｻ繝ｻ・ｧ鬯ｯ・ｮ繝ｻ・ｯ髫ｶ蜴・ｽｽ・ｸ郢晢ｽｻ繝ｻ・ｽ郢晢ｽｻ繝ｻ・ｳ鬩幢ｽ｢隴趣ｽ｢繝ｻ・ｽ繝ｻ・ｻ驛｢譎｢・ｽ・ｻ郢晢ｽｻ繝ｻ・｢鬯ｯ・ｩ陝ｷ・｢繝ｻ・ｽ繝ｻ・｢驛｢譎｢・ｽ・ｻ郢晢ｽｻ繝ｻ・ｧ鬩幢ｽ｢隴趣ｽ｢繝ｻ・ｽ繝ｻ・ｻ驛｢譎｢・ｽ・ｻ郢晢ｽｻ繝ｻ・ｹ鬯ｯ・ｩ陝ｷ・｢繝ｻ・ｽ繝ｻ・｢鬮ｫ・ｴ隰ｫ・ｾ繝ｻ・ｽ繝ｻ・ｴ鬩幢ｽ｢隴趣ｽ｢繝ｻ・ｽ繝ｻ・ｻ鬯ｩ蟷｢・ｽ・｢髫ｴ雜｣・ｽ・｢郢晢ｽｻ繝ｻ・ｽ郢晢ｽｻ繝ｻ・ｻ鬯ｯ・ｩ陝ｷ・｢繝ｻ・ｽ繝ｻ・｢驛｢譎｢・ｽ・ｻ郢晢ｽｻ繝ｻ・ｧ鬩幢ｽ｢隴趣ｽ｢繝ｻ・ｽ繝ｻ・ｻ驛｢譎｢・ｽ・ｻ郢晢ｽｻ繝ｻ・ｿ鬯ｯ・ｩ陝ｷ・｢繝ｻ・ｽ繝ｻ・｢驛｢譎｢・ｽ・ｻ郢晢ｽｻ繝ｻ・ｧ鬩幢ｽ｢隴趣ｽ｢繝ｻ・ｽ繝ｻ・ｻ驛｢譎｢・ｽ・ｻ郢晢ｽｻ繝ｻ・ｹ 鬯ｯ・ｮ繝ｻ・ｫ郢晢ｽｻ繝ｻ・ｨ鬮ｮ荵晢ｽ・弱・・ｾ縺､ﾂ鬯ｯ・ｮ繝ｻ・ｫ郢晢ｽｻ繝ｻ・ｨ鬮ｮ荵晢ｽ・弱・・ｾ縺､ﾂ
 model Status {
