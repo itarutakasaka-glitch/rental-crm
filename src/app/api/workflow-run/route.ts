@@ -61,7 +61,7 @@ async function executeImmediateStep(run: any, step: any, customer: any, org: any
 
     // Record step execution
     await prisma.workflowStepRun.create({
-      data: { workflowRunId: run.id, stepId: step.id, status: "SENT" },
+      data: { workflowRun: { connect: { id: run.id } }, step: { connect: { id: step.id } }, status: "SENT" },
     });
 
     console.log(`[Immediate] Step "${step.name}" sent to ${customer.name}`);
