@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 import { useState, useEffect } from "react";
 
-type Step = { id?: string; name: string; daysAfter: number; timeOfDay: string; channel: string; templateId: string; order: number };
+type Step = { id?: string; name: string; daysAfter: number; timeOfDay: string; channel: string; templateId: string; order: number; isImmediate?: boolean };
 type Workflow = { id: string; name: string; isActive: boolean; steps: Step[] };
 type Tpl = { id: string; name: string; channel: string };
 
@@ -19,11 +19,11 @@ export default function WorkflowPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const startNew = () => { setForm({ name: "", steps: [{ name: "\u30B9\u30C6\u30C3\u30D71", daysAfter: 1, timeOfDay: "10:00", channel: "EMAIL", templateId: "", order: 0 }] }); setIsNew(true); setEditing(null); };
+  const startNew = () => { setForm({ name: "", steps: [{ name: "\u30B9\u30C6\u30C3\u30D71", daysAfter: 1, timeOfDay: "10:00", channel: "EMAIL", templateId: "", order: 0, isImmediate: false }] }); setIsNew(true); setEditing(null); };
   const startEdit = (w: Workflow) => { setForm({ name: w.name, steps: w.steps.map((s, i) => ({ ...s, order: i })) }); setEditing(w); setIsNew(false); };
   const cancel = () => { setIsNew(false); setEditing(null); };
 
-  const addStep = () => setForm(f => ({ ...f, steps: [...f.steps, { name: `\u30B9\u30C6\u30C3\u30D7${f.steps.length + 1}`, daysAfter: f.steps.length + 1, timeOfDay: "10:00", channel: "EMAIL", templateId: "", order: f.steps.length }] }));
+  const addStep = () => setForm(f => ({ ...f, steps: [...f.steps, { name: `\u30B9\u30C6\u30C3\u30D7${f.steps.length + 1}`, daysAfter: f.steps.length + 1, timeOfDay: "10:00", channel: "EMAIL", templateId: "", order: f.steps.length, isImmediate: false }] }));
   const removeStep = (i: number) => setForm(f => ({ ...f, steps: f.steps.filter((_, j) => j !== i) }));
   const updateStep = (i: number, key: string, val: any) => setForm(f => ({ ...f, steps: f.steps.map((s, j) => j === i ? { ...s, [key]: val } : s) }));
 
@@ -57,7 +57,7 @@ export default function WorkflowPage() {
           {form.steps.map((s, i) => (
             <div key={i} className="flex gap-2 items-center mb-2 p-2 bg-gray-50 rounded-lg">
               <span className="text-xs text-gray-400 w-6">{i + 1}.</span>
-              <div className="flex-1 grid grid-cols-5 gap-2">
+              <div className="flex-1 grid grid-cols-6 gap-2"><label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={!!s.isImmediate} onChange={e => updateStep(i, "isImmediate", e.target.checked)} className="w-3 h-3" />{"\u5373\u6642"}</label>
                 <input value={s.name} onChange={e => updateStep(i, "name", e.target.value)} placeholder={"\u30B9\u30C6\u30C3\u30D7\u540D"} className="px-2 py-1 border rounded text-xs" />
                 <div className="flex items-center gap-1">
                   <input type="number" value={s.daysAfter} onChange={e => updateStep(i, "daysAfter", +e.target.value)} min={0} className="w-14 px-2 py-1 border rounded text-xs" />
@@ -101,7 +101,7 @@ export default function WorkflowPage() {
             {w.steps.map((s, i) => (
               <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
                 <span className="w-5 h-5 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-semibold">{i + 1}</span>
-                <span>{s.daysAfter}{"\u65E5\u5F8C"} {s.timeOfDay}</span>
+                <span>{s.isImmediate ? "\u5373\u6642\u9001\u4ED8" : s.daysAfter + "\u65E5\u5F8C " + s.timeOfDay}</span>
                 <span className={`px-1.5 py-0.5 rounded font-semibold ${s.channel === "EMAIL" ? "bg-blue-50 text-blue-600" : s.channel === "LINE" ? "bg-green-50 text-green-600" : "bg-yellow-50 text-yellow-600"}`}>{s.channel}</span>
                 <span>{s.name}</span>
               </div>
