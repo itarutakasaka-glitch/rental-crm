@@ -55,8 +55,6 @@ async function executeImmediateStep(run: any, step: any, customer: any, org: any
           subject,
           body,
           status: "SENT",
-          senderName: fromName,
-          senderEmail: fromEmail,
         },
       });
     }
