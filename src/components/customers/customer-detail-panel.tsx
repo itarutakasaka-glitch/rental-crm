@@ -123,6 +123,52 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     finally { setPrefSaving(false); }
   };
 
+  // Workflow tab state
+  const [workflows, setWorkflows] = useState<any[]>([]);
+  const [wfRuns, setWfRuns] = useState<any[]>([]);
+  const [selectedWfId, setSelectedWfId] = useState("");
+  const [wfStarting, setWfStarting] = useState(false);
+
+  const fetchWorkflows = useCallback(async () => {
+    try {
+      const res = await fetch("/api/workflows");
+      if (res.ok) { const d = await res.json(); setWorkflows(d.workflows || d); }
+    } catch (e) { console.error(e); }
+  }, []);
+
+  const fetchWfRuns = useCallback(async () => {
+    try {
+      const res = await fetch("/api/workflow-run?customerId=" + customerId);
+      if (res.ok) { const d = await res.json(); setWfRuns(Array.isArray(d) ? d : d.runs || []); }
+    } catch (e) { console.error(e); }
+  }, [customerId]);
+
+  const handleWfStart = async () => {
+    if (!selectedWfId) return;
+    setWfStarting(true);
+    try {
+      await fetch("/api/workflow-run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId, workflowId: selectedWfId }),
+      });
+      setSelectedWfId("");
+      fetchWfRuns();
+    } catch (e) { console.error(e); }
+    finally { setWfStarting(false); }
+  };
+
+  const handleWfStop = async (runId: string) => {
+    try {
+      await fetch("/api/workflow-run", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ runId, action: "stop" }),
+      });
+      fetchWfRuns();
+    } catch (e) { console.error(e); }
+  };
+
   // Records tab state
   const [records, setRecords] = useState<any[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
@@ -186,7 +232,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     } catch (e) { console.error(e); }
   }, []);
 
-  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchRecords(); fetchSchedules(); fetchPreference(); }, [fetchCustomer, fetchTemplates, fetchRecords, fetchSchedules, fetchPreference]);
+  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchRecords(); fetchSchedules(); fetchPreference(); fetchWorkflows(); fetchWfRuns(); }, [fetchCustomer, fetchTemplates, fetchRecords, fetchSchedules, fetchPreference, fetchWorkflows, fetchWfRuns]);
   useEffect(() => { const iv = setInterval(fetchCustomer, 10000); return () => clearInterval(iv); }, [fetchCustomer]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [customer?.messages]);
 
@@ -861,6 +907,64 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 cursor: prefSaving ? "not-allowed" : "pointer",
                 background: prefSaving ? "#d1d5db" : "#D97706", color: "#fff",
               }}>{prefSaving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
+            </div>
+          </div>
+
+        /* ============ WORKFLOW TAB ============ */
+        ) : activeTab === "workflow" ? (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "12px 14px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>{"\u30EF\u30FC\u30AF\u30D5\u30ED\u30FC\u3092\u958B\u59CB"}</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <select value={selectedWfId} onChange={(e) => setSelectedWfId(e.target.value)}
+                  style={{ flex: 1, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none" }}>
+                  <option value="">{"\u30EF\u30FC\u30AF\u30D5\u30ED\u30FC\u3092\u9078\u629E"}</option>
+                  {workflows.filter((w: any) => w.isActive).map((w: any) => (
+                    <option key={w.id} value={w.id}>{w.name}{w.isDefault ? " (\u30C7\u30D5\u30A9\u30EB\u30C8)" : ""}</option>
+                  ))}
+                </select>
+                <button onClick={handleWfStart} disabled={!selectedWfId || wfStarting} style={{
+                  padding: "5px 14px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
+                  cursor: !selectedWfId || wfStarting ? "not-allowed" : "pointer",
+                  background: !selectedWfId || wfStarting ? "#d1d5db" : "#D97706", color: "#fff",
+                }}>{wfStarting ? "\u958B\u59CB\u4E2D..." : "\u958B\u59CB"}</button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: "auto", padding: "12px 14px" }}>
+              {wfRuns.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 30, color: "#9ca3af", fontSize: 12 }}>{"\u5B9F\u884C\u4E2D\u306E\u30EF\u30FC\u30AF\u30D5\u30ED\u30FC\u306F\u3042\u308A\u307E\u305B\u3093"}</div>
+              ) : (
+                wfRuns.map((run: any) => {
+                  const isRunning = run.status === "RUNNING";
+                  const statusColor = isRunning ? "#16a34a" : run.status === "COMPLETED" ? "#2563eb" : "#dc2626";
+                  const statusLabel = run.status === "RUNNING" ? "\u5B9F\u884C\u4E2D" : run.status === "COMPLETED" ? "\u5B8C\u4E86" : run.status === "STOPPED" ? "\u505C\u6B62" : run.status === "STOPPED_BY_REPLY" ? "\u8FD4\u4FE1\u505C\u6B62" : run.status === "STOPPED_BY_LINE_ADD" ? "LINE\u8FFD\u52A0\u505C\u6B62" : run.status;
+                  return (
+                    <div key={run.id} style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", background: isRunning ? "#F0FDF4" : "#f9fafb" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{"\u2699\uFE0F"} {run.workflow?.name || "\u30EF\u30FC\u30AF\u30D5\u30ED\u30FC"}</span>
+                        <span style={{ fontSize: 10, padding: "1px 8px", borderRadius: 10, background: isRunning ? "#DCFCE7" : "#f3f4f6", color: statusColor, fontWeight: 600 }}>{statusLabel}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>
+                        {"\u30B9\u30C6\u30C3\u30D7"}: {run.currentStepIndex + 1} / {run.workflow?.steps?.length || "?"}
+                      </div>
+                      {run.nextRunAt && isRunning && (
+                        <div style={{ fontSize: 11, color: "#2563eb" }}>
+                          {"\u6B21\u56DE\u914D\u4FE1"}: {new Date(run.nextRunAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>
+                        {"\u958B\u59CB"}: {formatDate(run.createdAt)}
+                      </div>
+                      {isRunning && (
+                        <button onClick={() => handleWfStop(run.id)} style={{
+                          marginTop: 6, padding: "3px 12px", fontSize: 11, border: "1px solid #fca5a5", borderRadius: 4,
+                          background: "#FEF2F2", color: "#dc2626", cursor: "pointer", fontWeight: 500,
+                        }}>{"\u505C\u6B62"}</button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
