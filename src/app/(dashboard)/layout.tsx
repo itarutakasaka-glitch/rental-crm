@@ -16,17 +16,17 @@ function Logo() {
       </svg>
       <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
         <span style={{
-          fontSize: 18, fontWeight: 900, letterSpacing: 3,
+          fontSize: 18, fontWeight: 700, letterSpacing: 3,
           fontFamily: "'Courier New', 'Lucida Console', monospace",
           color: "#F59E0B",
           textShadow: "0 0 8px rgba(245,158,11,0.4), 0 0 2px rgba(245,158,11,0.2)",
-        }}>CLAUDE</span>
+        }}>Claude</span>
         <span style={{
-          fontSize: 18, fontWeight: 300, letterSpacing: 3,
+          fontSize: 18, fontWeight: 700, letterSpacing: 3,
           fontFamily: "'Courier New', 'Lucida Console', monospace",
           color: "#F59E0B",
-          textShadow: "0 0 6px rgba(245,158,11,0.3)",
-        }}>CLOUD</span>
+          textShadow: "0 0 8px rgba(245,158,11,0.4), 0 0 2px rgba(245,158,11,0.2)",
+        }}>Cloud</span>
       </div>
     </div>
   );
