@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { verifyLineSignature, getLineProfile, sendLineMessage, type LineWebhookEvent } from "@/lib/channels/line";
 import { prisma } from "@/lib/db/prisma";
 
@@ -21,6 +21,11 @@ export async function POST(req: NextRequest) {
 
         const existing = await prisma.customer.findFirst({ where: { lineUserId } });
         if (existing) {
+          // LINE re-follow: set isNeedAction
+          await prisma.customer.update({
+            where: { id: existing.id },
+            data: { isNeedAction: true, lineBlockedAt: null, lastActiveAt: new Date() },
+          });
           await sendLineMessage(lineUserId, "\u304A\u554F\u3044\u5408\u308F\u305B\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3059\u3002\u305F\u307E\u4E0D\u52D5\u7523\u3067\u3059\u3002\u304A\u6C17\u8EFD\u306BLINE\u3067\u3054\u9023\u7D61\u304F\u3060\u3055\u3044\u3002");
           continue;
         }
@@ -41,13 +46,20 @@ export async function POST(req: NextRequest) {
         const text = event.message.text.trim();
         console.log("LINE message from:", lineUserId, "text:", text);
 
+        // Already linked customer: save message
         const linked = await prisma.customer.findFirst({ where: { lineUserId } });
         if (linked) {
           await prisma.message.create({ data: { customerId: linked.id, direction: "INBOUND", channel: "LINE", body: text, status: "SENT" } });
           await prisma.customer.update({ where: { id: linked.id }, data: { lastActiveAt: new Date(), isNeedAction: true } });
+          // Stop running workflows on LINE reply
+          await prisma.workflowRun.updateMany({
+            where: { customerId: linked.id, status: "RUNNING" },
+            data: { status: "STOPPED_BY_REPLY" },
+          });
           continue;
         }
 
+        // Auth code matching
         if (/^\d{4}$/.test(text)) {
           const pending = await prisma.linePending.findFirst({ where: { lineUserId } });
           if (pending) {
@@ -55,9 +67,21 @@ export async function POST(req: NextRequest) {
             if (customer) {
               await prisma.customer.update({
                 where: { id: customer.id },
-                data: { lineUserId, lineDisplayName: pending.displayName, lineLinkedAt: new Date(), lastActiveAt: new Date(), lineCode: null },
+                data: {
+                  lineUserId,
+                  lineDisplayName: pending.displayName,
+                  lineLinkedAt: new Date(),
+                  lastActiveAt: new Date(),
+                  lineCode: null,
+                  isNeedAction: true,
+                },
               });
               await prisma.linePending.delete({ where: { id: pending.id } });
+              // Stop running workflows on LINE add
+              await prisma.workflowRun.updateMany({
+                where: { customerId: customer.id, status: "RUNNING" },
+                data: { status: "STOPPED_BY_LINE_ADD" },
+              });
               await sendLineMessage(lineUserId, `${customer.name}\u69D8\u3001\u9023\u643A\u304C\u5B8C\u4E86\u3057\u307E\u3057\u305F\uFF01\u4ECA\u5F8C\u306FLINE\u3067\u3082\u304A\u6C17\u8EFD\u306B\u3054\u9023\u7D61\u304F\u3060\u3055\u3044\u3002`);
               continue;
             }
@@ -67,5 +91,8 @@ export async function POST(req: NextRequest) {
       }
     }
     return NextResponse.json({ ok: true });
-  } catch (e) { console.error("LINE webhook error:", e); return NextResponse.json({ error: "Internal error" }, { status: 500 }); }
+  } catch (e) {
+    console.error("LINE webhook error:", e);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
 }
