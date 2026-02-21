@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
-function Spinner({ size = 18 }) {
+function Spinner({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ animation: "spin 1s linear infinite" }}>
       <circle cx="12" cy="12" r="10" stroke="#D97706" strokeWidth="3" fill="none" opacity="0.2" />
@@ -27,11 +27,11 @@ interface Props {
 type ComposeChannel = "EMAIL" | "LINE" | "SMS" | "CALL" | "NOTE";
 
 const channelTabs: { id: ComposeChannel; label: string; icon: string }[] = [
-  { id: "EMAIL", label: "メール", icon: "✉️" },
-  { id: "LINE", label: "LINE", icon: "💬" },
-  { id: "SMS", label: "SMS", icon: "📱" },
-  { id: "CALL", label: "架電結果", icon: "📞" },
-  { id: "NOTE", label: "メモ", icon: "📝" },
+  { id: "EMAIL", label: "\u30E1\u30FC\u30EB", icon: "\u2709\uFE0F" },
+  { id: "LINE", label: "LINE", icon: "\uD83D\uDCAC" },
+  { id: "SMS", label: "SMS", icon: "\uD83D\uDCF1" },
+  { id: "CALL", label: "\u67B6\u96FB\u7D50\u679C", icon: "\uD83D\uDCDE" },
+  { id: "NOTE", label: "\u30E1\u30E2", icon: "\uD83D\uDCDD" },
 ];
 
 export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, onUpdated }: Props) {
@@ -55,10 +55,26 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [callResult, setCallResult] = useState("success");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Info tab editing state
+  const [infoForm, setInfoForm] = useState<any>({});
+  const [infoSaving, setInfoSaving] = useState(false);
+  const [infoSaved, setInfoSaved] = useState(false);
+
   const fetchCustomer = useCallback(async () => {
     try {
       const res = await fetch("/api/customers/" + customerId);
-      if (res.ok) setCustomer(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setCustomer(data);
+        // Initialize info form when customer data loads
+        setInfoForm({
+          name: data.name || "",
+          nameKana: data.nameKana || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          memo: data.memo || "",
+        });
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [customerId]);
@@ -97,14 +113,31 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     } catch (e) { console.error(e); }
   };
 
+  const handleInfoSave = async () => {
+    setInfoSaving(true);
+    setInfoSaved(false);
+    try {
+      await fetch("/api/customers/" + customerId, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(infoForm),
+      });
+      fetchCustomer();
+      onUpdated();
+      setInfoSaved(true);
+      setTimeout(() => setInfoSaved(false), 2000);
+    } catch (e) { console.error(e); }
+    finally { setInfoSaving(false); }
+  };
+
   const applyTemplate = (t: any) => {
     setSubject(t.subject || "");
     let b = t.body || "";
     if (customer) {
-      b = b.replace(/\{\{顧客名\}\}/g, customer.name || "")
-        .replace(/\{\{メール\}\}/g, customer.email || "")
-        .replace(/\{\{電話番号\}\}/g, customer.phone || "")
-        .replace(/\{\{担当者名\}\}/g, customer.assignee?.name || "");
+      b = b.replace(/\{\{\u5BA2\u5BA2\u540D\}\}/g, customer.name || "")
+        .replace(/\{\{\u30E1\u30FC\u30EB\}\}/g, customer.email || "")
+        .replace(/\{\{\u96FB\u8A71\u756A\u53F7\}\}/g, customer.phone || "")
+        .replace(/\{\{\u62C5\u5F53\u8005\u540D\}\}/g, customer.assignee?.name || "");
     }
     setBody(b); setShowTemplates(false);
   };
@@ -125,10 +158,10 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
         if (!customer?.phone) { setSending(false); return; }
         payload.phone = customer.phone;
       } else if (composeChannel === "CALL") {
-        payload.subject = "架電記録";
+        payload.subject = "\u67B6\u96FB\u8A18\u9332";
         payload.callResult = callResult;
       } else if (composeChannel === "NOTE") {
-        payload.subject = "メモ";
+        payload.subject = "\u30E1\u30E2";
       }
       await fetch("/api/send-message", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
@@ -149,23 +182,34 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   if (!customer) {
     return (
       <div style={{ width: panelW, minWidth: panelW, borderLeft: "1px solid #e5e7eb", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ color: "#9ca3af", fontSize: 13 }}>顧客が見つかりません</span>
+        <span style={{ color: "#9ca3af", fontSize: 13 }}>{"\u9867\u5BA2\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093"}</span>
       </div>
     );
   }
 
   const messages = customer.messages || [];
   const tabs = [
-    { id: "chat", label: "やりとり", icon: "💬" },
-    { id: "record", label: "記録", icon: "📋" },
-    { id: "schedule", label: "スケジュール", icon: "📅" },
-    { id: "info", label: "顧客情報", icon: "👤" },
-    { id: "condition", label: "希望条件", icon: "🏠" },
-    { id: "workflow", label: "ワークフロー", icon: "⚡" },
+    { id: "chat", label: "\u3084\u308A\u3068\u308A", icon: "\uD83D\uDCAC" },
+    { id: "record", label: "\u8A18\u9332", icon: "\uD83D\uDCCB" },
+    { id: "schedule", label: "\u30B9\u30B1\u30B8\u30E5\u30FC\u30EB", icon: "\uD83D\uDCC5" },
+    { id: "info", label: "\u9867\u5BA2\u60C5\u5831", icon: "\uD83D\uDC64" },
+    { id: "condition", label: "\u5E0C\u671B\u6761\u4EF6", icon: "\uD83C\uDFE0" },
+    { id: "workflow", label: "\u30EF\u30FC\u30AF\u30D5\u30ED\u30FC", icon: "\u2699\uFE0F" },
   ];
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "7px 10px", fontSize: 13, border: "1px solid #d1d5db",
+    borderRadius: 6, outline: "none", boxSizing: "border-box" as const, background: "#fff",
+    transition: "border-color 0.15s",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 12, fontWeight: 600, color: "#6b7280", marginBottom: 4, display: "block",
+  };
 
   return (
     <div style={{ display: "flex", position: "relative" }}>
+      {/* Panel resize handle */}
       <div onMouseDown={(e) => { setPanelDragging(true); panelDragX.current = e.clientX; panelDragW.current = panelW; }}
         style={{ width: 5, cursor: "col-resize", background: panelDragging ? "#D97706" : "transparent", flexShrink: 0, zIndex: 2 }}
         onMouseEnter={(e) => { (e.target as HTMLElement).style.background = "#e5e7eb"; }}
@@ -175,7 +219,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
         <div style={{ padding: "10px 14px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <button onClick={onClose} style={{ width: 24, height: 24, border: "none", background: "transparent", cursor: "pointer", fontSize: 16, color: "#6b7280" }}>✕</button>
+              <button onClick={onClose} style={{ width: 24, height: 24, border: "none", background: "transparent", cursor: "pointer", fontSize: 16, color: "#6b7280" }}>{"\u2716"}</button>
               {customer.sourcePortal && <span style={{ fontSize: 11, color: "#9ca3af" }}>/ {customer.sourcePortal}</span>}
             </div>
             {customer.assignee && (
@@ -187,23 +231,23 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
           <div style={{ marginBottom: 6 }}>
             <div style={{ fontSize: 17, fontWeight: 700, color: "#111827" }}>{customer.name}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
-              {customer.email && <span style={{ fontSize: 11, color: "#D97706" }}>✉️</span>}
-              {customer.lineUserId && <span style={{ fontSize: 11, color: "#06C755" }}>💬</span>}
-              {customer.phone && <span style={{ fontSize: 12, color: "#374151" }}>📞 {customer.phone}</span>}
+              {customer.email && <span style={{ fontSize: 11, color: "#D97706" }}>{"\u2709\uFE0F"}</span>}
+              {customer.lineUserId && <span style={{ fontSize: 11, color: "#06C755" }}>{"\uD83D\uDCAC"}</span>}
+              {customer.phone && <span style={{ fontSize: 12, color: "#374151" }}>{"\uD83D\uDCDE"} {customer.phone}</span>}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
             <button onClick={() => { setCustomer({ ...customer, isNeedAction: !customer.isNeedAction }); patchCustomer({ isNeedAction: !customer.isNeedAction }); }} style={{
               padding: "3px 10px", fontSize: 11, fontWeight: 700, border: "none", borderRadius: 4, cursor: "pointer",
               background: customer.isNeedAction ? "#DC2626" : "#e5e7eb", color: customer.isNeedAction ? "#fff" : "#6b7280",
-            }}>{customer.isNeedAction ? "要対応" : "対応済"}</button>
+            }}>{customer.isNeedAction ? "\u8981\u5BFE\u5FDC" : "\u5BFE\u5FDC\u6E08"}</button>
             <select value={customer.statusId || ""} onChange={(e) => { setCustomer({ ...customer, statusId: e.target.value }); patchCustomer({ statusId: e.target.value }); }}
               style={{ padding: "3px 6px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", maxWidth: 140 }}>
               {statuses.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
             <select value={customer.assigneeId || ""} onChange={(e) => { setCustomer({ ...customer, assigneeId: e.target.value }); patchCustomer({ assigneeId: e.target.value }); }}
               style={{ padding: "3px 6px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", maxWidth: 100 }}>
-              <option value="">担当者なし</option>
+              <option value="">{"\u62C5\u5F53\u8005\u306A\u3057"}</option>
               {staffList.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
@@ -222,12 +266,13 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
             </button>
           ))}
         </div>
-        {/* Content */}
+
+        {/* ============ CHAT TAB ============ */}
         {activeTab === "chat" ? (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ flex: 1, overflow: "auto", padding: "12px 14px" }}>
               {messages.length === 0 ? (
-                <div style={{ textAlign: "center", padding: 30, color: "#9ca3af", fontSize: 12 }}>メッセージはまだありません</div>
+                <div style={{ textAlign: "center", padding: 30, color: "#9ca3af", fontSize: 12 }}>{"\u30E1\u30C3\u30BB\u30FC\u30B8\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093"}</div>
               ) : (
                 messages.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((msg: any) => {
                   const out = msg.direction === "OUTBOUND";
@@ -237,7 +282,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                     return (
                       <div key={msg.id} style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
                         <div style={{ padding: "8px 14px", borderRadius: 8, fontSize: 12, lineHeight: 1.5, background: isCall ? "#FEF3C7" : "#f3f4f6", border: "1px solid #e5e7eb", maxWidth: "90%", color: "#374151" }}>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", marginBottom: 2 }}>{isCall ? "📞 架電記録" : "📝 メモ"}</div>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", marginBottom: 2 }}>{isCall ? "\uD83D\uDCDE \u67B6\u96FB\u8A18\u9332" : "\uD83D\uDCDD \u30E1\u30E2"}</div>
                           <div style={{ whiteSpace: "pre-wrap" }}>{msg.body}</div>
                           <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{formatDate(msg.createdAt)}</div>
                         </div>
@@ -248,7 +293,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                     <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: out ? "flex-end" : "flex-start", marginBottom: 14 }}>
                       {!out && (
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                          <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#6b7280" }}>👤</div>
+                          <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#6b7280" }}>{"\uD83D\uDC64"}</div>
                           <span style={{ fontSize: 11, fontWeight: 600, color: "#374151" }}>{customer.name}</span>
                           {msg.channel === "LINE" && <span style={{ fontSize: 9, color: "#06C755", fontWeight: 600 }}>LINE</span>}
                           {msg.channel === "SMS" && <span style={{ fontSize: 9, color: "#2563eb", fontWeight: 600 }}>SMS</span>}
@@ -265,13 +310,13 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{msg.body}</div>
                       </div>
                       <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
-                        {msg.channel === "EMAIL" && <span>✉️</span>}
-                        {msg.channel === "LINE" && <span>💬</span>}
-                        {msg.channel === "SMS" && <span>📱</span>}
+                        {msg.channel === "EMAIL" && <span>{"\u2709\uFE0F"}</span>}
+                        {msg.channel === "LINE" && <span>{"\uD83D\uDCAC"}</span>}
+                        {msg.channel === "SMS" && <span>{"\uD83D\uDCF1"}</span>}
                         {formatDate(msg.createdAt)}
-                        {out && msg.openedAt && <span style={{ color: "#2563eb", fontWeight: 600, marginLeft: 4 }}>既読</span>}
-                        {out && msg.status === "DELIVERED" && !msg.openedAt && <span style={{ color: "#6b7280", marginLeft: 4 }}>配信済</span>}
-                        {out && msg.status === "SENT" && !msg.openedAt && <span style={{ color: "#9ca3af", marginLeft: 4 }}>{msg.channel === "LINE" ? "送信済" : msg.channel === "SMS" ? "SMS送信済" : "送信済"}</span>}
+                        {out && msg.openedAt && <span style={{ color: "#2563eb", fontWeight: 600, marginLeft: 4 }}>{"\u65E2\u8AAD"}</span>}
+                        {out && msg.status === "DELIVERED" && !msg.openedAt && <span style={{ color: "#6b7280", marginLeft: 4 }}>{"\u9001\u4FE1\u6E08"}</span>}
+                        {out && msg.status === "SENT" && !msg.openedAt && <span style={{ color: "#9ca3af", marginLeft: 4 }}>{msg.channel === "LINE" ? "\u9001\u4FE1\u6E08" : msg.channel === "SMS" ? "SMS\u9001\u4FE1\u6E08" : "\u9001\u4FE1\u6E08"}</span>}
                       </div>
                     </div>
                   );
@@ -279,7 +324,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
               )}
               <div ref={chatEndRef} />
             </div>
-            {/* Compose */}
+            {/* Compose area */}
             <div style={{ borderTop: "1px solid #e5e7eb", flexShrink: 0 }}>
               <div onMouseDown={(e) => { setEditorDragging(true); editorDragY.current = e.clientY; editorDragH.current = editorH; }}
                 style={{ height: 6, cursor: "ns-resize", background: "#F8F9FB", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -304,12 +349,12 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                   customer.email ? (
                     <>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="件名"
+                        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={"\u4EF6\u540D"}
                           style={{ flex: 1, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", boxSizing: "border-box" }} />
                         <button onClick={() => setShowTemplates(!showTemplates)} style={{
                           padding: "5px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4,
                           background: showTemplates ? "#FEF3C7" : "#fff", color: "#374151", cursor: "pointer", whiteSpace: "nowrap",
-                        }}>📄 定型文</button>
+                        }}>{"\uD83D\uDCC4"} {"\u5B9A\u578B\u6587"}</button>
                       </div>
                       {showTemplates && templates.length > 0 && (
                         <div style={{ marginBottom: 6, maxHeight: 120, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 4, background: "#fff" }}>
@@ -325,19 +370,19 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                           ))}
                         </div>
                       )}
-                      <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="メッセージを入力..."
+                      <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={"\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u5165\u529B..."}
                         style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-                        <span style={{ fontSize: 10, color: "#9ca3af" }}>送信先: {customer.email}</span>
+                        <span style={{ fontSize: 10, color: "#9ca3af" }}>{"\u9001\u4FE1\u5148"}: {customer.email}</span>
                         <button onClick={handleSend} disabled={sending || !body.trim()} style={{
                           padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                           cursor: sending || !body.trim() ? "not-allowed" : "pointer",
                           background: sending || !body.trim() ? "#d1d5db" : "#D97706", color: "#fff",
-                        }}>{sending ? "送信中..." : "送信"}</button>
+                        }}>{sending ? "\u9001\u4FE1\u4E2D..." : "\u9001\u4FE1"}</button>
                       </div>
                     </>
                   ) : (
-                    <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", padding: 10 }}>メールアドレス未登録</div>
+                    <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", padding: 10 }}>{"\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9\u672A\u767B\u9332"}</div>
                   )
                 ) : composeChannel === "LINE" ? (
                   customer.lineUserId ? (
@@ -346,7 +391,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         <button onClick={() => setShowTemplates(!showTemplates)} style={{
                           padding: "5px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4,
                           background: showTemplates ? "#FEF3C7" : "#fff", color: "#374151", cursor: "pointer",
-                        }}>📄 定型文</button>
+                        }}>{"\uD83D\uDCC4"} {"\u5B9A\u578B\u6587"}</button>
                       </div>
                       {showTemplates && templates.length > 0 && (
                         <div style={{ marginBottom: 6, maxHeight: 120, overflow: "auto", border: "1px solid #e5e7eb", borderRadius: 4, background: "#fff" }}>
@@ -361,42 +406,42 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                           ))}
                         </div>
                       )}
-                      <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="LINEメッセージを入力..."
+                      <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={"LINE\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u5165\u529B..."}
                         style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-                        <span style={{ fontSize: 10, color: "#06C755" }}>LINE: {customer.lineDisplayName || "連携済"}</span>
+                        <span style={{ fontSize: 10, color: "#06C755" }}>LINE: {customer.lineDisplayName || "\u9023\u643A\u6E08"}</span>
                         <button onClick={handleSend} disabled={sending || !body.trim()} style={{
                           padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                           cursor: sending || !body.trim() ? "not-allowed" : "pointer",
                           background: sending || !body.trim() ? "#d1d5db" : "#06C755", color: "#fff",
-                        }}>{sending ? "送信中..." : "LINE送信"}</button>
+                        }}>{sending ? "\u9001\u4FE1\u4E2D..." : "LINE\u9001\u4FE1"}</button>
                       </div>
                     </>
                   ) : (
-                    <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", padding: 10 }}>LINE未連携</div>
+                    <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", padding: 10 }}>{"\u004C\u0049\u004E\u0045\u672A\u9023\u643A"}</div>
                   )
                 ) : composeChannel === "SMS" ? (
                   customer.phone ? (
                     <>
-                      <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="SMSメッセージを入力（70文字以内推奨）..."
+                      <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={"SMS\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u5165\u529B\uFF0870\u6587\u5B57\u4EE5\u5185\u63A8\u5968\uFF09..."}
                         style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-                        <span style={{ fontSize: 10, color: "#9ca3af" }}>送信先: {customer.phone}（{body.length}文字）</span>
+                        <span style={{ fontSize: 10, color: "#9ca3af" }}>{"\u9001\u4FE1\u5148"}: {customer.phone}{"\uFF08"}{body.length}{"\u6587\u5B57\uFF09"}</span>
                         <button onClick={handleSend} disabled={sending || !body.trim()} style={{
                           padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                           cursor: sending || !body.trim() ? "not-allowed" : "pointer",
                           background: sending || !body.trim() ? "#d1d5db" : "#2563eb", color: "#fff",
-                        }}>{sending ? "送信中..." : "SMS送信"}</button>
+                        }}>{sending ? "\u9001\u4FE1\u4E2D..." : "SMS\u9001\u4FE1"}</button>
                       </div>
                     </>
                   ) : (
-                    <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", padding: 10 }}>電話番号未登録</div>
+                    <div style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", padding: 10 }}>{"\u96FB\u8A71\u756A\u53F7\u672A\u767B\u9332"}</div>
                   )
                 ) : (
                   <>
                     {composeChannel === "CALL" && (
                       <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-                        {[{ v: "success", l: "成功（通話あり）" }, { v: "noanswer", l: "不在" }, { v: "busy", l: "話し中" }].map((r) => (
+                        {[{ v: "success", l: "\u6210\u529F\uFF08\u901A\u8A71\u3042\u308A\uFF09" }, { v: "noanswer", l: "\u4E0D\u5728" }, { v: "busy", l: "\u8A71\u3057\u4E2D" }].map((r) => (
                           <label key={r.v} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 3, color: "#374151", cursor: "pointer" }}>
                             <input type="radio" name="callResult" value={r.v} checked={callResult === r.v} onChange={() => setCallResult(r.v)} style={{ accentColor: "#D97706" }} />{r.l}
                           </label>
@@ -404,39 +449,116 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                       </div>
                     )}
                     <textarea value={body} onChange={(e) => setBody(e.target.value)}
-                      placeholder={composeChannel === "CALL" ? "架電内容を記録..." : "メモを入力..."}
+                      placeholder={composeChannel === "CALL" ? "\u67B6\u96FB\u5185\u5BB9\u3092\u8A18\u9332..." : "\u30E1\u30E2\u3092\u5165\u529B..."}
                       style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
                       <button onClick={handleSend} disabled={sending || !body.trim()} style={{
                         padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                         cursor: sending || !body.trim() ? "not-allowed" : "pointer",
                         background: sending || !body.trim() ? "#d1d5db" : "#D97706", color: "#fff",
-                      }}>{sending ? "保存中..." : "保存"}</button>
+                      }}>{sending ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
                     </div>
                   </>
                 )}
               </div>
             </div>
           </div>
+
+        /* ============ INFO TAB (EDITABLE) ============ */
         ) : activeTab === "info" ? (
-          <div style={{ flex: 1, overflow: "auto", padding: "14px" }}>
-            {[
-              { label: "名前", value: customer.name },
-              { label: "カナ", value: customer.nameKana },
-              { label: "メール", value: customer.email },
-              { label: "電話番号", value: customer.phone },
-              { label: "反響元", value: customer.sourcePortal },
-              { label: "問合せ内容", value: customer.inquiryContent },
-            ].map((item) => (
-              <div key={item.label} style={{ display: "flex", padding: "8px 0", borderBottom: "1px solid #f3f4f6", fontSize: 13 }}>
-                <div style={{ width: 100, color: "#6b7280", fontWeight: 500, flexShrink: 0 }}>{item.label}</div>
-                <div style={{ color: "#111827" }}>{item.value || "-"}</div>
+          <div style={{ flex: 1, overflow: "auto", padding: "16px 14px" }}>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                <span>{"\uD83D\uDC64"}</span> {"\u57FA\u672C\u60C5\u5831"}
               </div>
-            ))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>{"\u540D\u524D"}</label>
+                  <input value={infoForm.name || ""} onChange={(e) => setInfoForm({ ...infoForm, name: e.target.value })}
+                    style={inputStyle} placeholder={"\u4F8B\uFF09\u5C71\u7530 \u592A\u90CE"} />
+                </div>
+                <div>
+                  <label style={labelStyle}>{"\u30AB\u30CA"}</label>
+                  <input value={infoForm.nameKana || ""} onChange={(e) => setInfoForm({ ...infoForm, nameKana: e.target.value })}
+                    style={inputStyle} placeholder={"\u4F8B\uFF09\u30E4\u30DE\u30C0 \u30BF\u30ED\u30A6"} />
+                </div>
+                <div>
+                  <label style={labelStyle}>{"\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9"}</label>
+                  <input value={infoForm.email || ""} onChange={(e) => setInfoForm({ ...infoForm, email: e.target.value })}
+                    type="email" style={inputStyle} placeholder="example@email.com" />
+                </div>
+                <div>
+                  <label style={labelStyle}>{"\u96FB\u8A71\u756A\u53F7"}</label>
+                  <input value={infoForm.phone || ""} onChange={(e) => setInfoForm({ ...infoForm, phone: e.target.value })}
+                    type="tel" style={inputStyle} placeholder="090-1234-5678" />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                <span>{"\uD83D\uDCDD"}</span> {"\u30E1\u30E2"}
+              </div>
+              <textarea value={infoForm.memo || ""} onChange={(e) => setInfoForm({ ...infoForm, memo: e.target.value })}
+                placeholder={"\u9867\u5BA2\u306B\u95A2\u3059\u308B\u30E1\u30E2\u3092\u5165\u529B..."}
+                style={{ ...inputStyle, height: 100, resize: "vertical", lineHeight: 1.5 }} />
+            </div>
+
+            <div style={{ marginBottom: 20, padding: "12px", background: "#F8F9FB", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                <span>{"\u2139\uFE0F"}</span> {"\u305D\u306E\u4ED6\u60C5\u5831"}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {[
+                  { label: "\u53CD\u97FF\u5143", value: customer.sourcePortal },
+                  { label: "\u554F\u5408\u305B\u5185\u5BB9", value: customer.inquiryContent },
+                  { label: "LINE\u9023\u643A", value: customer.lineUserId ? `\u2705 ${customer.lineDisplayName || "\u9023\u643A\u6E08"}` : "\u274C \u672A\u9023\u643A" },
+                  { label: "\u6700\u7D42\u30A2\u30AF\u30C6\u30A3\u30D6", value: customer.lastActiveAt ? formatDate(customer.lastActiveAt) : "-" },
+                  { label: "\u4F5C\u6210\u65E5", value: customer.createdAt ? formatDate(customer.createdAt) : "-" },
+                ].map((item) => (
+                  <div key={item.label} style={{ display: "flex", fontSize: 12, padding: "4px 0" }}>
+                    <div style={{ width: 110, color: "#6b7280", fontWeight: 500, flexShrink: 0 }}>{item.label}</div>
+                    <div style={{ color: "#111827" }}>{item.value || "-"}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {customer.properties && customer.properties.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>{"\uD83C\uDFE2"}</span> {"\u53CD\u97FF\u7269\u4EF6"}
+                </div>
+                {customer.properties.map((p: any, i: number) => (
+                  <div key={i} style={{ padding: "8px 10px", border: "1px solid #e5e7eb", borderRadius: 6, marginBottom: 6, background: "#fff", fontSize: 12 }}>
+                    <div style={{ fontWeight: 600, color: "#111827", marginBottom: 4 }}>{p.name || "\u7269\u4EF6\u540D\u4E0D\u660E"}</div>
+                    {p.address && <div style={{ color: "#6b7280" }}>{"\uD83D\uDCCD"} {p.address}</div>}
+                    {p.station && <div style={{ color: "#6b7280" }}>{"\uD83D\uDE83"} {p.station}</div>}
+                    <div style={{ display: "flex", gap: 10, marginTop: 4, color: "#374151" }}>
+                      {p.rent && <span>{"\u00A5"} {p.rent}</span>}
+                      {p.layout && <span>{p.layout}</span>}
+                      {p.area && <span>{p.area}</span>}
+                    </div>
+                    {p.url && <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#D97706", marginTop: 4, display: "inline-block" }}>{"\u7269\u4EF6\u30DA\u30FC\u30B8\u3092\u958B\u304F"} →</a>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 8, borderTop: "1px solid #e5e7eb" }}>
+              {infoSaved && <span style={{ fontSize: 12, color: "#16a34a", display: "flex", alignItems: "center", gap: 4 }}>{"\u2705"} {"\u4FDD\u5B58\u3057\u307E\u3057\u305F"}</span>}
+              <button onClick={handleInfoSave} disabled={infoSaving} style={{
+                padding: "7px 20px", fontSize: 13, fontWeight: 600, border: "none", borderRadius: 6,
+                cursor: infoSaving ? "not-allowed" : "pointer",
+                background: infoSaving ? "#d1d5db" : "#D97706", color: "#fff",
+              }}>{infoSaving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
+            </div>
           </div>
+
+        /* ============ PLACEHOLDER TABS ============ */
         ) : (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "#9ca3af", fontSize: 13 }}>準備中</span>
+            <span style={{ color: "#9ca3af", fontSize: 13 }}>{"\u6E96\u5099\u4E2D"}</span>
           </div>
         )}
       </div>
