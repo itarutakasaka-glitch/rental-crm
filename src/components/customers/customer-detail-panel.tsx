@@ -97,6 +97,32 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     finally { setSchSaving(false); }
   };
 
+  // Preference (condition) tab state
+  const [prefForm, setPrefForm] = useState<any>({});
+  const [prefSaving, setPrefSaving] = useState(false);
+  const [prefSaved, setPrefSaved] = useState(false);
+
+  const fetchPreference = useCallback(async () => {
+    try {
+      const res = await fetch("/api/customers/" + customerId + "/preference");
+      if (res.ok) { const d = await res.json(); setPrefForm(d || {}); }
+    } catch (e) { console.error(e); }
+  }, [customerId]);
+
+  const handlePrefSave = async () => {
+    setPrefSaving(true); setPrefSaved(false);
+    try {
+      await fetch("/api/customers/" + customerId + "/preference", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(prefForm),
+      });
+      setPrefSaved(true);
+      setTimeout(() => setPrefSaved(false), 2000);
+    } catch (e) { console.error(e); }
+    finally { setPrefSaving(false); }
+  };
+
   // Records tab state
   const [records, setRecords] = useState<any[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
@@ -160,7 +186,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     } catch (e) { console.error(e); }
   }, []);
 
-  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchRecords(); fetchSchedules(); }, [fetchCustomer, fetchTemplates, fetchRecords, fetchSchedules]);
+  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchRecords(); fetchSchedules(); fetchPreference(); }, [fetchCustomer, fetchTemplates, fetchRecords, fetchSchedules, fetchPreference]);
   useEffect(() => { const iv = setInterval(fetchCustomer, 10000); return () => clearInterval(iv); }, [fetchCustomer]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [customer?.messages]);
 
@@ -763,6 +789,78 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                   );
                 })
               )}
+            </div>
+          </div>
+
+        /* ============ CONDITION TAB ============ */
+        ) : activeTab === "condition" ? (
+          <div style={{ flex: 1, overflow: "auto", padding: "14px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px" }}>
+              <div>
+                <label style={labelStyle}>{"\u5E0C\u671B\u30A8\u30EA\u30A2"}</label>
+                <input value={prefForm.area || ""} onChange={(e) => setPrefForm({ ...prefForm, area: e.target.value })} placeholder={"\u4F8B: \u6E0B\u8C37\u533A, \u65B0\u5BBF\u533A"} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>{"\u5E0C\u671B\u99C5"}</label>
+                <input value={prefForm.station || ""} onChange={(e) => setPrefForm({ ...prefForm, station: e.target.value })} placeholder={"\u4F8B: \u6E0B\u8C37\u99C5"} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>{"\u5F92\u6B69\u5206"}</label>
+                <input type="number" value={prefForm.walkMinutes || ""} onChange={(e) => setPrefForm({ ...prefForm, walkMinutes: e.target.value ? parseInt(e.target.value) : null })} placeholder="\u5206" style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>{"\u9593\u53D6\u308A"}</label>
+                <input value={prefForm.layout || ""} onChange={(e) => setPrefForm({ ...prefForm, layout: e.target.value })} placeholder={"\u4F8B: 1LDK, 2DK"} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>{"\u8CC3\u6599\u4E0B\u9650(\u4E07\u5186)"}</label>
+                <input type="number" value={prefForm.rentMin || ""} onChange={(e) => setPrefForm({ ...prefForm, rentMin: e.target.value ? parseInt(e.target.value) : null })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>{"\u8CC3\u6599\u4E0A\u9650(\u4E07\u5186)"}</label>
+                <input type="number" value={prefForm.rentMax || ""} onChange={(e) => setPrefForm({ ...prefForm, rentMax: e.target.value ? parseInt(e.target.value) : null })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>{"\u5E83\u3055\u4E0B\u9650(m\u00B2)"}</label>
+                <input type="number" value={prefForm.areaMin || ""} onChange={(e) => setPrefForm({ ...prefForm, areaMin: e.target.value ? parseFloat(e.target.value) : null })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>{"\u5165\u5C45\u5E0C\u671B\u6642\u671F"}</label>
+                <input value={prefForm.moveInDate || ""} onChange={(e) => setPrefForm({ ...prefForm, moveInDate: e.target.value })} placeholder={"\u4F8B: 2026\u5E744\u6708"} style={inputStyle} />
+              </div>
+            </div>
+            <div style={{ marginTop: 14, marginBottom: 10 }}>
+              <label style={{ ...labelStyle, marginBottom: 8 }}>{"\u3053\u3060\u308F\u308A\u6761\u4EF6"}</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {[
+                  { k: "petOk", l: "\uD83D\uDC3E \u30DA\u30C3\u30C8\u53EF" },
+                  { k: "autoLock", l: "\uD83D\uDD10 \u30AA\u30FC\u30C8\u30ED\u30C3\u30AF" },
+                  { k: "bathToiletSeparate", l: "\uD83D\uDEBF \u30D0\u30B9\u30FB\u30C8\u30A4\u30EC\u5225" },
+                  { k: "flooring", l: "\uD83C\uDFE0 \u30D5\u30ED\u30FC\u30EA\u30F3\u30B0" },
+                  { k: "aircon", l: "\u2744\uFE0F \u30A8\u30A2\u30B3\u30F3" },
+                  { k: "reheating", l: "\u2668\uFE0F \u8FFD\u3044\u7119\u304D" },
+                  { k: "washletToilet", l: "\uD83D\uDEBD \u6E29\u6C34\u6D17\u6D44\u4FBF\u5EA7" },
+                  { k: "freeInternet", l: "\uD83D\uDCF6 \u30A4\u30F3\u30BF\u30FC\u30CD\u30C3\u30C8\u7121\u6599" },
+                ].map((item) => (
+                  <label key={item.k} style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6, color: "#374151", cursor: "pointer", padding: "3px 0" }}>
+                    <input type="checkbox" checked={!!prefForm[item.k]} onChange={(e) => setPrefForm({ ...prefForm, [item.k]: e.target.checked })} style={{ accentColor: "#D97706" }} />
+                    {item.l}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <label style={labelStyle}>{"\u5099\u8003"}</label>
+              <textarea value={prefForm.note || ""} onChange={(e) => setPrefForm({ ...prefForm, note: e.target.value })} placeholder={"\u305D\u306E\u4ED6\u306E\u5E0C\u671B\u6761\u4EF6..."}
+                style={{ width: "100%", height: 60, padding: "6px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 6, resize: "none", outline: "none", boxSizing: "border-box" as const }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 10 }}>
+              {prefSaved && <span style={{ fontSize: 12, color: "#16a34a" }}>{"\u2705 \u4FDD\u5B58\u3057\u307E\u3057\u305F"}</span>}
+              <button onClick={handlePrefSave} disabled={prefSaving} style={{
+                padding: "6px 20px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
+                cursor: prefSaving ? "not-allowed" : "pointer",
+                background: prefSaving ? "#d1d5db" : "#D97706", color: "#fff",
+              }}>{prefSaving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
             </div>
           </div>
 
