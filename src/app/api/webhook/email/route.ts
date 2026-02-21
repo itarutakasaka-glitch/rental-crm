@@ -1,62 +1,77 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
-function parseSuumo(text) {
-  if (!/suumo|SUUMO|ＳＵＵＭＯ|お客様からの反響です/i.test(text)) return null;
-  const name = (text.match(/名前（漢字）[：:]\s*(.+)/) || text.match(/名前\(漢字\)[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const nameKana = (text.match(/名前（カナ）[：:]\s*(.+)/) || text.match(/名前\(カナ\)[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const email = (text.match(/メールアドレス[：:]\s*(\S+)/) || [])[1]?.trim() || "";
-  const phone = (text.match(/[ＴTｔ][ＥEｅ][ＬLｌ][：:]\s*(\S+)/) || text.match(/電話番号[：:]\s*(\S+)/) || [])[1]?.trim() || "";
-  const propertyName = (text.match(/物件名[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyUrl = (text.match(/物件詳細画面[：:]\s*(https?:\/\/\S+)/) || text.match(/(https?:\/\/suumo\.jp\S+)/) || [])[1]?.trim() || "";
-  const inquiryContent = (text.match(/お問合せ内容[：:]\s*(.+)/) || text.match(/お問い合わせ内容[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const station = (text.match(/最寄り駅[：:]\s*(.+)/) || text.match(/最寄駅[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const address = (text.match(/所在地[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const rent = (text.match(/賃料[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const layout = (text.match(/間取り[：:]\s*(.+)/) || text.match(/間取[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const area = (text.match(/専有面積[：:]\s*(.+)/) || [])[1]?.trim() || "";
+// SUUMO parser
+function parseSuumo(text: string) {
+  if (!/suumo|SUUMO|\u30B9\u30FC\u30E2|\u304A\u554F\u5408\u305B\u304C\u3042\u308A\u307E\u3057\u305F/i.test(text)) return null;
+  // \u540D\u524D = 名前, \u6F22\u5B57 = 漢字, \u30AB\u30CA = カナ
+  const name = (text.match(/\u540D\u524D[\(（]\u6F22\u5B57[\)）][：:]\s*(.+)/) || text.match(/\u540D\u524D\(\u6F22\u5B57\)[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const nameKana = (text.match(/\u540D\u524D[\(（]\u30AB\u30CA[\)）][：:]\s*(.+)/) || text.match(/\u540D\u524D\(\u30AB\u30CA\)[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  // \u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9 = メールアドレス
+  const email = (text.match(/\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9[：:]\s*(\S+)/) || [])[1]?.trim() || "";
+  // TEL or \uFF34\uFF25\uFF2C = ＴＥＬ, \u96FB\u8A71\u756A\u53F7 = 電話番号
+  const phone = (text.match(/[\uFF34T][\uFF25E][\uFF2CL][：:]\s*(\S+)/) || text.match(/\u96FB\u8A71\u756A\u53F7[：:]\s*(\S+)/) || [])[1]?.trim() || "";
+  // \u7269\u4EF6\u540D = 物件名
+  const propertyName = (text.match(/\u7269\u4EF6\u540E[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  // \u7269\u4EF6\u8A73\u7D30\u753B\u9762 = 物件詳細画面
+  const propertyUrl = (text.match(/\u7269\u4EF6\u8A73\u7D30\u753B\u9762[：:]\s*(https?:\/\/\S+)/) || text.match(/(https?:\/\/suumo\.jp\S+)/) || [])[1]?.trim() || "";
+  // \u304A\u554F\u5408\u305B\u5185\u5BB9 = お問合せ内容
+  const inquiryContent = (text.match(/\u304A\u554F\u5408\u305B\u5185\u5BB9[：:]\s*(.+)/) || text.match(/\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  // \u6700\u5BC4\u308A\u99C5 = 最寄り駅, \u6700\u5BC4\u99C5 = 最寄駅
+  const station = (text.match(/\u6700\u5BC4\u308A\u99C5[：:]\s*(.+)/) || text.match(/\u6700\u5BC4\u99C5[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  // \u6240\u5728\u5730 = 所在地
+  const address = (text.match(/\u6240\u5728\u5730[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  // \u8CC3\u6599 = 賃料
+  const rent = (text.match(/\u8CC3\u6599[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  // \u9593\u53D6\u308B = 間取り, \u9593\u53D6 = 間取
+  const layout = (text.match(/\u9593\u53D6\u308A[：:]\s*(.+)/) || text.match(/\u9593\u53D6[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  // \u5C02\u6709\u9762\u7A4D = 専有面積
+  const area = (text.match(/\u5C02\u6709\u9762\u7A4D[：:]\s*(.+)/) || [])[1]?.trim() || "";
   if (!name && !email) return null;
   return { name, nameKana, email, phone, source: "SUUMO", inquiryContent, propertyName, propertyUrl, propertyStation: station, propertyAddress: address, propertyRent: rent, propertyLayout: layout, propertyArea: area };
 }
 
-function parseApamanshop(text) {
-  if (!/アパマンショップ|apamanshop/i.test(text)) return null;
-  const name = (text.match(/【名前】\s*(.+)/) || text.match(/〔お名前〕\s*(.+)/) || [])[1]?.trim() || "";
-  const nameKana = (text.match(/【名前カナ】\s*(.+)/) || [])[1]?.trim() || "";
-  const email = (text.match(/【メールアドレス】\s*(\S+)/) || text.match(/〔メールアドレス〕\s*(\S+)/) || [])[1]?.trim() || "";
-  const phone = (text.match(/【電話番号】\s*(.+)/) || text.match(/〔電話番号〕\s*(.+)/) || [])[1]?.trim() || "";
-  const inquiryContent = (text.match(/【お問い合わせ内容】\s*([\s\S]*?)(?:【)/) || [])[1]?.trim() || "";
-  const propertyName = (text.match(/（物件 名）\s*(.+)/) || text.match(/〔物 件 名〕\s*(.+)/) || text.match(/【物件名】\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyAddress = (text.match(/（物件住所）\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyStation = (text.match(/（最寄り駅）\s*(.+)/) || text.match(/（最寄駅）\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyRoom = (text.match(/（号 室）\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyArea = (text.match(/（専有面積）\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyRent = (text.match(/（賃 料）\s*(.+)/) || [])[1]?.trim() || "";
+// APAMANSHOP parser
+function parseApamanshop(text: string) {
+  // \u30A2\u30D1\u30DE\u30F3\u30B7\u30E7\u30C3\u30D7 = アパマンショップ
+  if (!/\u30A2\u30D1\u30DE\u30F3\u30B7\u30E7\u30C3\u30D7|apamanshop/i.test(text)) return null;
+  // \u3010\u540D\u524D\u3011 = 【名前】, \u3010\u304A\u540D\u524D\u3011 = 【お名前】
+  const name = (text.match(/\u3010\u540D\u524D\u3011\s*(.+)/) || text.match(/\u3010\u304A\u540D\u524D\u3011\s*(.+)/) || [])[1]?.trim() || "";
+  const nameKana = (text.match(/\u3010\u540D\u524D\u30AB\u30CA\u3011\s*(.+)/) || [])[1]?.trim() || "";
+  // \u3010\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9\u3011 = 【メールアドレス】
+  const email = (text.match(/\u3010\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9\u3011\s*(\S+)/) || [])[1]?.trim() || "";
+  // \u3010\u96FB\u8A71\u756A\u53F7\u3011 = 【電話番号】
+  const phone = (text.match(/\u3010\u96FB\u8A71\u756A\u53F7\u3011\s*(.+)/) || [])[1]?.trim() || "";
+  // \u3010\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9\u3011 = 【お問い合わせ内容】
+  const inquiryContent = (text.match(/\u3010\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9\u3011\s*([\s\S]*?)(?:\u3010|$)/) || [])[1]?.trim() || "";
+  // \u3014\u7269 \u4EF6 \u540D\u3015 = 〔物 件 名〕, \u3010\u7269\u4EF6\u540D\u3011 = 【物件名】
+  const propertyName = (text.match(/\u3014\u7269\s*\u4EF6\s*\u540D\u3015\s*(.+)/) || text.match(/\u3010\u7269\u4EF6\u540D\u3011\s*(.+)/) || [])[1]?.trim() || "";
   const propertyUrl = (text.match(/(https?:\/\/www\.apamanshop\.com\S+)/) || [])[1]?.trim() || "";
   if (!name && !email) return null;
-  return { name, nameKana, email, phone, source: "アパマンショップ", inquiryContent, propertyName, propertyAddress, propertyStation, propertyRoom, propertyArea, propertyRent, propertyUrl };
+  return { name, nameKana, email, phone, source: "\u30A2\u30D1\u30DE\u30F3\u30B7\u30E7\u30C3\u30D7", inquiryContent, propertyName, propertyUrl };
 }
 
-function parseHomes(text) {
+// HOME'S parser
+function parseHomes(text: string) {
   if (!/LIFULL HOME'S|HOME'S|homes\.co\.jp/i.test(text)) return null;
-  const name = (text.match(/[\s　]+名前[：:]\s*(.+)/) || text.match(/名前[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const email = (text.match(/メールアドレス[：:]\s*(\S+)/) || [])[1]?.trim() || "";
-  const phone = (text.match(/[\s　]+電話番号[：:]\s*(\S+)/) || text.match(/電話番号[：:]\s*(\S+)/) || [])[1]?.trim() || "";
-  const propertyName = (text.match(/[\s　]+物件名[：:]\s*(.+)/) || text.match(/物件名[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyRent = (text.match(/[\s　]+賃料[：:]\s*(.+)/) || text.match(/賃料[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyAddress = (text.match(/[\s　]+所在地[：:]\s*(.+)/) || text.match(/所在地[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyStation = (text.match(/[\s　]+交通[：:]\s*(.+)/) || text.match(/交通[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyArea = (text.match(/[\s　]+面積[：:]\s*(.+)/) || text.match(/面積[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyLayout = (text.match(/[\s　]+間取[：:]\s*(.+)/) || text.match(/間取[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const inquiryContent = (text.match(/お問合せ内容[：:]\s*(.+)/) || text.match(/お問い合わせ内容[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const note = (text.match(/[\s　]+備考[：:]\s*(.+)/) || text.match(/備考[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyUrl = (text.match(/(https?:\/\/www\.homes\.co\.jp\/chintai\/\S+)/) || [])[1]?.trim() || "";
+  const name = (text.match(/\u540D\u524D[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const email = (text.match(/\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9[：:]\s*(\S+)/) || [])[1]?.trim() || "";
+  const phone = (text.match(/\u96FB\u8A71\u756A\u53F7[：:]\s*(\S+)/) || [])[1]?.trim() || "";
+  const propertyName = (text.match(/\u7269\u4EF6\u540D[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyRent = (text.match(/\u8CC3\u6599[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyAddress = (text.match(/\u6240\u5728\u5730[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyStation = (text.match(/\u4EA4\u901A[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyArea = (text.match(/\u9762\u7A4D[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyLayout = (text.match(/\u9593\u53D6[：:]\s*(.+)/) || text.match(/\u9593\u53D6\u308A[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const inquiryContent = (text.match(/\u304A\u554F\u5408\u305B\u5185\u5BB9[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const note = (text.match(/\u5099\u8003[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyUrl = (text.match(/(https?:\/\/www\.homes\.co\.jp\S+)/) || [])[1]?.trim() || "";
   if (!name && !email) return null;
   const fullInquiry = [inquiryContent, note].filter(Boolean).join("\n");
   return { name, email, phone, source: "HOME'S", inquiryContent: fullInquiry, propertyName, propertyRent, propertyUrl, propertyAddress, propertyStation, propertyArea, propertyLayout };
 }
 
-function parsePortalEmail(subject, body) {
+function parsePortalEmail(subject: string, body: string) {
   const fullText = subject + "\n" + body;
   for (const parser of [parseSuumo, parseApamanshop, parseHomes]) {
     const result = parser(fullText);
@@ -65,12 +80,18 @@ function parsePortalEmail(subject, body) {
   return null;
 }
 
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     const payload = await request.json();
-    const { from, subject, text: bodyText, html: bodyHtml } = payload;
+
+    // Support both Resend webhook format (nested in data) and direct format
+    const emailData = payload.data || payload;
+    const fromRaw = emailData.from;
+    const subject = emailData.subject || "";
+    const bodyText = emailData.text || "";
+    const bodyHtml = emailData.html || "";
     const body = bodyText || bodyHtml || "";
-    const fromAddress = typeof from === "string" ? from : from?.address || from?.[0]?.address || "";
+    const fromAddress = typeof fromRaw === "string" ? fromRaw : fromRaw?.address || (Array.isArray(fromRaw) ? fromRaw[0]?.address : "") || "";
 
     console.log("[Email Webhook] From:", fromAddress, "Subject:", subject);
 
@@ -85,7 +106,7 @@ export async function POST(request) {
     });
     if (!defaultStatus) return NextResponse.json({ error: "No default status" }, { status: 400 });
 
-    const parsed = parsePortalEmail(subject || "", body);
+    const parsed = parsePortalEmail(subject, body);
 
     if (parsed) {
       console.log("[Email Webhook] Portal:", parsed.source, "-", parsed.name);
@@ -94,33 +115,81 @@ export async function POST(request) {
       if (!customer) {
         customer = await prisma.customer.create({
           data: {
-            name: parsed.name || "名前不明", nameKana: ("nameKana" in parsed ? parsed.nameKana : null) || null,
-            email: parsed.email || null, phone: parsed.phone || null,
-            statusId: defaultStatus.id, sourcePortal: parsed.source,
+            name: parsed.name || "\u540D\u524D\u4E0D\u660E",
+            nameKana: ("nameKana" in parsed ? (parsed as any).nameKana : null) || null,
+            email: parsed.email || null,
+            phone: parsed.phone || null,
+            statusId: defaultStatus.id,
+            sourcePortal: parsed.source,
             inquiryContent: parsed.inquiryContent || null,
-            isNeedAction: true, organizationId: org.id,
+            isNeedAction: true,
+            organizationId: org.id,
           },
         });
         if (parsed.propertyName) {
           await prisma.inquiryProperty.create({
             data: {
-              customerId: customer.id, name: parsed.propertyName,
-              address: ("propertyAddress" in parsed ? parsed.propertyAddress : null) || null, station: ("propertyStation" in parsed ? parsed.propertyStation : null) || null,
-              roomNumber: ("propertyRoom" in parsed ? parsed.propertyRoom : null) || null, area: ("propertyArea" in parsed ? parsed.propertyArea : null) || null,
-              rent: ("propertyRent" in parsed ? parsed.propertyRent : null) || null, portalUrl: ("propertyUrl" in parsed ? parsed.propertyUrl : null) || null,
+              customerId: customer.id,
+              name: parsed.propertyName,
+              address: ("propertyAddress" in parsed ? (parsed as any).propertyAddress : null) || null,
+              station: ("propertyStation" in parsed ? (parsed as any).propertyStation : null) || null,
+              roomNumber: ("propertyRoom" in parsed ? (parsed as any).propertyRoom : null) || null,
+              area: ("propertyArea" in parsed ? (parsed as any).propertyArea : null) || null,
+              rent: ("propertyRent" in parsed ? (parsed as any).propertyRent : null) || null,
+              layout: ("propertyLayout" in parsed ? (parsed as any).propertyLayout : null) || null,
+              portalUrl: ("propertyUrl" in parsed ? (parsed as any).propertyUrl : null) || null,
             },
           });
+        }
+
+        // Auto-start default workflow if exists
+        const defaultWorkflow = await prisma.workflow.findFirst({
+          where: { organizationId: org.id, isDefault: true, isActive: true },
+          include: { steps: { orderBy: { order: "asc" } } },
+        });
+        if (defaultWorkflow && defaultWorkflow.steps.length > 0) {
+          const firstStep = defaultWorkflow.steps[0];
+          let nextRunAt: Date | null = null;
+          if (firstStep.isImmediate) {
+            nextRunAt = new Date();
+          } else {
+            const now = new Date();
+            const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+            const [h, m] = (firstStep.timeOfDay || "10:00").split(":").map(Number);
+            const target = new Date(jstNow);
+            target.setHours(h, m, 0, 0);
+            target.setDate(target.getDate() + firstStep.daysAfter);
+            nextRunAt = new Date(target.getTime() - 9 * 60 * 60 * 1000);
+          }
+          await prisma.workflowRun.create({
+            data: {
+              customerId: customer.id,
+              workflowId: defaultWorkflow.id,
+              status: "RUNNING",
+              currentStepIndex: 0,
+              nextRunAt,
+            },
+          });
+          console.log("[Email Webhook] Auto-started default workflow for", customer.name);
         }
       } else {
         await prisma.customer.update({ where: { id: customer.id }, data: { isNeedAction: true, updatedAt: new Date() } });
       }
 
       await prisma.message.create({
-        data: { customerId: customer.id, direction: "INBOUND", channel: "EMAIL", subject: subject || parsed.source + "からのお問い合わせ", body, status: "DELIVERED" },
+        data: {
+          customerId: customer.id,
+          direction: "INBOUND",
+          channel: "EMAIL",
+          subject: subject || parsed.source + "\u304B\u3089\u306E\u304A\u554F\u3044\u5408\u308F\u305B",
+          body,
+          status: "DELIVERED",
+        },
       });
       return NextResponse.json({ success: true, type: "portal", source: parsed.source, customerId: customer.id });
     }
 
+    // Regular email reply from existing customer
     const existingCustomer = await prisma.customer.findFirst({ where: { email: fromAddress, organizationId: org.id } });
     if (existingCustomer) {
       await prisma.message.create({
@@ -132,8 +201,8 @@ export async function POST(request) {
     }
 
     return NextResponse.json({ success: true, type: "unknown" });
-  } catch (error) {
-    console.error("[Email Webhook] Error:", error);
+  } catch (error: any) {
+    console.error("[Email Webhook] Error:", error?.message || error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
