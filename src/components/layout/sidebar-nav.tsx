@@ -1,20 +1,19 @@
 "use client";
-
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 
 const menuItems = [
-  { label: "鬘ｧ螳｢荳隕ｧ", icon: "側", href: "/customers" },
-  { label: "荳譁蛾∽ｿ｡", icon: "鐙", href: "/broadcast" },
+  { label: "\u9867\u5BA2\u4E00\u89A7", icon: "\u{1F464}", href: "/customers" },
+  { label: "\u4E00\u6589\u9001\u4FE1", icon: "\u{1F4E8}", href: "/broadcast" },
   {
-    label: "險ｭ螳・, icon: "笞呻ｸ・, href: "/settings",
+    label: "\u8A2D\u5B9A", icon: "\u2699", href: "/settings",
     children: [
-      { label: "繧ｹ繝・・繧ｿ繧ｹ", href: "/settings/status" },
-      { label: "螳壼梛譁・, href: "/settings/templates" },
-      { label: "繝ｯ繝ｼ繧ｯ繝輔Ο繝ｼ", href: "/settings/workflow" },
-      { label: "邨・ｹ疲ュ蝣ｱ", href: "/settings/organization" },
-      { label: "諡・ｽ楢・, href: "/settings/staff" },
+      { label: "\u30B9\u30C6\u30FC\u30BF\u30B9", href: "/settings/status" },
+      { label: "\u5B9A\u578B\u6587", href: "/settings/templates" },
+      { label: "\u30EF\u30FC\u30AF\u30D5\u30ED\u30FC", href: "/settings/workflow" },
+      { label: "\u7D44\u7E54\u60C5\u5831", href: "/settings/organization" },
+      { label: "\u62C5\u5F53\u8005", href: "/settings/staff" },
     ],
   },
 ];
@@ -22,11 +21,9 @@ const menuItems = [
 export function SidebarNav() {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState<string[]>(["/settings"]);
-
   const toggle = (href: string) => {
     setExpanded((prev) => prev.includes(href) ? prev.filter((h) => h !== href) : [...prev, href]);
   };
-
   return (
     <aside style={{
       width: 160, minWidth: 160, background: "#fff", borderRight: "1px solid #e5e7eb",
