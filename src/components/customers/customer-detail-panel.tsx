@@ -69,6 +69,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [schSaving, setSchSaving] = useState(false);
   const [schEndAt, setSchEndAt] = useState("");
   const [schStaff, setSchStaff] = useState("");
+  const [schEditId, setSchEditId] = useState<string | null>(null);
 
   const fetchSchedules = useCallback(async () => {
     try {
@@ -82,20 +83,20 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     setSchSaving(true);
     try {
       const orgId = customer?.organizationId || customer?.organization?.id;
-      await fetch("/api/customers/" + customerId + "/schedules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: schTitle.trim(),
-          type: schType,
-          startAt: schStartAt,
-          description: schDesc.trim() || null,
-          organizationId: orgId,
-          endAt: schEndAt || null,
-          userId: schStaff || null,
-        }),
-      });
-      setSchTitle(""); setSchDesc(""); setSchStartAt(""); setSchEndAt(""); setSchStaff("");
+      if (schEditId) {
+        await fetch("/api/customers/" + customerId + "/schedules", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scheduleId: schEditId, title: schTitle.trim(), type: schType, startAt: schStartAt, endAt: schEndAt || null, description: schDesc.trim() || null, userId: schStaff || null }),
+        });
+      } else {
+        await fetch("/api/customers/" + customerId + "/schedules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: schTitle.trim(), type: schType, startAt: schStartAt, endAt: schEndAt || null, description: schDesc.trim() || null, organizationId: orgId, userId: schStaff || null }),
+        });
+      }
+      setSchTitle(""); setSchDesc(""); setSchStartAt(""); setSchEndAt(""); setSchStaff(""); setSchEditId(null);
       fetchSchedules();
     } catch (e) { console.error(e); }
     finally { setSchSaving(false); }
@@ -830,7 +831,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                   padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                   cursor: schSaving || !schTitle.trim() || !schStartAt ? "not-allowed" : "pointer",
                   background: schSaving || !schTitle.trim() || !schStartAt ? "#d1d5db" : "#D97706", color: "#fff",
-                }}>{schSaving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
+                }}>{schSaving ? "\u4FDD\u5B58\u4E2D..." : schEditId ? "\u66F4\u65B0" : "\u4FDD\u5B58"}</button>
               </div>
             </div>
             <div style={{ flex: 1, overflow: "auto", padding: "12px 14px" }}>
@@ -845,7 +846,11 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                     <div key={sch.id} style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 8, background: isPast ? "#f3f4f6" : "#EFF6FF", border: "1px solid #e5e7eb", opacity: isPast ? 0.7 : 1 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{icon} {sch.title}</span>
-                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "#FEF3C7", color: "#B45309" }}>{typeLabel}</span>
+                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "#FEF3C7", color: "#B45309" }}>{typeLabel}</span>
+                          <button onClick={() => { setSchEditId(sch.id); setSchTitle(sch.title || ""); setSchType(sch.type || "FOLLOW_UP"); const sd = new Date(sch.startAt); setSchStartAt(sd.getFullYear()+"-"+String(sd.getMonth()+1).padStart(2,"0")+"-"+String(sd.getDate()).padStart(2,"0")+"T"+String(sd.getHours()).padStart(2,"0")+":"+String(sd.getMinutes()).padStart(2,"0")); if(sch.endAt){const ed=new Date(sch.endAt);setSchEndAt(ed.getFullYear()+"-"+String(ed.getMonth()+1).padStart(2,"0")+"-"+String(ed.getDate()).padStart(2,"0")+"T"+String(ed.getHours()).padStart(2,"0")+":"+String(ed.getMinutes()).padStart(2,"0"));}else{setSchEndAt("");} setSchDesc(sch.description||""); setSchStaff(sch.userId||""); }} style={{ fontSize: 10, color: "#D97706", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }}>{"\u270F\uFE0F"}</button>
+                          <button onClick={async()=>{if(!confirm("\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F"))return;await fetch("/api/customers/"+customerId+"/schedules?scheduleId="+sch.id,{method:"DELETE"});fetchSchedules();}} style={{ fontSize: 10, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }}>{"\uD83D\uDDD1"}</button>
+                        </div>
                       </div>
                       <div style={{ fontSize: 11, color: "#2563eb", marginBottom: 2 }}>{"\uD83D\uDCC5"} {formatDate(sch.startAt)}{sch.endAt ? " - " + new Date(sch.endAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : ""}</div>
                       {sch.user && <div style={{ fontSize: 10, color: "#6b7280" }}>{"\uD83D\uDC64"} {sch.user.name}</div>}
