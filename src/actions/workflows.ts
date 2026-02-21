@@ -3,10 +3,10 @@ import { prisma } from "@/lib/db/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function createWorkflowStep(data: {
-  workflowId: string; name: string; daysAfter: number; timeOfDay: string; channel: any; templateId: string;
+  workflowId: string; name: string; daysAfter: number; timeOfDay: string; channel: any; templateId: string; isImmediate?: boolean;
 }) {
   const maxOrder = await prisma.workflowStep.aggregate({ where: { workflowId: data.workflowId }, _max: { order: true } });
-  await prisma.workflowStep.create({ data: { ...data, order: (maxOrder._max.order || 0) + 1 } });
+  await prisma.workflowStep.create({ data: { ...data, isImmediate: data.isImmediate || false, order: (maxOrder._max.order || 0) + 1 } });
   revalidatePath("/settings/workflow");
 }
 
@@ -15,10 +15,14 @@ export async function deleteWorkflowStep(id: string) {
   revalidatePath("/settings/workflow");
 }
 
-export async function toggleWorkflow(id: string) {
-  const wf = await prisma.workflow.findUnique({ where: { id } });
-  if (!wf) return;
-  await prisma.workflow.update({ where: { id }, data: { isActive: !wf.isActive } });
+export async function toggleWorkflow(id: string, isActive?: boolean) {
+  if (isActive !== undefined) {
+    await prisma.workflow.update({ where: { id }, data: { isActive } });
+  } else {
+    const wf = await prisma.workflow.findUnique({ where: { id } });
+    if (!wf) return;
+    await prisma.workflow.update({ where: { id }, data: { isActive: !wf.isActive } });
+  }
   revalidatePath("/settings/workflow");
 }
 
