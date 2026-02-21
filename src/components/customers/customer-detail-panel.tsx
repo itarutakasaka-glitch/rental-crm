@@ -60,6 +60,43 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [infoSaving, setInfoSaving] = useState(false);
   const [infoSaved, setInfoSaved] = useState(false);
 
+  // Schedule tab state
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [schTitle, setSchTitle] = useState("");
+  const [schType, setSchType] = useState("FOLLOW_UP");
+  const [schStartAt, setSchStartAt] = useState("");
+  const [schDesc, setSchDesc] = useState("");
+  const [schSaving, setSchSaving] = useState(false);
+
+  const fetchSchedules = useCallback(async () => {
+    try {
+      const res = await fetch("/api/customers/" + customerId + "/schedules");
+      if (res.ok) setSchedules(await res.json());
+    } catch (e) { console.error(e); }
+  }, [customerId]);
+
+  const handleScheduleSave = async () => {
+    if (!schTitle.trim() || !schStartAt) return;
+    setSchSaving(true);
+    try {
+      const orgId = customer?.organizationId || customer?.organization?.id;
+      await fetch("/api/customers/" + customerId + "/schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: schTitle.trim(),
+          type: schType,
+          startAt: schStartAt,
+          description: schDesc.trim() || null,
+          organizationId: orgId,
+        }),
+      });
+      setSchTitle(""); setSchDesc(""); setSchStartAt("");
+      fetchSchedules();
+    } catch (e) { console.error(e); }
+    finally { setSchSaving(false); }
+  };
+
   // Records tab state
   const [records, setRecords] = useState<any[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
@@ -123,7 +160,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     } catch (e) { console.error(e); }
   }, []);
 
-  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchRecords(); }, [fetchCustomer, fetchTemplates, fetchRecords]);
+  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchRecords(); fetchSchedules(); }, [fetchCustomer, fetchTemplates, fetchRecords, fetchSchedules]);
   useEffect(() => { const iv = setInterval(fetchCustomer, 10000); return () => clearInterval(iv); }, [fetchCustomer]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [customer?.messages]);
 
@@ -665,6 +702,63 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         <div style={{ fontSize: 11, color: "#2563eb", marginBottom: 3 }}>{"\uD83D\uDCC5"} {formatDate(rec.visitDate)}</div>
                       )}
                       {rec.body && <div style={{ fontSize: 12, color: "#111827", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{rec.body}</div>}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+        /* ============ SCHEDULE TAB ============ */
+        ) : activeTab === "schedule" ? (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "12px 14px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                {[
+                  { v: "VISIT", l: "\uD83C\uDFE0 \u6765\u5E97\u4E88\u7D04" },
+                  { v: "VIEWING", l: "\uD83D\uDC41 \u5185\u898B" },
+                  { v: "CALL", l: "\uD83D\uDCDE \u67B6\u96FB" },
+                  { v: "FOLLOW_UP", l: "\uD83D\uDCCB \u8FFD\u5BA2" },
+                ].map((t) => (
+                  <button key={t.v} onClick={() => setSchType(t.v)} style={{
+                    padding: "4px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4,
+                    background: schType === t.v ? "#FEF3C7" : "#fff",
+                    color: schType === t.v ? "#B45309" : "#6b7280",
+                    fontWeight: schType === t.v ? 600 : 400, cursor: "pointer",
+                  }}>{t.l}</button>
+                ))}
+              </div>
+              <input value={schTitle} onChange={(e) => setSchTitle(e.target.value)} placeholder={"\u30BF\u30A4\u30C8\u30EB"}
+                style={{ width: "100%", padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6, boxSizing: "border-box" as const }} />
+              <input type="datetime-local" value={schStartAt} onChange={(e) => setSchStartAt(e.target.value)}
+                style={{ padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", marginBottom: 6 }} />
+              <textarea value={schDesc} onChange={(e) => setSchDesc(e.target.value)} placeholder={"\u5099\u8003"}
+                style={{ width: "100%", height: 40, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box" as const, lineHeight: 1.5 }} />
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+                <button onClick={handleScheduleSave} disabled={schSaving || !schTitle.trim() || !schStartAt} style={{
+                  padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
+                  cursor: schSaving || !schTitle.trim() || !schStartAt ? "not-allowed" : "pointer",
+                  background: schSaving || !schTitle.trim() || !schStartAt ? "#d1d5db" : "#D97706", color: "#fff",
+                }}>{schSaving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: "auto", padding: "12px 14px" }}>
+              {schedules.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 30, color: "#9ca3af", fontSize: 12 }}>{"\u30B9\u30B1\u30B8\u30E5\u30FC\u30EB\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093"}</div>
+              ) : (
+                schedules.map((sch: any) => {
+                  const icon = sch.type === "VISIT" ? "\uD83C\uDFE0" : sch.type === "VIEWING" ? "\uD83D\uDC41" : sch.type === "CALL" ? "\uD83D\uDCDE" : "\uD83D\uDCCB";
+                  const typeLabel = sch.type === "VISIT" ? "\u6765\u5E97\u4E88\u7D04" : sch.type === "VIEWING" ? "\u5185\u898B" : sch.type === "CALL" ? "\u67B6\u96FB" : "\u8FFD\u5BA2";
+                  const isPast = new Date(sch.startAt) < new Date();
+                  return (
+                    <div key={sch.id} style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 8, background: isPast ? "#f3f4f6" : "#EFF6FF", border: "1px solid #e5e7eb", opacity: isPast ? 0.7 : 1 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{icon} {sch.title}</span>
+                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "#FEF3C7", color: "#B45309" }}>{typeLabel}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#2563eb", marginBottom: 2 }}>{"\uD83D\uDCC5"} {formatDate(sch.startAt)}</div>
+                      {sch.user && <div style={{ fontSize: 10, color: "#6b7280" }}>{"\uD83D\uDC64"} {sch.user.name}</div>}
+                      {sch.description && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>{sch.description}</div>}
                     </div>
                   );
                 })
