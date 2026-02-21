@@ -22,14 +22,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const body = await req.json();
     const { title, description, type, startAt, endAt, isAllDay, location, userId, organizationId } = body;
 
-    if (!title || !startAt || !organizationId) {
-      return NextResponse.json({ error: "title, startAt, organizationId required" }, { status: 400 });
+    if (!title || !startAt) {
+      return NextResponse.json({ error: "title, startAt required" }, { status: 400 });
+    }
+
+    const customer = await prisma.customer.findUnique({ where: { id }, select: { organizationId: true } });
+    const orgId = organizationId || customer?.organizationId;
+    if (!orgId) {
+      return NextResponse.json({ error: "organizationId not found" }, { status: 400 });
     }
 
     const schedule = await prisma.schedule.create({
       data: {
         customerId: id,
-        organizationId,
+        organizationId: orgId,
         title,
         description: description || null,
         type: type || "FOLLOW_UP",
