@@ -14,7 +14,7 @@ export default function BroadcastPage() {
   const [filterStaff, setFilterStaff] = useState("");
   const [search, setSearch] = useState("");
   useEffect(() => {
-    fetch("/api/customers").then(r => r.json()).then(d => setCustomers(d.customers || []));
+    fetch("/api/customers").then(r => r.json()).then(d => setCustomers(Array.isArray(d) ? d : d.customers || []));
     fetch("/api/statuses").then(r => r.json()).then(setStatuses);
     fetch("/api/staff").then(r => r.json()).then(setStaffList);
   }, []);
