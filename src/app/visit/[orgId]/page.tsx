@@ -59,6 +59,15 @@ export default function PublicVisitPage() {
   const [memo, setMemo] = useState("");
 
   useEffect(() => {
+    document.documentElement.style.overflow = "auto";
+    document.body.style.overflow = "auto";
+    return () => {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  useEffect(() => {
     if (!orgId) return;
     const u = cid ? `/api/public/visit/${orgId}?c=${cid}` : `/api/public/visit/${orgId}`;
     fetch(u).then(r => { if(!r.ok) throw new Error(); return r.json(); })
