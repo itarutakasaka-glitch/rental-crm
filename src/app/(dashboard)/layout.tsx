@@ -41,8 +41,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
       <header style={{
         height: 48, minHeight: 48, display: "flex", alignItems: "center", justifyContent: "space-between",
-        background: "linear-gradient(90deg, #18181B 0%, #27272A 50%, #1C1917 100%)",
-        padding: "0 20px", color: "#fff", flexShrink: 0,
+        background: "#ffffff", borderBottom: "1px solid #e5e7eb",
+        padding: "0 20px", color: "#374151", flexShrink: 0,
         borderBottom: "1px solid rgba(245,158,11,0.15)",
         boxShadow: "0 1px 12px rgba(245,158,11,0.06)",
       }}>
@@ -55,15 +55,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
               { label: "スケジュール", href: "/schedule" },
             ].map((item) => (
               <a key={item.href} href={item.href} style={{
-                padding: "6px 16px", fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.6)",
+                padding: "6px 16px", fontSize: 12, fontWeight: 500, color: "#6b7280",
                 textDecoration: "none", borderRadius: 4, letterSpacing: 1,
-                fontFamily: "'Courier New', monospace",
+                fontFamily: "Rajdhani, 'Courier New', sans-serif",
               }}>{item.label}</a>
             ))}
           </nav>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 11, opacity: 0.5, fontFamily: "monospace" }}>{user.email}</span>
+          <span style={{ fontSize: 11, color: "#6b7280", fontFamily: "monospace" }}>{user.email}</span>
           <LogoutButton />
         </div>
       </header>
