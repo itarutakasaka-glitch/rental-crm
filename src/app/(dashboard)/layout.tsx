@@ -6,14 +6,7 @@ import { LogoutButton } from "@/components/layout/logout-button";
 function Logo() {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-        <rect x="1" y="1" width="30" height="30" rx="2" fill="none" stroke="#0891b2" strokeWidth="1.5" />
-        <rect x="4" y="4" width="24" height="24" rx="1" fill="rgba(8,145,178,0.06)" stroke="#0891b2" strokeWidth="0.5" strokeDasharray="2 1" />
-        <text x="16" y="21.5" textAnchor="middle" fontSize="16" fontWeight="900" fill="#0891b2" fontFamily="Rajdhani,sans-serif">C</text>
-        <line x1="6" y1="26" x2="26" y2="26" stroke="#0891b2" strokeWidth="0.5" opacity="0.4" />
-        <circle cx="6" cy="6" r="1.5" fill="#0891b2" opacity="0.6" />
-        <circle cx="26" cy="6" r="1.5" fill="#0891b2" opacity="0.6" />
-      </svg>
+
       <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
         <span style={{
           fontSize: 20, fontWeight: 700, letterSpacing: 2,

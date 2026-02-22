@@ -42,18 +42,12 @@ export default function LoginPage() {
         <div style={{ position: "absolute", bottom: -1, left: -1, width: 20, height: 20, borderBottom: "2px solid #0891b2", borderLeft: "2px solid #0891b2", borderRadius: "0 0 0 8px" }} />
         <div style={{ position: "absolute", bottom: -1, right: -1, width: 20, height: 20, borderBottom: "2px solid #0891b2", borderRight: "2px solid #0891b2", borderRadius: "0 0 8px 0" }} />
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <svg width="48" height="48" viewBox="0 0 32 32" fill="none" style={{ marginBottom: 16 }}>
-            <rect x="1" y="1" width="30" height="30" rx="2" fill="none" stroke="#0891b2" strokeWidth="1.5" />
-            <rect x="4" y="4" width="24" height="24" rx="1" fill="rgba(8,145,178,0.04)" stroke="#0891b2" strokeWidth="0.5" strokeDasharray="2 1" />
-            <text x="16" y="21.5" textAnchor="middle" fontSize="16" fontWeight="900" fill="#0891b2" fontFamily="Rajdhani,sans-serif">C</text>
-            <circle cx="6" cy="6" r="1.5" fill="#0891b2" opacity="0.6" />
-            <circle cx="26" cy="6" r="1.5" fill="#0891b2" opacity="0.6" />
-          </svg>
+
           <div style={{ display: "flex", justifyContent: "center", gap: 6, alignItems: "baseline" }}>
             <span style={{ fontSize: 26, fontWeight: 700, letterSpacing: 2, fontFamily: "Rajdhani, sans-serif", color: "#0891b2" }}>Claude</span>
             <span style={{ fontSize: 26, fontWeight: 500, letterSpacing: 2, fontFamily: "Rajdhani, sans-serif", color: "#0891b2" }}>Cloud</span>
           </div>
-          <div style={{ fontSize: 10, letterSpacing: 6, color: "#9ca3af", marginTop: 6, fontFamily: "Rajdhani, sans-serif" }}>REAL ESTATE CRM</div>
+          
           <div style={{ width: "100%", height: 1, background: "linear-gradient(90deg, transparent, rgba(8,145,178,0.2), transparent)", margin: "16px 0 0" }} />
         </div>
         <form onSubmit={handleLogin}>
