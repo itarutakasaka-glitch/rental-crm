@@ -43,8 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         height: 48, minHeight: 48, display: "flex", alignItems: "center", justifyContent: "space-between",
         background: "#ffffff", borderBottom: "1px solid #e5e7eb",
         padding: "0 20px", color: "#374151", flexShrink: 0,
-        borderBottom: "1px solid rgba(245,158,11,0.15)",
-        boxShadow: "0 1px 12px rgba(245,158,11,0.06)",
+
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
           <Logo />
