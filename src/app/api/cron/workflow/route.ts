@@ -28,7 +28,7 @@ function textToHtml(text: string): string {
 }
 
 async function resolveAndSend(step: any, template: any, customer: any, org: any) {
-  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || "org_default"}`;
+  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || "org_default"}?c=${customer.id}`;
   let body = template.body
     .replace(/\{\{customer_name\}\}/g, customer.name || "")
     .replace(/\{\{customer_email\}\}/g, customer.email || "")

@@ -284,7 +284,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
 
   const resolveVarsLocal = (text: string) => {
     if (!text) return text;
-    const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || customer?.organizationId || "org_default"}`;
+    const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || customer?.organizationId || "org_default"}?c=${customer?.id || ""}`;
     return text
       .replace(/\{\{customer_name\}\}/g, customer?.name || "")
       .replace(/\{\{customer_email\}\}/g, customer?.email || "")
