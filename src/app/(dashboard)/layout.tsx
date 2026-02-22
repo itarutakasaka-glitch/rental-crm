@@ -31,7 +31,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          <Logo />
+          <a href="/home" style={{ textDecoration: "none" }}><Logo /></a>
           <nav style={{ display: "flex", gap: 2 }}>
             {[
               { label: "ホーム", href: "/home" },
