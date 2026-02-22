@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 
 const COLORS = [
   { value: "#EF4444", label: "赤" }, { value: "#3B82F6", label: "青" },
-  { value: "#F59E0B", label: "オレンジ" }, { value: "#8B5CF6", label: "紫" },
+  { value: "#d4a017", label: "オレンジ" }, { value: "#8B5CF6", label: "紫" },
   { value: "#EC4899", label: "ピンク" }, { value: "#6B7280", label: "グレー" },
   { value: "#10B981", label: "緑" }, { value: "#06B6D4", label: "シアン" },
 ];
@@ -106,7 +106,7 @@ export default function StatusSettingsPage() {
         </div>
         <button onClick={() => setShowAdd(true)} style={{
           padding: "8px 20px", fontSize: 13, fontWeight: 600, border: "none", borderRadius: 6,
-          background: "#D97706", color: "#fff", cursor: "pointer",
+          background: "#d4a017", color: "#fff", cursor: "pointer",
         }}>＋ 追加</button>
       </div>
 
@@ -134,7 +134,7 @@ export default function StatusSettingsPage() {
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={handleAdd} disabled={saving || !newName.trim()} style={{
               padding: "6px 20px", fontSize: 13, fontWeight: 600, border: "none", borderRadius: 6,
-              background: saving || !newName.trim() ? "#d1d5db" : "#D97706", color: "#fff", cursor: saving ? "not-allowed" : "pointer",
+              background: saving || !newName.trim() ? "#d1d5db" : "#d4a017", color: "#fff", cursor: saving ? "not-allowed" : "pointer",
             }}>{saving ? "保存中..." : "保存"}</button>
             <button onClick={() => { setShowAdd(false); setNewName(""); }} style={{
               padding: "6px 16px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6, background: "#fff", cursor: "pointer", color: "#374151",
@@ -175,7 +175,7 @@ export default function StatusSettingsPage() {
                 </div>
                 <button onClick={() => handleEdit(status.id)} disabled={saving} style={{
                   padding: "4px 12px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
-                  background: "#D97706", color: "#fff", cursor: "pointer",
+                  background: "#d4a017", color: "#fff", cursor: "pointer",
                 }}>{saving ? "..." : "保存"}</button>
                 <button onClick={() => setEditingId(null)} style={{
                   padding: "4px 12px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#374151",
@@ -184,7 +184,7 @@ export default function StatusSettingsPage() {
             ) : (
               <>
                 <span style={{ fontSize: 14, fontWeight: 500, color: "#111827", flex: 1 }}>{status.name}</span>
-                {status.isDefault && <span style={{ fontSize: 11, color: "#D97706", fontWeight: 600, marginRight: 12 }}>デフォルト</span>}
+                {status.isDefault && <span style={{ fontSize: 11, color: "#d4a017", fontWeight: 600, marginRight: 12 }}>デフォルト</span>}
                 <div style={{ display: "flex", gap: 6 }}>
                   <button onClick={() => { setEditingId(status.id); setEditName(status.name); setEditColor(status.color || "#6B7280"); }}
                     style={{ padding: "4px 12px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#374151" }}>

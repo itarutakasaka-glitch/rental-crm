@@ -3,7 +3,7 @@ import type { AnalyticsData } from "@/actions/analytics";
 
 const CH_LABELS: Record<string, { label: string; color: string }> = {
   EMAIL: { label: "メール", color: "#3b82f6" }, LINE: { label: "LINE", color: "#06c755" },
-  SMS: { label: "SMS", color: "#f59e0b" }, CALL: { label: "架電", color: "#8b5cf6" }, NOTE: { label: "メモ", color: "#6b7280" },
+  SMS: { label: "SMS", color: "#d4a017" }, CALL: { label: "架電", color: "#8b5cf6" }, NOTE: { label: "メモ", color: "#6b7280" },
 };
 
 export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
@@ -17,7 +17,7 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
         {[["全顧客", data.totalCustomers, "👥", "#4ECDC4"], ["要対応", data.needActionCount, "🔴", "#ef4444"], ["LINE連携", data.lineLinkedCount, "💬", "#06c755"],
-          ["今月反響", data.monthInquiries, "📩", "#3b82f6"], ["今月来店", data.monthVisits, "🏢", "#8b5cf6"], ["今週予定", data.weekSchedules, "📅", "#f59e0b"]
+          ["今月反響", data.monthInquiries, "📩", "#3b82f6"], ["今月来店", data.monthVisits, "🏢", "#8b5cf6"], ["今週予定", data.weekSchedules, "📅", "#d4a017"]
         ].map(([l, v, i, c]) => (
           <div key={l as string} className="bg-white rounded-xl border p-4">
             <div className="text-xs text-gray-400 mb-1">{i} {l}</div>
@@ -54,7 +54,7 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
         <div className="bg-white rounded-xl border p-5">
           <h3 className="text-sm font-bold mb-3">反響元別</h3>
           {data.portalBreakdown.map((p, i) => {
-            const colors = ["#4ECDC4", "#3b82f6", "#f59e0b", "#8b5cf6", "#ef4444"];
+            const colors = ["#4ECDC4", "#3b82f6", "#d4a017", "#8b5cf6", "#ef4444"];
             return (<div key={p.portal} className="flex items-center gap-2 mb-1.5">
               <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: colors[i % colors.length] }} />
               <span className="text-xs flex-1 text-gray-500">{p.portal}</span>
@@ -97,7 +97,7 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
             <td className="py-2 px-3 font-medium">{a.name}</td>
             <td className="py-2 px-3 text-right">{a.total}</td>
             <td className="py-2 px-3 text-right">{a.needAction > 0 ? <span className="text-red-500 font-semibold">{a.needAction}</span> : <span className="text-green-500">0</span>}</td>
-            <td className="py-2 px-3"><div className="flex items-center gap-2"><div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#ef4444" }} /></div><span className="text-xs text-gray-400 w-7 text-right">{pct}%</span></div></td>
+            <td className="py-2 px-3"><div className="flex items-center gap-2"><div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#10b981" : pct >= 50 ? "#d4a017" : "#ef4444" }} /></div><span className="text-xs text-gray-400 w-7 text-right">{pct}%</span></div></td>
           </tr>);
         })}</tbody></table>
       </div>

@@ -59,7 +59,7 @@ export default function StaffSettingsPage() {
         <h2 style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: 0 }}>担当者管理</h2>
         <button onClick={startAdd} style={{
           padding: "6px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 5,
-          background: "#D97706", color: "#fff", cursor: "pointer",
+          background: "#d4a017", color: "#fff", cursor: "pointer",
         }}>+ 担当者追加</button>
       </div>
 
@@ -92,7 +92,7 @@ export default function StaffSettingsPage() {
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={handleSave} disabled={saving} style={{
               padding: "6px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 5,
-              background: saving ? "#9ca3af" : "#D97706", color: "#fff", cursor: saving ? "not-allowed" : "pointer",
+              background: saving ? "#9ca3af" : "#d4a017", color: "#fff", cursor: saving ? "not-allowed" : "pointer",
             }}>{saving ? "保存中..." : "保存"}</button>
             <button onClick={() => { setShowAdd(false); resetForm(); setEditId(null); }} style={{
               padding: "6px 16px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 5,
@@ -123,9 +123,9 @@ export default function StaffSettingsPage() {
                     <img src={s.avatarUrl} alt={s.name} style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
                   ) : (
                     <div style={{
-                      width: 32, height: 32, borderRadius: "50%", background: "#FEF3C7",
+                      width: 32, height: 32, borderRadius: "50%", background: "rgba(212,160,23,0.1)",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 13, fontWeight: 700, color: "#B45309",
+                      fontSize: 13, fontWeight: 700, color: "#b8860b",
                     }}>{s.name.charAt(0)}</div>
                   )}
                 </td>

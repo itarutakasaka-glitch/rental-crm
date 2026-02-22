@@ -9,7 +9,7 @@ const SCH_TYPES: Record<string, { l: string; i: string; c: string }> = {
   VISIT: { l: "\u6765\u5e97", i: "\ud83c\udfe2", c: "#8b5cf6" },
   ONSITE: { l: "\u73fe\u5730\u5f85\u3061\u5408\u308f\u305b", i: "\ud83d\udccd", c: "#3b82f6" },
   ONLINE: { l: "\u30aa\u30f3\u30e9\u30a4\u30f3\u63a5\u5ba2", i: "\ud83d\udcbb", c: "#06b6d4" },
-  CALL: { l: "\u67b6\u96fb", i: "\ud83d\udcde", c: "#f59e0b" },
+  CALL: { l: "\u67b6\u96fb", i: "\ud83d\udcde", c: "#d4a017" },
   RECEPTION: { l: "\u63a5\u5ba2", i: "\ud83e\udd1d", c: "#10b981" },
   CONTRACT: { l: "\u5951\u7d04", i: "\ud83d\udcdd", c: "#ef4444" },
   OTHER: { l: "\u305d\u306e\u4ed6", i: "\ud83d\udccc", c: "#6b7280" },
@@ -208,7 +208,7 @@ export function CalendarView({ schedules: initSchedules, customers, currentUser,
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">{fmtRange(ev.startAt, ev.endAt)}</div>
                   {ev.user && <div className="text-xs text-gray-500 mt-0.5">{"\ud83d\udc64"} {ev.user.name}</div>}
-                  {ev.customer && <div className="text-xs mt-0.5" style={{ color: "#D97706" }}>{"\ud83d\udc65"} {ev.customer.name}</div>}
+                  {ev.customer && <div className="text-xs mt-0.5" style={{ color: "#d4a017" }}>{"\ud83d\udc65"} {ev.customer.name}</div>}
                   {ev.location && <div className="text-xs text-gray-400">{"\ud83d\udccd"} {ev.location}</div>}
                   <div className="text-[10px] text-gray-300 mt-1">{"\u30af\u30ea\u30c3\u30af\u3067\u7de8\u96c6"}</div>
                 </div>

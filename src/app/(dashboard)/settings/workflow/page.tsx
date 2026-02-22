@@ -59,7 +59,7 @@ export default function WorkflowPage() {
     <div className="p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">{"\u30EF\u30FC\u30AF\u30D5\u30ED\u30FC"}</h1>
-        <button onClick={startNew} className="text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90" style={{ background: "#D97706" }}>{"\uFF0B \u65B0\u898F\u4F5C\u6210"}</button>
+        <button onClick={startNew} className="text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90" style={{ background: "#d4a017" }}>{"\uFF0B \u65B0\u898F\u4F5C\u6210"}</button>
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs text-amber-800">
@@ -99,10 +99,10 @@ export default function WorkflowPage() {
               <button onClick={() => removeStep(i)} className="text-red-400 text-xs hover:text-red-600">{"\u2715"}</button>
             </div>
           ))}
-          <button onClick={addStep} className="text-xs hover:underline mt-1" style={{ color: "#D97706" }}>{"\uFF0B \u30B9\u30C6\u30C3\u30D7\u8FFD\u52A0"}</button>
+          <button onClick={addStep} className="text-xs hover:underline mt-1" style={{ color: "#d4a017" }}>{"\uFF0B \u30B9\u30C6\u30C3\u30D7\u8FFD\u52A0"}</button>
           <div className="flex gap-2 justify-end mt-3">
             <button onClick={cancel} className="px-4 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">{"\u30AD\u30E3\u30F3\u30BB\u30EB"}</button>
-            <button onClick={save} className="px-4 py-1.5 text-sm text-white rounded-lg font-semibold" style={{ background: "#D97706" }}>{"\u4FDD\u5B58"}</button>
+            <button onClick={save} className="px-4 py-1.5 text-sm text-white rounded-lg font-semibold" style={{ background: "#d4a017" }}>{"\u4FDD\u5B58"}</button>
           </div>
         </div>
       )}
@@ -123,13 +123,13 @@ export default function WorkflowPage() {
                 <button onClick={() => setDefault(w.id)} className="text-xs px-2 py-1 rounded text-amber-600 hover:bg-amber-50">{"\u30C7\u30D5\u30A9\u30EB\u30C8\u306B\u8A2D\u5B9A"}</button>
               )}
               <button onClick={() => toggle(w.id, w.isActive)} className={`text-xs px-2 py-1 rounded ${w.isActive ? "text-red-500 hover:bg-red-50" : "text-green-600 hover:bg-green-50"}`}>{w.isActive ? "\u505C\u6B62" : "\u6709\u52B9\u5316"}</button>
-              <button onClick={() => startEdit(w)} className="text-xs px-2 py-1 rounded hover:bg-gray-50" style={{ color: "#D97706" }}>{"\u7DE8\u96C6"}</button>
+              <button onClick={() => startEdit(w)} className="text-xs px-2 py-1 rounded hover:bg-gray-50" style={{ color: "#d4a017" }}>{"\u7DE8\u96C6"}</button>
             </div>
           </div>
           <div className="mt-2 space-y-1">
             {w.steps.map((s, i) => (
               <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
-                <span className="w-5 h-5 rounded-full flex items-center justify-center font-semibold" style={{ background: "#FEF3C7", color: "#D97706" }}>{i + 1}</span>
+                <span className="w-5 h-5 rounded-full flex items-center justify-center font-semibold" style={{ background: "rgba(212,160,23,0.1)", color: "#d4a017" }}>{i + 1}</span>
                 <span>{s.isImmediate ? "\u5373\u6642\u9001\u4ED8" : s.daysAfter + "\u65E5\u5F8C " + s.timeOfDay}</span>
                 <span className={`px-1.5 py-0.5 rounded font-semibold ${s.channel === "EMAIL" ? "bg-blue-50 text-blue-600" : s.channel === "LINE" ? "bg-green-50 text-green-600" : "bg-yellow-50 text-yellow-600"}`}>{s.channel}</span>
                 <span>{s.name}</span>

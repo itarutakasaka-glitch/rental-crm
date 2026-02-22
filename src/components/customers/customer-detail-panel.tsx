@@ -355,7 +355,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     <div style={{ display: "flex", position: "relative" }}>
       {/* Panel resize handle */}
       <div onMouseDown={(e) => { setPanelDragging(true); panelDragX.current = e.clientX; panelDragW.current = panelW; }}
-        style={{ width: 5, cursor: "col-resize", background: panelDragging ? "#D97706" : "transparent", flexShrink: 0, zIndex: 2 }}
+        style={{ width: 5, cursor: "col-resize", background: panelDragging ? "#d4a017" : "transparent", flexShrink: 0, zIndex: 2 }}
         onMouseEnter={(e) => { (e.target as HTMLElement).style.background = "#e5e7eb"; }}
         onMouseLeave={(e) => { if (!panelDragging) (e.target as HTMLElement).style.background = "transparent"; }} />
       <div style={{ width: panelW, minWidth: 380, borderLeft: "1px solid #e5e7eb", background: "#fff", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -367,7 +367,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
               {customer.sourcePortal && <span style={{ fontSize: 11, color: "#9ca3af" }}>/ {customer.sourcePortal}</span>}
             </div>
             {customer.assignee && (
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#B45309" }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(212,160,23,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#b8860b" }}>
                 {customer.assignee.avatarUrl ? <img src={customer.assignee.avatarUrl} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} /> : customer.assignee.name?.charAt(0)}
               </div>
             )}
@@ -375,7 +375,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
           <div style={{ marginBottom: 6 }}>
             <div style={{ fontSize: 17, fontWeight: 700, color: "#111827" }}>{customer.name}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
-              {customer.email && <span style={{ fontSize: 11, color: "#D97706" }}>{"\u2709\uFE0F"}</span>}
+              {customer.email && <span style={{ fontSize: 11, color: "#d4a017" }}>{"\u2709\uFE0F"}</span>}
               {customer.lineUserId && <span style={{ fontSize: 11, color: "#06C755" }}>{"\uD83D\uDCAC"}</span>}
               {customer.phone && <span style={{ fontSize: 12, color: "#374151" }}>{"\uD83D\uDCDE"} {customer.phone}</span>}
             </div>
@@ -401,8 +401,8 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
           {tabs.map((tab) => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
               padding: "8px 10px", fontSize: 11, border: "none", background: "transparent",
-              color: activeTab === tab.id ? "#D97706" : "#9ca3af", cursor: "pointer",
-              borderBottom: activeTab === tab.id ? "2px solid #D97706" : "2px solid transparent",
+              color: activeTab === tab.id ? "#d4a017" : "#9ca3af", cursor: "pointer",
+              borderBottom: activeTab === tab.id ? "2px solid #d4a017" : "2px solid transparent",
               fontWeight: activeTab === tab.id ? 600 : 400, whiteSpace: "nowrap",
               display: "flex", alignItems: "center", gap: 3,
             }}>
@@ -425,7 +425,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                   if (isNote || isCall) {
                     return (
                       <div key={msg.id} style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-                        <div style={{ padding: "8px 14px", borderRadius: 8, fontSize: 12, lineHeight: 1.5, background: isCall ? "#FEF3C7" : "#f3f4f6", border: "1px solid #e5e7eb", maxWidth: "90%", color: "#374151" }}>
+                        <div style={{ padding: "8px 14px", borderRadius: 8, fontSize: 12, lineHeight: 1.5, background: isCall ? "rgba(212,160,23,0.1)" : "#f3f4f6", border: "1px solid #e5e7eb", maxWidth: "90%", color: "#374151" }}>
                           <div style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", marginBottom: 2 }}>{isCall ? "\uD83D\uDCDE \u67B6\u96FB\u8A18\u9332" : "\uD83D\uDCDD \u30E1\u30E2"}</div>
                           <div style={{ whiteSpace: "pre-wrap" }}>{msg.body}</div>
                           <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{formatDate(msg.createdAt)}</div>
@@ -479,9 +479,9 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                   <button key={ch.id} onClick={() => setComposeChannel(ch.id)} style={{
                     padding: "5px 10px", fontSize: 11, border: "none", cursor: "pointer",
                     background: composeChannel === ch.id ? "#fff" : "transparent",
-                    color: composeChannel === ch.id ? "#D97706" : "#6b7280",
+                    color: composeChannel === ch.id ? "#d4a017" : "#6b7280",
                     fontWeight: composeChannel === ch.id ? 600 : 400,
-                    borderBottom: composeChannel === ch.id ? "2px solid #D97706" : "2px solid transparent",
+                    borderBottom: composeChannel === ch.id ? "2px solid #d4a017" : "2px solid transparent",
                     display: "flex", alignItems: "center", gap: 3,
                   }}>
                     <span style={{ fontSize: 12 }}>{ch.icon}</span>{ch.label}
@@ -497,7 +497,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                           style={{ flex: 1, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none", boxSizing: "border-box" }} />
                         <button onClick={() => setShowTemplates(!showTemplates)} style={{
                           padding: "5px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4,
-                          background: showTemplates ? "#FEF3C7" : "#fff", color: "#374151", cursor: "pointer", whiteSpace: "nowrap",
+                          background: showTemplates ? "rgba(212,160,23,0.1)" : "#fff", color: "#374151", cursor: "pointer", whiteSpace: "nowrap",
                         }}>{"\uD83D\uDCC4"} {"\u5B9A\u578B\u6587"}</button>
                       </div>
                       {showTemplates && templates.length > 0 && (
@@ -521,7 +521,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         <button onClick={handleSend} disabled={sending || !body.trim()} style={{
                           padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                           cursor: sending || !body.trim() ? "not-allowed" : "pointer",
-                          background: sending || !body.trim() ? "#d1d5db" : "#D97706", color: "#fff",
+                          background: sending || !body.trim() ? "#d1d5db" : "#d4a017", color: "#fff",
                         }}>{sending ? "\u9001\u4FE1\u4E2D..." : "\u9001\u4FE1"}</button>
                       </div>
                     </>
@@ -534,7 +534,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                         <button onClick={() => setShowTemplates(!showTemplates)} style={{
                           padding: "5px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4,
-                          background: showTemplates ? "#FEF3C7" : "#fff", color: "#374151", cursor: "pointer",
+                          background: showTemplates ? "rgba(212,160,23,0.1)" : "#fff", color: "#374151", cursor: "pointer",
                         }}>{"\uD83D\uDCC4"} {"\u5B9A\u578B\u6587"}</button>
                       </div>
                       {showTemplates && templates.length > 0 && (
@@ -587,7 +587,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                       <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
                         {[{ v: "success", l: "\u6210\u529F\uFF08\u901A\u8A71\u3042\u308A\uFF09" }, { v: "noanswer", l: "\u4E0D\u5728" }, { v: "busy", l: "\u8A71\u3057\u4E2D" }].map((r) => (
                           <label key={r.v} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 3, color: "#374151", cursor: "pointer" }}>
-                            <input type="radio" name="callResult" value={r.v} checked={callResult === r.v} onChange={() => setCallResult(r.v)} style={{ accentColor: "#D97706" }} />{r.l}
+                            <input type="radio" name="callResult" value={r.v} checked={callResult === r.v} onChange={() => setCallResult(r.v)} style={{ accentColor: "#d4a017" }} />{r.l}
                           </label>
                         ))}
                       </div>
@@ -599,7 +599,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                       <button onClick={handleSend} disabled={sending || !body.trim()} style={{
                         padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                         cursor: sending || !body.trim() ? "not-allowed" : "pointer",
-                        background: sending || !body.trim() ? "#d1d5db" : "#D97706", color: "#fff",
+                        background: sending || !body.trim() ? "#d1d5db" : "#d4a017", color: "#fff",
                       }}>{sending ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
                     </div>
                   </>
@@ -683,7 +683,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                       {p.layout && <span>{p.layout}</span>}
                       {p.area && <span>{p.area}</span>}
                     </div>
-                    {p.url && <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#D97706", marginTop: 4, display: "inline-block" }}>{"\u7269\u4EF6\u30DA\u30FC\u30B8\u3092\u958B\u304F"} →</a>}
+                    {p.url && <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#d4a017", marginTop: 4, display: "inline-block" }}>{"\u7269\u4EF6\u30DA\u30FC\u30B8\u3092\u958B\u304F"} →</a>}
                   </div>
                 ))}
               </div>
@@ -694,7 +694,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
               <button onClick={handleInfoSave} disabled={infoSaving} style={{
                 padding: "7px 20px", fontSize: 13, fontWeight: 600, border: "none", borderRadius: 6,
                 cursor: infoSaving ? "not-allowed" : "pointer",
-                background: infoSaving ? "#d1d5db" : "#D97706", color: "#fff",
+                background: infoSaving ? "#d1d5db" : "#d4a017", color: "#fff",
               }}>{infoSaving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
             </div>
           </div>
@@ -713,8 +713,8 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 ].map((t) => (
                   <button key={t.v} onClick={() => setRecType(t.v)} style={{
                     padding: "4px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4,
-                    background: recType === t.v ? "#FEF3C7" : "#fff",
-                    color: recType === t.v ? "#B45309" : "#6b7280",
+                    background: recType === t.v ? "rgba(212,160,23,0.1)" : "#fff",
+                    color: recType === t.v ? "#b8860b" : "#6b7280",
                     fontWeight: recType === t.v ? 600 : 400, cursor: "pointer",
                   }}>{t.l}</button>
                 ))}
@@ -723,7 +723,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
                   {[{ v: "success", l: "\u2705 \u6210\u529F" }, { v: "noanswer", l: "\u274C \u4E0D\u5728" }, { v: "busy", l: "\uD83D\uDCF5 \u8A71\u3057\u4E2D" }].map((r) => (
                     <label key={r.v} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 3, color: "#374151", cursor: "pointer" }}>
-                      <input type="radio" name="recCallResult" value={r.v} checked={recCallResult === r.v} onChange={() => setRecCallResult(r.v)} style={{ accentColor: "#D97706" }} />{r.l}
+                      <input type="radio" name="recCallResult" value={r.v} checked={recCallResult === r.v} onChange={() => setRecCallResult(r.v)} style={{ accentColor: "#d4a017" }} />{r.l}
                     </label>
                   ))}
                 </div>
@@ -742,7 +742,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 <button onClick={handleRecordSave} disabled={recSaving} style={{
                   padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                   cursor: recSaving ? "not-allowed" : "pointer",
-                  background: recSaving ? "#d1d5db" : "#D97706", color: "#fff",
+                  background: recSaving ? "#d1d5db" : "#d4a017", color: "#fff",
                 }}>{recSaving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
               </div>
             </div>
@@ -795,8 +795,8 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 ].map((t) => (
                   <button key={t.v} onClick={() => setSchType(t.v)} style={{
                     padding: "4px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4,
-                    background: schType === t.v ? "#FEF3C7" : "#fff",
-                    color: schType === t.v ? "#B45309" : "#6b7280",
+                    background: schType === t.v ? "rgba(212,160,23,0.1)" : "#fff",
+                    color: schType === t.v ? "#b8860b" : "#6b7280",
                     fontWeight: schType === t.v ? 600 : 400, cursor: "pointer",
                   }}>{t.l}</button>
                 ))}
@@ -826,7 +826,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 <button onClick={handleScheduleSave} disabled={schSaving || !schTitle.trim() || !schStartAt} style={{
                   padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                   cursor: schSaving || !schTitle.trim() || !schStartAt ? "not-allowed" : "pointer",
-                  background: schSaving || !schTitle.trim() || !schStartAt ? "#d1d5db" : "#D97706", color: "#fff",
+                  background: schSaving || !schTitle.trim() || !schStartAt ? "#d1d5db" : "#d4a017", color: "#fff",
                 }}>{schSaving ? "\u4FDD\u5B58\u4E2D..." : schEditId ? "\u66F4\u65B0" : "\u4FDD\u5B58"}</button>
               </div>
             </div>
@@ -843,8 +843,8 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{icon} {sch.title}</span>
                         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "#FEF3C7", color: "#B45309" }}>{typeLabel}</span>
-                          <button onClick={() => { setSchEditId(sch.id); setSchTitle(sch.title || ""); setSchType(sch.type || "FOLLOW_UP"); const sd = new Date(sch.startAt); setSchStartAt(sd.getFullYear()+"-"+String(sd.getMonth()+1).padStart(2,"0")+"-"+String(sd.getDate()).padStart(2,"0")+"T"+String(sd.getHours()).padStart(2,"0")+":"+String(sd.getMinutes()).padStart(2,"0")); if(sch.endAt){const ed=new Date(sch.endAt);setSchEndAt(ed.getFullYear()+"-"+String(ed.getMonth()+1).padStart(2,"0")+"-"+String(ed.getDate()).padStart(2,"0")+"T"+String(ed.getHours()).padStart(2,"0")+":"+String(ed.getMinutes()).padStart(2,"0"));}else{setSchEndAt("");} setSchDesc(sch.description||""); setSchStaff(sch.userId||""); }} style={{ fontSize: 10, color: "#D97706", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }}>{"\u270F\uFE0F"}</button>
+                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "rgba(212,160,23,0.1)", color: "#b8860b" }}>{typeLabel}</span>
+                          <button onClick={() => { setSchEditId(sch.id); setSchTitle(sch.title || ""); setSchType(sch.type || "FOLLOW_UP"); const sd = new Date(sch.startAt); setSchStartAt(sd.getFullYear()+"-"+String(sd.getMonth()+1).padStart(2,"0")+"-"+String(sd.getDate()).padStart(2,"0")+"T"+String(sd.getHours()).padStart(2,"0")+":"+String(sd.getMinutes()).padStart(2,"0")); if(sch.endAt){const ed=new Date(sch.endAt);setSchEndAt(ed.getFullYear()+"-"+String(ed.getMonth()+1).padStart(2,"0")+"-"+String(ed.getDate()).padStart(2,"0")+"T"+String(ed.getHours()).padStart(2,"0")+":"+String(ed.getMinutes()).padStart(2,"0"));}else{setSchEndAt("");} setSchDesc(sch.description||""); setSchStaff(sch.userId||""); }} style={{ fontSize: 10, color: "#d4a017", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }}>{"\u270F\uFE0F"}</button>
                           <button onClick={async()=>{if(!confirm("\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F"))return;await fetch("/api/customers/"+customerId+"/schedules?scheduleId="+sch.id,{method:"DELETE"});fetchSchedules();}} style={{ fontSize: 10, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }}>{"\uD83D\uDDD1"}</button>
                         </div>
                       </div>
@@ -909,7 +909,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                   { k: "freeInternet", l: "\uD83D\uDCF6 \u30A4\u30F3\u30BF\u30FC\u30CD\u30C3\u30C8\u7121\u6599" },
                 ].map((item) => (
                   <label key={item.k} style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6, color: "#374151", cursor: "pointer", padding: "3px 0" }}>
-                    <input type="checkbox" checked={!!prefForm[item.k]} onChange={(e) => setPrefForm({ ...prefForm, [item.k]: e.target.checked })} style={{ accentColor: "#D97706" }} />
+                    <input type="checkbox" checked={!!prefForm[item.k]} onChange={(e) => setPrefForm({ ...prefForm, [item.k]: e.target.checked })} style={{ accentColor: "#d4a017" }} />
                     {item.l}
                   </label>
                 ))}
@@ -925,7 +925,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
               <button onClick={handlePrefSave} disabled={prefSaving} style={{
                 padding: "6px 20px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                 cursor: prefSaving ? "not-allowed" : "pointer",
-                background: prefSaving ? "#d1d5db" : "#D97706", color: "#fff",
+                background: prefSaving ? "#d1d5db" : "#d4a017", color: "#fff",
               }}>{prefSaving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
             </div>
           </div>
@@ -946,7 +946,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 <button onClick={handleWfStart} disabled={!selectedWfId || wfStarting} style={{
                   padding: "5px 14px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                   cursor: !selectedWfId || wfStarting ? "not-allowed" : "pointer",
-                  background: !selectedWfId || wfStarting ? "#d1d5db" : "#D97706", color: "#fff",
+                  background: !selectedWfId || wfStarting ? "#d1d5db" : "#d4a017", color: "#fff",
                 }}>{wfStarting ? "\u958B\u59CB\u4E2D..." : "\u958B\u59CB"}</button>
               </div>
             </div>

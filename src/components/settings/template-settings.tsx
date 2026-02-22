@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createTemplate, updateTemplate, deleteTemplate, duplicateTemplate } from "@/actions/templates";
 import Link from "next/link";
 
-const CH_OPTS = [{ v: "EMAIL", l: "✉️ メール", c: "#3b82f6" }, { v: "LINE", l: "💬 LINE", c: "#06c755" }, { v: "SMS", l: "📱 SMS", c: "#f59e0b" }];
+const CH_OPTS = [{ v: "EMAIL", l: "✉️ メール", c: "#3b82f6" }, { v: "LINE", l: "💬 LINE", c: "#06c755" }, { v: "SMS", l: "📱 SMS", c: "#d4a017" }];
 const VARS = ["{顧客名}", "{担当者名}", "{店舗名}", "{物件名}", "{マイページURL}", "{来店予約URL}"];
 
 export function TemplateSettings({ categories, organizationId }: { categories: any[]; organizationId: string }) {

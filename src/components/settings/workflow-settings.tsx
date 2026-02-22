@@ -178,7 +178,7 @@ export function WorkflowSettings({ workflows, templates }: { workflows: any[]; t
                 onClick={addStep}
                 disabled={isPending || !sName.trim() || !sTpl}
                 className="px-4 py-2 text-sm font-semibold text-white rounded disabled:opacity-40"
-                style={{ background: "#D97706" }}
+                style={{ background: "#d4a017" }}
               >
                 {isPending ? "\u4FDD\u5B58\u4E2D..." : "\u8FFD\u52A0"}
               </button>
@@ -194,7 +194,7 @@ export function WorkflowSettings({ workflows, templates }: { workflows: any[]; t
           <button
             onClick={() => setAdding(true)}
             className="mt-3 text-sm font-medium"
-            style={{ color: "#D97706" }}
+            style={{ color: "#d4a017" }}
           >
             {"\uFF0B \u30B9\u30C6\u30C3\u30D7\u3092\u8FFD\u52A0\u3059\u308B"}
           </button>

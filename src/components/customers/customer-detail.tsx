@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { sendMessage } from "@/actions/send-message";
 import type { AuthUser } from "@/lib/auth";
 
-const CH: Record<string, { label: string; color: string }> = { EMAIL: { label: "Email", color: "#3b82f6" }, LINE: { label: "LINE", color: "#06c755" }, SMS: { label: "SMS", color: "#f59e0b" }, CALL: { label: "Tel", color: "#8b5cf6" }, NOTE: { label: "Note", color: "#6b7280" } };
+const CH: Record<string, { label: string; color: string }> = { EMAIL: { label: "Email", color: "#3b82f6" }, LINE: { label: "LINE", color: "#06c755" }, SMS: { label: "SMS", color: "#d4a017" }, CALL: { label: "Tel", color: "#8b5cf6" }, NOTE: { label: "Note", color: "#6b7280" } };
 type Tpl = { id: string; name: string; channel: string; subject: string | null; body: string; category: { name: string } };
 
 function resolveVars(text: string, c: any, user: AuthUser, org: any) {

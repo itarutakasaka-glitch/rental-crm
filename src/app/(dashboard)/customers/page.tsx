@@ -133,7 +133,7 @@ export default function CustomersPage() {
                 style={{ padding: "5px 10px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 5, width: 150, outline: "none" }} />
               <button onClick={() => setShowAddModal(true)} style={{
                 padding: "5px 14px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 5,
-                background: "#D97706", color: "#fff", cursor: "pointer",
+                background: "#d4a017", color: "#fff", cursor: "pointer",
               }}>顧客追加</button>
             </div>
           </div>
@@ -144,8 +144,8 @@ export default function CustomersPage() {
                 <button onClick={() => setActiveViewId(v.id)} style={{
                   padding: "6px 14px", fontSize: 12, background: "transparent", border: "none", cursor: "pointer",
                   fontWeight: activeViewId === v.id ? 600 : 400,
-                  color: activeViewId === v.id ? "#D97706" : "#9ca3af",
-                  borderBottom: activeViewId === v.id ? "2px solid #D97706" : "2px solid transparent",
+                  color: activeViewId === v.id ? "#b8860b" : "#9ca3af",
+                  borderBottom: activeViewId === v.id ? "2px solid #d4a017" : "2px solid transparent",
                   marginBottom: -2, whiteSpace: "nowrap",
                 }}>
                   {v.name}
@@ -166,7 +166,7 @@ export default function CustomersPage() {
                 <input value={newViewName} onChange={(e) => setNewViewName(e.target.value)} placeholder="ビュー名"
                   autoFocus onKeyDown={(e) => e.key === "Enter" && addView()}
                   style={{ width: 100, padding: "3px 6px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 3, outline: "none" }} />
-                <button onClick={addView} style={{ fontSize: 11, color: "#D97706", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>保存</button>
+                <button onClick={addView} style={{ fontSize: 11, color: "#b8860b", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>保存</button>
                 <button onClick={() => { setShowAddView(false); setNewViewName(""); }} style={{ fontSize: 11, color: "#9ca3af", background: "none", border: "none", cursor: "pointer" }}>✕</button>
               </div>
             ) : (
@@ -195,7 +195,7 @@ export default function CustomersPage() {
               ) : filtered.map((c: any) => (
                 <tr key={c.id} onClick={() => router.push("/customers?id=" + c.id, { scroll: false })} style={{
                   cursor: "pointer", borderBottom: "1px solid #f3f4f6",
-                  background: selectedId === c.id ? "#FEF3C7" : c.isNeedAction ? "#FFFBEB" : "#fff",
+                  background: selectedId === c.id ? "rgba(212,160,23,0.08)" : c.isNeedAction ? "#FFFBEB" : "#fff",
                 }}>
                   <td style={{ padding: "10px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -229,7 +229,7 @@ export default function CustomersPage() {
                   </td>
                   <td style={{ padding: "10px 12px" }}>
                     {c.sourcePortal && (
-                      <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "#FEF3C7", color: "#B45309", fontWeight: 600 }}>{c.sourcePortal}</span>
+                      <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "rgba(212,160,23,0.1)", color: "#b85309", fontWeight: 600 }}>{c.sourcePortal}</span>
                     )}
                   </td>
                 </tr>
