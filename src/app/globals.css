@@ -1,13 +1,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap');
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
-
 html, body {
   height: 100%;
   overflow: hidden;
@@ -15,34 +14,23 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-
 ::selection {
-  background: #D97706;
+  background: #0891b2;
   color: #fff;
 }
-
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: #d1d5db;
   border-radius: 3px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
+@keyframes cp-spin { to { transform: rotate(360deg); } }
+@keyframes cp-pulse { 0%,100% { opacity:1; } 50% { opacity:0.2; } }

@@ -39,10 +39,10 @@ export function SidebarNav() {
               <Link href={item.href} style={{
                 display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
                 fontSize: 13, fontWeight: isActive ? 600 : 400,
-                color: isActive ? "#D97706" : "#374151",
+                color: isActive ? "#b8860b" : "#374151",
                 textDecoration: "none",
-                background: isActive ? "#FEF3C7" : "transparent",
-                borderLeft: isActive ? "3px solid #D97706" : "3px solid transparent",
+                background: isActive ? "rgba(212,160,23,0.08)" : "transparent",
+                borderLeft: isActive ? "3px solid #d4a017" : "3px solid transparent",
               }}>
                 <span style={{ fontSize: 14 }}>{item.icon}</span>
                 {item.label}
@@ -55,7 +55,7 @@ export function SidebarNav() {
                   return (
                     <Link key={child.href} href={child.href} style={{
                       display: "block", padding: "5px 16px", fontSize: 12,
-                      color: childActive ? "#D97706" : "#6b7280",
+                      color: childActive ? "#b8860b" : "#6b7280",
                       fontWeight: childActive ? 600 : 400,
                       textDecoration: "none",
                     }}>{child.label}</Link>

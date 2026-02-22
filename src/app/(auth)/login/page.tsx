@@ -70,13 +70,13 @@ export default function LoginPage() {
           <div style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "baseline" }}>
             <span style={{
               fontSize: 26, fontWeight: 900, letterSpacing: 4,
-              fontFamily: "'Courier New', monospace", color: "#F59E0B",
+              fontFamily: "Rajdhani, 'Courier New', sans-serif", color: "#F59E0B",
               textShadow: "0 0 12px rgba(245,158,11,0.5)",
-            }}>CLAUDE</span>
+            }}>Claude</span>
             <span style={{
               fontSize: 26, fontWeight: 300, letterSpacing: 4,
-              fontFamily: "'Courier New', monospace", color: "rgba(255,255,255,0.4)",
-            }}>CLOUD</span>
+              fontFamily: "Rajdhani, 'Courier New', sans-serif", color: "rgba(255,255,255,0.4)",
+            }}>Cloud</span>
           </div>
           <div style={{ fontSize: 10, letterSpacing: 6, color: "rgba(245,158,11,0.3)", marginTop: 6, fontFamily: "monospace" }}>REAL ESTATE CRM</div>
           <div style={{ width: "100%", height: 1, background: "linear-gradient(90deg, transparent, rgba(245,158,11,0.2), transparent)", margin: "16px 0 0" }} />
