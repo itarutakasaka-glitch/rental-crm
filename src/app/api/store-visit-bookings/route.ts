@@ -25,7 +25,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
-    // Find or create customer
     let customer = await prisma.customer.findFirst({
       where: { email, organizationId },
     });
@@ -53,7 +52,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // Create booking
     const booking = await prisma.storeVisitBooking.create({
       data: {
         organizationId,
@@ -69,7 +67,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // Create schedule
     const [hours, minutes] = visitTime.split(":").map(Number);
     const startAt = new Date(visitDate);
     startAt.setHours(hours, minutes, 0, 0);
@@ -88,8 +85,11 @@ export async function POST(request: Request) {
       },
     });
 
-    // Send auto-reply email
     if (setting.autoReplySubject && setting.autoReplyBody && email) {
+      const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
+      const fromName = org.storeName || org.name || "CRM";
+      const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${organizationId}`;
+
       const vars: Record<string, string> = {
         "{{customer_name}}": name,
         "{{store_name}}": org.storeName || org.name || "",
@@ -98,20 +98,22 @@ export async function POST(request: Request) {
         "{{visit_date}}": visitDate,
         "{{visit_time}}": visitTime,
         "{{visit_method}}": visitMethod || "",
+        "{{visit_url}}": visitUrl,
+        "{{line_url}}": org.lineUrl || "",
       };
 
-      let subject = setting.autoReplySubject;
+      let subjectText = setting.autoReplySubject;
       let bodyText = setting.autoReplyBody;
       for (const [k, v] of Object.entries(vars)) {
-        subject = subject.replaceAll(k, v);
+        subjectText = subjectText.replaceAll(k, v);
         bodyText = bodyText.replaceAll(k, v);
       }
 
       try {
         await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com",
+          from: `${fromName} <${fromEmail}>`,
           to: email,
-          subject,
+          subject: subjectText,
           text: bodyText,
         });
 
@@ -120,7 +122,7 @@ export async function POST(request: Request) {
             customerId: customer.id,
             direction: "OUTBOUND",
             channel: "EMAIL",
-            subject,
+            subject: subjectText,
             body: bodyText,
             status: "SENT",
           },
