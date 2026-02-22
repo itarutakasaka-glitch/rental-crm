@@ -7,7 +7,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { organizationId, customerId, name, email, phone, visitDate, visitTime, visitMethod, memo } = body;
+    const { organizationId, customerId, name, email, phone, visitDate, visitTime, visitMethod, numGuests, memo } = body;
 
     if (!organizationId || !visitDate || !visitTime) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -36,15 +36,26 @@ export async function POST(request: Request) {
       if (customer) {
         customerName = customer.name || customerName;
         customerEmail = customer.email || customerEmail;
-        customerPhone = customer.phone || customerPhone;
+        customerPhone = phone || customer.phone || customerPhone;
+        await prisma.customer.update({
+          where: { id: customer.id },
+          data: { isNeedAction: true, phone: customerPhone || customer.phone },
+        });
+      }
+    }
+
+    // Fallback: find by phone or email
+    if (!customer && customerPhone) {
+      customer = await prisma.customer.findFirst({
+        where: { phone: customerPhone, organizationId },
+      });
+      if (customer) {
         await prisma.customer.update({
           where: { id: customer.id },
           data: { isNeedAction: true },
         });
       }
     }
-
-    // Fallback: find by email or create new
     if (!customer && customerEmail) {
       customer = await prisma.customer.findFirst({
         where: { email: customerEmail, organizationId },
@@ -57,14 +68,15 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!customer && customerName && customerEmail) {
+    // Create new customer if not found (phone-only is OK)
+    if (!customer && customerPhone) {
       const defaultStatus = await prisma.status.findFirst({
         where: { organizationId, isDefault: true },
       });
       customer = await prisma.customer.create({
         data: {
-          name: customerName,
-          email: customerEmail,
+          name: customerName || "\u4E88\u7D04\u9867\u5BA2",
+          email: customerEmail || null,
           phone: customerPhone,
           organizationId,
           sourcePortal: "STORE_VISIT",
@@ -75,7 +87,7 @@ export async function POST(request: Request) {
     }
 
     if (!customer) {
-      return NextResponse.json({ error: "Customer not found" }, { status: 400 });
+      return NextResponse.json({ error: "\u96FB\u8A71\u756A\u53F7\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044" }, { status: 400 });
     }
 
     const booking = await prisma.storeVisitBooking.create({
