@@ -47,6 +47,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [showTemplates, setShowTemplates] = useState(false);
   const [callResult, setCallResult] = useState("success");
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [org, setOrg] = useState<any>(null);
 
   // Info tab editing state
   const [infoForm, setInfoForm] = useState<any>({});
@@ -230,7 +231,14 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     } catch (e) { console.error(e); }
   }, []);
 
-  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchRecords(); fetchSchedules(); fetchPreference(); fetchWorkflows(); fetchWfRuns(); }, [fetchCustomer, fetchTemplates, fetchRecords, fetchSchedules, fetchPreference, fetchWorkflows, fetchWfRuns]);
+  const fetchOrg = useCallback(async () => {
+    try {
+      const res = await fetch("/api/organization");
+      if (res.ok) { const data = await res.json(); setOrg(data); }
+    } catch (e) { console.error(e); }
+  }, []);
+
+  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchOrg(); fetchRecords(); fetchSchedules(); fetchPreference(); fetchWorkflows(); fetchWfRuns(); }, [fetchCustomer, fetchTemplates, fetchOrg, fetchRecords, fetchSchedules, fetchPreference, fetchWorkflows, fetchWfRuns]);
   useEffect(() => { const iv = setInterval(fetchCustomer, 10000); return () => clearInterval(iv); }, [fetchCustomer]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [customer?.messages]);
 
@@ -274,16 +282,30 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     finally { setInfoSaving(false); }
   };
 
+  const resolveVarsLocal = (text: string) => {
+    if (!text) return text;
+    const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || customer?.organizationId || "org_default"}`;
+    return text
+      .replace(/\{\{customer_name\}\}/g, customer?.name || "")
+      .replace(/\{\{customer_email\}\}/g, customer?.email || "")
+      .replace(/\{\{customer_phone\}\}/g, customer?.phone || "")
+      .replace(/\{\{staff_name\}\}/g, customer?.assignee?.name || "")
+      .replace(/\{\{property_name\}\}/g, customer?.properties?.[0]?.name || "")
+      .replace(/\{\{property_url\}\}/g, customer?.properties?.[0]?.url || "")
+      .replace(/\{\{company_name\}\}/g, org?.name || "")
+      .replace(/\{\{store_name\}\}/g, org?.storeName || org?.name || "")
+      .replace(/\{\{store_address\}\}/g, org?.storeAddress || org?.address || "")
+      .replace(/\{\{store_phone\}\}/g, org?.storePhone || org?.phone || "")
+      .replace(/\{\{store_hours\}\}/g, org?.storeHours || "")
+      .replace(/\{\{line_url\}\}/g, org?.lineUrl || "")
+      .replace(/\{\{license_number\}\}/g, org?.licenseNumber || "")
+      .replace(/\{\{visit_url\}\}/g, visitUrl);
+  };
+
   const applyTemplate = (t: any) => {
-    setSubject(t.subject || "");
-    let b = t.body || "";
-    if (customer) {
-      b = b.replace(/\{\{\u5BA2\u5BA2\u540D\}\}/g, customer.name || "")
-        .replace(/\{\{\u30E1\u30FC\u30EB\}\}/g, customer.email || "")
-        .replace(/\{\{\u96FB\u8A71\u756A\u53F7\}\}/g, customer.phone || "")
-        .replace(/\{\{\u62C5\u5F53\u8005\u540D\}\}/g, customer.assignee?.name || "");
-    }
-    setBody(b); setShowTemplates(false);
+    setSubject(resolveVarsLocal(t.subject || ""));
+    setBody(resolveVarsLocal(t.body || ""));
+    setShowTemplates(false);
   };
 
   const handleSend = async () => {
