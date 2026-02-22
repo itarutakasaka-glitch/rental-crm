@@ -32,7 +32,8 @@ export default function PublicVisitPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
   const [visitDate, setVisitDate] = useState(todayStr);
   const [visitTime, setVisitTime] = useState("");
   const [visitMethod, setVisitMethod] = useState("");
@@ -134,7 +135,7 @@ export default function PublicVisitPage() {
           <label style={S.label}>{"\u3054\u5E0C\u671B\u306E\u65E5\u6642"}</label>
           <div style={{display:"flex",gap:12}}>
             <div style={{flex:1}}>
-              <input type="date" value={visitDate} min={todayStr} onChange={e => setVisitDate(e.target.value)} style={S.input} />
+              <input type="date" value={visitDate} min={todayStr} onChange={e => { if (e.target.value >= todayStr) setVisitDate(e.target.value); }} style={S.input} />
             </div>
             <div style={{flex:1}}>
               <select value={visitTime} onChange={e => setVisitTime(e.target.value)} style={S.select}>
