@@ -31,7 +31,11 @@ export async function updateSchedule(id: string, data: {
   startAt?: Date; endAt?: Date; isAllDay?: boolean;
   location?: string; color?: string; userId?: string | null; customerId?: string | null;
 }) {
-  const schedule = await prisma.schedule.update({ where: { id }, data });
+  const { customerId, userId, ...rest } = data;
+  const updateData: any = { ...rest };
+  if (userId !== undefined) updateData.user = userId ? { connect: { id: userId } } : { disconnect: true };
+  if (customerId !== undefined) updateData.customer = customerId ? { connect: { id: customerId } } : { disconnect: true };
+  const schedule = await prisma.schedule.update({ where: { id }, data: updateData });
   revalidatePath("/schedule");
   return schedule;
 }
