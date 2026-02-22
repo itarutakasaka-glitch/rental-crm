@@ -120,12 +120,12 @@ export default function CustomersPage() {
             <h2 style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: 0 }}>顧客一覧</h2>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-                style={{ padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 5, color: "#374151" }}>
+                style={{ padding: "5px 28px 5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 5, color: "#374151", minWidth: 110, appearance: "auto" as const }}>
                 <option value="">全ステータス</option>
                 {statuses.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               <select value={filterStaff} onChange={(e) => setFilterStaff(e.target.value)}
-                style={{ padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 5, color: "#374151" }}>
+                style={{ padding: "5px 28px 5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 5, color: "#374151", minWidth: 100, appearance: "auto" as const }}>
                 <option value="">全担当者</option>
                 {staffList.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
