@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
 const COLORS = [
   { value: "#EF4444", label: "赤" }, { value: "#3B82F6", label: "青" },
@@ -94,7 +95,7 @@ export default function StatusSettingsPage() {
     });
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>読み込み中...</div>;
+  if (loading) return <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><CyberpunkSpinner size={36} /></div>;
 
   return (
     <div style={{ padding: "24px 32px", overflow: "auto", flex: 1 }}>

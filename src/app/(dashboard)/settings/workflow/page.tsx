@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
 type Step = { id?: string; name: string; daysAfter: number; timeOfDay: string; channel: string; templateId: string; order: number; isImmediate?: boolean };
 type Workflow = { id: string; name: string; isActive: boolean; isDefault: boolean; steps: Step[] };
@@ -11,11 +12,13 @@ export default function WorkflowPage() {
   const [editing, setEditing] = useState<Workflow | null>(null);
   const [form, setForm] = useState({ name: "", steps: [] as Step[] });
   const [isNew, setIsNew] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const load = async () => {
     const [wRes, tRes] = await Promise.all([fetch("/api/workflows"), fetch("/api/templates")]);
     const wData = await wRes.json(); const tData = await tRes.json();
     setWorkflows(wData.workflows || []); setTpls(tData.templates || []);
+    setPageLoading(false);
   };
   useEffect(() => { load(); }, []);
 
@@ -55,6 +58,7 @@ export default function WorkflowPage() {
     load();
   };
 
+  if (pageLoading) return <div style={{ display: "flex", justifyContent: "center", padding: 60 }}><CyberpunkSpinner size={40} /></div>;
   return (
     <div className="p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-4">

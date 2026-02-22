@@ -189,7 +189,7 @@ export default function CustomersPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: "center" }}><CyberpunkSpinner size={20} /></td></tr>
+                <tr><td colSpan={7} style={{ padding: 40, textAlign: "center" }}><CyberpunkSpinner size={40} /></td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>顧客がいません</td></tr>
               ) : filtered.map((c: any) => (

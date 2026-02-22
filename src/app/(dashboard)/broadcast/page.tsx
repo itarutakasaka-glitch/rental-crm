@@ -1,9 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
+import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 export default function BroadcastPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [statuses, setStatuses] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [channel, setChannel] = useState("EMAIL");
   const [subject, setSubject] = useState("");
@@ -14,9 +16,11 @@ export default function BroadcastPage() {
   const [filterStaff, setFilterStaff] = useState("");
   const [search, setSearch] = useState("");
   useEffect(() => {
-    fetch("/api/customers").then(r => r.json()).then(d => setCustomers(Array.isArray(d) ? d : d.customers || []));
-    fetch("/api/statuses").then(r => r.json()).then(setStatuses);
-    fetch("/api/staff").then(r => r.json()).then(setStaffList);
+    Promise.all([
+      fetch("/api/customers").then(r => r.json()).then(d => setCustomers(Array.isArray(d) ? d : d.customers || [])),
+      fetch("/api/statuses").then(r => r.json()).then(setStatuses),
+      fetch("/api/staff").then(r => r.json()).then(setStaffList),
+    ]).finally(() => setLoading(false));
   }, []);
   const filtered = customers.filter(c => {
     if (filterStatus && c.statusId !== filterStatus) return false;
@@ -54,6 +58,7 @@ export default function BroadcastPage() {
   };
   const labelStyle = { fontSize: 12, fontWeight: 600 as const, color: "#374151", display: "block", marginBottom: 4 };
   const fieldStyle = { width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 5, outline: "none", boxSizing: "border-box" as const };
+  if (loading) return <div style={{ display: "flex", justifyContent: "center", padding: 60 }}><CyberpunkSpinner size={40} /></div>;
   return (
     <div style={{ padding: "24px 28px", height: "100%", overflow: "auto" }}>
       <h1 style={{ fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 20 }}>{"\u4E00\u6589\u9001\u4FE1"}</h1>

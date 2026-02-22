@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
 export default function StaffSettingsPage() {
   const [staff, setStaff] = useState<any[]>([]);
@@ -115,7 +116,7 @@ export default function StaffSettingsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} style={{ padding: 20, textAlign: "center", color: "#9ca3af" }}>読み込み中...</td></tr>
+              <tr><td colSpan={5} style={{ padding: 20, textAlign: "center" }}><CyberpunkSpinner size={36} /></td></tr>
             ) : staff.map((s) => (
               <tr key={s.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                 <td style={{ padding: "8px 14px" }}>

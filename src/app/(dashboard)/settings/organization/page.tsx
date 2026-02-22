@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 import { useState, useEffect } from "react";
+import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
 type Org = { name: string; phone: string; email: string; address: string; website: string; storeName: string; storeAddress: string; storePhone: string; storeHours: string; storeAccess: string; logoUrl: string; lineUrl: string; licenseNumber: string };
 const FIELDS: { key: keyof Org; label: string; group: string }[] = [
@@ -22,8 +23,9 @@ const GROUPS = ["\u4F1A\u793E\u60C5\u5831", "\u5E97\u8217\u60C5\u5831", "\u305D\
 export default function OrganizationPage() {
   const [form, setForm] = useState<Org>({ name: "", phone: "", email: "", address: "", website: "", storeName: "", storeAddress: "", storePhone: "", storeHours: "", storeAccess: "", logoUrl: "", lineUrl: "", licenseNumber: "" });
   const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetch("/api/organization").then(r => r.json()).then(d => { if (d) { const f = {} as any; FIELDS.forEach(({ key }) => f[key] = d[key] || ""); setForm(f); } }); }, []);
+  useEffect(() => { fetch("/api/organization").then(r => r.json()).then(d => { if (d) { const f = {} as any; FIELDS.forEach(({ key }) => f[key] = d[key] || ""); setForm(f); } }).finally(() => setLoading(false)); }, []);
 
   const save = async () => {
     setMsg("...");
@@ -32,6 +34,7 @@ export default function OrganizationPage() {
     setTimeout(() => setMsg(""), 2000);
   };
 
+  if (loading) return <div style={{ display: "flex", justifyContent: "center", padding: 60 }}><CyberpunkSpinner size={40} /></div>;
   return (
     <div className="p-6 max-w-2xl">
       <div className="flex items-center justify-between mb-4">

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
 type Category = { id: string; name: string };
 type Template = { id: string; name: string; channel: string; subject: string | null; body: string; categoryId: string; category: Category };
@@ -33,9 +34,10 @@ export default function TemplatesPage() {
   const [form, setForm] = useState({ name: "", categoryId: "", channel: "EMAIL", subject: "", body: "" });
   const [isNew, setIsNew] = useState(false);
   const [urlMenu, setUrlMenu] = useState<string | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
-  const load = () => fetch("/api/templates").then(r => r.json()).then(d => { setTemplates(d.templates); setCategories(d.categories); });
+  const load = () => fetch("/api/templates").then(r => r.json()).then(d => { setTemplates(d.templates); setCategories(d.categories); }).finally(() => setPageLoading(false));
   useEffect(() => { load(); }, []);
 
   const startNew = () => { const catId = categories.length > 0 ? categories[0].id : "cat_general"; setForm({ name: "", categoryId: catId, channel: "EMAIL", subject: "", body: "" }); setIsNew(true); setEditing(null); };
@@ -77,6 +79,7 @@ export default function TemplatesPage() {
 
   const grouped = categories.map(c => ({ ...c, items: templates.filter(t => t.categoryId === c.id) }));
 
+  if (pageLoading) return <div style={{ display: "flex", justifyContent: "center", padding: 60 }}><CyberpunkSpinner size={40} /></div>;
   return (
     <div className="p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-4">

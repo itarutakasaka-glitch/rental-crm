@@ -80,7 +80,7 @@ export default function PublicVisitPage() {
   }
 
   // Loading
-  if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh"}}><p style={{color:"#999"}}>{"\u8AAD\u307F\u8FBC\u307F\u4E2D..."}</p></div>;
+  if (loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#fff"}}><div style={{position:"relative",width:36,height:36}}><div style={{position:"absolute",inset:0,border:"2px solid transparent",borderTopColor:"#FCEE09",borderRadius:"50%",animation:"cp-spin 0.7s linear infinite"}}/><div style={{position:"absolute",inset:4,border:"2px solid transparent",borderBottomColor:"#00f0ff",borderRadius:"50%",animation:"cp-spin 1.1s linear infinite reverse"}}/><div style={{position:"absolute",inset:10,border:"2px solid transparent",borderLeftColor:"#ff003c",borderRadius:"50%",animation:"cp-spin 0.5s linear infinite"}}/><div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",width:5,height:5,background:"#FCEE09",borderRadius:"50%",boxShadow:"0 0 6px #FCEE09, 0 0 12px #FCEE09",animation:"cp-pulse 0.8s ease-in-out infinite"}}/><style>{`@keyframes cp-spin{to{transform:rotate(360deg)}}@keyframes cp-pulse{0%,100%{opacity:1}50%{opacity:.2}}`}</style></div></div>;
   // Error (no data)
   if (error && !data) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh"}}><p style={{color:"#999"}}>{error}</p></div>;
   if (!data) return null;

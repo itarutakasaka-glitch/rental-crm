@@ -341,7 +341,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   if (loading) {
     return (
       <div style={{ width: panelW, minWidth: panelW, borderLeft: "1px solid #e5e7eb", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <CyberpunkSpinner size={28} />
+        <CyberpunkSpinner size={36} />
       </div>
     );
   }

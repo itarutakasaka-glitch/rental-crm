@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
 interface Setting {
   id: string;
@@ -73,8 +74,8 @@ export default function StoreVisitSettingPage() {
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="animate-pulse text-gray-400">{"\u8aad\u307f\u8fbc\u307f\u4e2d..."}</div>
+      <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+        <CyberpunkSpinner size={36} />
       </div>
     );
   }

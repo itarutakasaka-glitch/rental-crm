@@ -68,7 +68,7 @@ export default function HomePage() {
           ))}
         </div>
         {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><CyberpunkSpinner size={28} /></div>
+          <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><CyberpunkSpinner size={40} /></div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: 40, color: "#9ca3af", fontSize: 13 }}>要対応の顧客はありません</div>
         ) : (
