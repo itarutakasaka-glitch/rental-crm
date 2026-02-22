@@ -1,19 +1,12 @@
 "use client";
+import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CustomerDetailPanel } from "@/components/customers/customer-detail-panel";
 import { CustomerAddModal } from "@/components/customers/customer-add-modal";
 
-function Spinner({ size = 20 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" style={{ animation: "spin 1s linear infinite" }}>
-      <circle cx="12" cy="12" r="10" stroke="#D97706" strokeWidth="3" fill="none" opacity="0.2" />
-      <path d="M12 2a10 10 0 0 1 10 10" stroke="#D97706" strokeWidth="3" fill="none" strokeLinecap="round" />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </svg>
-  );
-}
+// Spinner replaced by CyberpunkSpinner
 
 function timeAgo(d: string) {
   const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
@@ -196,7 +189,7 @@ export default function CustomersPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: "center" }}><Spinner /></td></tr>
+                <tr><td colSpan={7} style={{ padding: 40, textAlign: "center" }}><CyberpunkSpinner size={20} /></td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>顧客がいません</td></tr>
               ) : filtered.map((c: any) => (

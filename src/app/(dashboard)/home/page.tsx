@@ -1,16 +1,9 @@
 "use client";
+import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
 import { useState, useEffect, useCallback } from "react";
 
-function Spinner({ size = 18 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" style={{ animation: "spin 1s linear infinite" }}>
-      <circle cx="12" cy="12" r="10" stroke="#D97706" strokeWidth="3" fill="none" opacity="0.2" />
-      <path d="M12 2a10 10 0 0 1 10 10" stroke="#D97706" strokeWidth="3" fill="none" strokeLinecap="round" />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </svg>
-  );
-}
+// Spinner replaced by CyberpunkSpinner
 
 function timeAgo(d: string) {
   const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
@@ -75,7 +68,7 @@ export default function HomePage() {
           ))}
         </div>
         {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spinner size={28} /></div>
+          <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><CyberpunkSpinner size={28} /></div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: 40, color: "#9ca3af", fontSize: 13 }}>要対応の顧客はありません</div>
         ) : (
