@@ -25,6 +25,17 @@ export async function createSchedule(data: {
   return schedule;
 }
 
+export async function updateSchedule(id: string, data: {
+  title?: string; description?: string;
+  type?: "VISIT"|"VIEWING"|"CALL"|"FOLLOW_UP"|"CONTRACT"|"OTHER";
+  startAt?: Date; endAt?: Date; isAllDay?: boolean;
+  location?: string; color?: string; userId?: string | null; customerId?: string | null;
+}) {
+  const schedule = await prisma.schedule.update({ where: { id }, data });
+  revalidatePath("/schedule");
+  return schedule;
+}
+
 export async function deleteSchedule(id: string) {
   await prisma.schedule.delete({ where: { id } });
   revalidatePath("/schedule");
