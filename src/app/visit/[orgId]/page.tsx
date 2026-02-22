@@ -197,7 +197,7 @@ export default function PublicVisitPage() {
         <button onClick={handleSubmit} disabled={submitting}
           style={{width:"100%",padding:"16px",border:"none",borderRadius:4,fontSize:16,fontWeight:"bold",
             cursor:submitting?"not-allowed":"pointer",
-            background:submitting?"#ccc":"#b0b0b0",color:"#fff"}}>
+            background:submitting?"#ccc":"#4bbcd2",color:"#fff"}}>
           {submitting ? "\u9001\u4FE1\u4E2D..." : "\u3053\u306E\u5185\u5BB9\u3067\u4E88\u7D04\u3059\u308B"}
         </button>
 

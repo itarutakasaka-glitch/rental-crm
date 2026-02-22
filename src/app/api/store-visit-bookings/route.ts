@@ -123,6 +123,27 @@ export async function POST(request: Request) {
       },
     });
 
+    // Create notification message so it appears in customer detail chat
+    const dateLabel = visitDate.replace(/-/g, "/");
+    const methodLabel = visitMethod ? `\n\u6765\u5E97\u65B9\u6CD5: ${visitMethod}` : "";
+    const memoLabel = memo ? `\n\u3054\u8981\u671B: ${memo}` : "";
+    await prisma.message.create({
+      data: {
+        customerId: customer.id,
+        direction: "INBOUND",
+        channel: "EMAIL",
+        subject: "\u3010\u6765\u5E97\u4E88\u7D04\u3011",
+        body: `\u6765\u5E97\u4E88\u7D04\u304C\u5165\u308A\u307E\u3057\u305F\u3002\n\u65E5\u6642: ${dateLabel} ${visitTime}\n\u4EBA\u6570: ${body.numGuests || 1}\u4EBA${methodLabel}\n\u96FB\u8A71: ${customerPhone}${memoLabel}`,
+        status: "DELIVERED",
+      },
+    });
+
+    // Mark as needs action
+    await prisma.customer.update({
+      where: { id: customer.id },
+      data: { isNeedAction: true, lastActiveAt: new Date() },
+    });
+
     if (setting.autoReplySubject && setting.autoReplyBody && customerEmail) {
       const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
       const fromName = org.storeName || org.name || "CRM";
