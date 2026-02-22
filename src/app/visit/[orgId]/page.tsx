@@ -86,12 +86,18 @@ export default function PublicVisitPage() {
 
   // Success
   if (submitted) return (
-    <div style={{minHeight:"100vh",background:"#fff"}}>
-      <div style={{background:"#4bbcd2",padding:"14px 20px"}}><span style={{color:"#fff",fontWeight:"bold",fontSize:15}}>{data.organization.storeName || data.organization.name}</span></div>
-      <div style={{textAlign:"center",padding:"80px 20px"}}>
-        <div style={{fontSize:48,marginBottom:12}}>{"\u2705"}</div>
-        <h2 style={{fontSize:18,fontWeight:"bold",marginBottom:8}}>{"\u3054\u4E88\u7D04\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3059"}</h2>
-        <p style={{color:"#666",fontSize:14}}>{"\u62C5\u5F53\u8005\u3088\u308A\u6539\u3081\u3066\u3054\u9023\u7D61\u3044\u305F\u3057\u307E\u3059\u3002"}</p>
+    <div style={{minHeight:"100dvh",background:"#fff",display:"flex",flexDirection:"column"}}>
+      <div style={{background:"#4bbcd2",padding:"14px 20px"}}><span style={{color:"#fff",fontWeight:"bold",fontSize:15}}>{data?.organization?.storeName || data?.organization?.name || ""}</span></div>
+      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px"}}>
+        <div style={{width:80,height:80,borderRadius:"50%",background:"#e8f8f5",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4bbcd2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h2 style={{fontSize:20,fontWeight:"bold",marginBottom:10,color:"#333"}}>{"\u3054\u4E88\u7D04\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3059"}</h2>
+        <p style={{color:"#666",fontSize:14,textAlign:"center",lineHeight:1.8}}>{"\u62C5\u5F53\u8005\u3088\u308A\u6539\u3081\u3066\u3054\u9023\u7D61\u3044\u305F\u3057\u307E\u3059\u3002"}</p>
+        <div style={{marginTop:24,padding:"16px 24px",background:"#f7f7f8",borderRadius:8,fontSize:14,color:"#555",textAlign:"center",lineHeight:1.8}}>
+          <div>{visitDate.replace(/-/g, "/")} {visitTime}</div>
+          {visitMethod && <div>{visitMethod}</div>}
+        </div>
       </div>
     </div>
   );
