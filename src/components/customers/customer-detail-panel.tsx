@@ -785,10 +785,13 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
             <div style={{ padding: "12px 14px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
               <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                 {[
-                  { v: "VISIT", l: "\uD83C\uDFE0 \u6765\u5E97\u4E88\u7D04" },
-                  { v: "VIEWING", l: "\uD83D\uDC41 \u5185\u898B" },
+                  { v: "VISIT", l: "\uD83C\uDFE2 \u6765\u5E97" },
+                  { v: "ONSITE", l: "\uD83D\uDCCD \u73FE\u5730\u5F85\u3061\u5408\u308F\u305B" },
+                  { v: "ONLINE", l: "\uD83D\uDCBB \u30AA\u30F3\u30E9\u30A4\u30F3\u63A5\u5BA2" },
                   { v: "CALL", l: "\uD83D\uDCDE \u67B6\u96FB" },
-                  { v: "FOLLOW_UP", l: "\uD83D\uDCCB \u8FFD\u5BA2" },
+                  { v: "RECEPTION", l: "\uD83E\uDD1D \u63A5\u5BA2" },
+                  { v: "CONTRACT", l: "\uD83D\uDCDD \u5951\u7D04" },
+                  { v: "OTHER", l: "\uD83D\uDCCC \u305D\u306E\u4ED6" },
                 ].map((t) => (
                   <button key={t.v} onClick={() => setSchType(t.v)} style={{
                     padding: "4px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4,
@@ -832,8 +835,8 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 <div style={{ textAlign: "center", padding: 30, color: "#9ca3af", fontSize: 12 }}>{"\u30B9\u30B1\u30B8\u30E5\u30FC\u30EB\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093"}</div>
               ) : (
                 schedules.map((sch: any) => {
-                  const icon = sch.type === "VISIT" ? "\uD83C\uDFE0" : sch.type === "VIEWING" ? "\uD83D\uDC41" : sch.type === "CALL" ? "\uD83D\uDCDE" : "\uD83D\uDCCB";
-                  const typeLabel = sch.type === "VISIT" ? "\u6765\u5E97\u4E88\u7D04" : sch.type === "VIEWING" ? "\u5185\u898B" : sch.type === "CALL" ? "\u67B6\u96FB" : "\u8FFD\u5BA2";
+                  const icon = sch.type === "VISIT" ? "\uD83C\uDFE2" : sch.type === "ONSITE" ? "\uD83D\uDCCD" : sch.type === "ONLINE" ? "\uD83D\uDCBB" : sch.type === "CALL" ? "\uD83D\uDCDE" : sch.type === "RECEPTION" ? "\uD83E\uDD1D" : sch.type === "CONTRACT" ? "\uD83D\uDCDD" : "\uD83D\uDCCC";
+                  const typeLabel = sch.type === "VISIT" ? "\u6765\u5E97" : sch.type === "ONSITE" ? "\u73FE\u5730\u5F85\u3061\u5408\u308F\u305B" : sch.type === "ONLINE" ? "\u30AA\u30F3\u30E9\u30A4\u30F3\u63A5\u5BA2" : sch.type === "CALL" ? "\u67B6\u96FB" : sch.type === "RECEPTION" ? "\u63A5\u5BA2" : sch.type === "CONTRACT" ? "\u5951\u7D04" : "\u305D\u306E\u4ED6";
                   const isPast = new Date(sch.startAt) < new Date();
                   return (
                     <div key={sch.id} style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 8, background: isPast ? "#f3f4f6" : "#EFF6FF", border: "1px solid #e5e7eb", opacity: isPast ? 0.7 : 1 }}>
