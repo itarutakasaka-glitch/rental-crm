@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/db/prisma";
+import { prisma } from "@/lib/db/prisma";
 
 // GET: \u6765\u5e97\u4e88\u7d04\u8a2d\u5b9a\u3092\u53d6\u5f97
 export async function GET() {
