@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 type Category = { id: string; name: string };
 type Template = { id: string; name: string; channel: string; subject: string | null; body: string; categoryId: string; category: Category };
@@ -17,7 +17,13 @@ const VARS = [
   { key: "{{store_phone}}", label: "\u5E97\u8217\u96FB\u8A71" },
   { key: "{{store_hours}}", label: "\u55B6\u696D\u6642\u9593" },
   { key: "{{line_url}}", label: "LINE URL" },
+  { key: "{{visit_url}}", label: "\u4E88\u7D04\u30D5\u30A9\u30FC\u30E0URL" },
   { key: "{{license_number}}", label: "\u514D\u8A31\u756A\u53F7" },
+];
+
+const URL_BTNS = [
+  { id: "visit", label: "\uD83D\uDDD3 \u6765\u5E97\u4E88\u7D04URL", varKey: "{{visit_url}}", text: "\u6765\u5E97\u30FB\u5185\u898B\u4E88\u7D04\u306F\u3053\u3061\u3089", color: "#0891b2" },
+  { id: "line", label: "\uD83D\uDCAC LINE\u8FFD\u52A0URL", varKey: "{{line_url}}", text: "LINE\u3067\u304A\u6C17\u8EFD\u306B\u3054\u9023\u7D61", color: "#06c755" },
 ];
 
 export default function TemplatesPage() {
@@ -26,13 +32,15 @@ export default function TemplatesPage() {
   const [editing, setEditing] = useState<Template | null>(null);
   const [form, setForm] = useState({ name: "", categoryId: "", channel: "EMAIL", subject: "", body: "" });
   const [isNew, setIsNew] = useState(false);
+  const [urlMenu, setUrlMenu] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   const load = () => fetch("/api/templates").then(r => r.json()).then(d => { setTemplates(d.templates); setCategories(d.categories); });
   useEffect(() => { load(); }, []);
 
   const startNew = () => { const catId = categories.length > 0 ? categories[0].id : "cat_general"; setForm({ name: "", categoryId: catId, channel: "EMAIL", subject: "", body: "" }); setIsNew(true); setEditing(null); };
   const startEdit = (t: Template) => { setForm({ name: t.name, categoryId: t.categoryId, channel: t.channel, subject: t.subject || "", body: t.body }); setEditing(t); setIsNew(false); };
-  const cancel = () => { setIsNew(false); setEditing(null); };
+  const cancel = () => { setIsNew(false); setEditing(null); setUrlMenu(null); };
 
   const save = async () => {
     if (!form.name || !form.body) return;
@@ -46,7 +54,26 @@ export default function TemplatesPage() {
     load();
   };
 
-  const insertVar = (v: string) => setForm(f => ({ ...f, body: f.body + v }));
+  const insertAtCursor = (text: string) => {
+    const ta = bodyRef.current;
+    if (ta) {
+      const s = ta.selectionStart, e = ta.selectionEnd;
+      const nb = form.body.slice(0, s) + text + form.body.slice(e);
+      setForm(f => ({ ...f, body: nb }));
+      setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = s + text.length; }, 0);
+    } else {
+      setForm(f => ({ ...f, body: f.body + text }));
+    }
+  };
+
+  const insertUrlLink = (btn: typeof URL_BTNS[0]) => {
+    insertAtCursor(`\n\n\u25BC ${btn.text}\n${btn.varKey}\n`);
+    setUrlMenu(null);
+  };
+  const insertUrlButton = (btn: typeof URL_BTNS[0]) => {
+    insertAtCursor(`\n\n[\u25A0 ${btn.text}] ${btn.varKey}\n`);
+    setUrlMenu(null);
+  };
 
   const grouped = categories.map(c => ({ ...c, items: templates.filter(t => t.categoryId === c.id) }));
 
@@ -87,10 +114,30 @@ export default function TemplatesPage() {
           )}
           <div className="mb-2">
             <label className="text-xs text-gray-500 mb-1 block">{"\u672C\u6587"}</label>
-            <div className="flex gap-1 mb-1">
-              {VARS.map(v => <button key={v.key} onClick={() => insertVar(v.key)} className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100">{v.label}</button>)}
+            <div className="flex gap-1 flex-wrap mb-2">
+              {VARS.map(v => <button key={v.key} onClick={() => insertAtCursor(v.key)} className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100">{v.label}</button>)}
             </div>
-            <textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} rows={6} className="w-full px-3 py-2 border rounded-lg text-sm resize-none font-mono" />
+            {/* URL button insertion */}
+            <div className="flex gap-2 mb-2">
+              {URL_BTNS.map(btn => (
+                <div key={btn.id} className="relative">
+                  <button onClick={() => setUrlMenu(urlMenu === btn.id ? null : btn.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{ background: btn.color }}>{btn.label}</button>
+                  {urlMenu === btn.id && (
+                    <div className="absolute top-full left-0 mt-1 bg-white border rounded-lg shadow-lg z-20 min-w-[200px]">
+                      <button onClick={() => insertUrlLink(btn)} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 border-b">
+                        {"\uD83D\uDD17 URL\u30EA\u30F3\u30AF\u3068\u3057\u3066\u633F\u5165"}
+                        <div className="text-[10px] text-gray-400 mt-0.5">{"\u25BC "}{btn.text}</div>
+                      </button>
+                      <button onClick={() => insertUrlButton(btn)} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50">
+                        {"\u25A0 \u30DC\u30BF\u30F3\u5F62\u5F0F\u3067\u633F\u5165"}
+                        <div className="text-[10px] text-gray-400 mt-0.5">{"[\u25A0 "}{btn.text}{"]"}</div>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <textarea ref={bodyRef} value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} rows={8} className="w-full px-3 py-2 border rounded-lg text-sm resize-none font-mono" />
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={cancel} className="px-4 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">{"\u30AD\u30E3\u30F3\u30BB\u30EB"}</button>
