@@ -12,7 +12,7 @@ const CALL_RESULT_LABELS: Record<string, string> = {
 };
 
 function resolveVars(text: string, customer: any, org: any, staffName: string) {
-  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || "org_default"}`;
+  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || "org_default"}?c=${customer.id || ""}`;
   return text
     .replace(/\{\{customer_name\}\}/g, customer.name || "")
     .replace(/\{\{customer_email\}\}/g, customer.email || "")

@@ -7,9 +7,9 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { organizationId, name, email, phone, visitDate, visitTime, visitMethod, memo } = body;
+    const { organizationId, customerId, name, email, phone, visitDate, visitTime, visitMethod, memo } = body;
 
-    if (!organizationId || !name || !email || !visitDate || !visitTime) {
+    if (!organizationId || !visitDate || !visitTime) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -25,40 +25,66 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
-    let customer = await prisma.customer.findFirst({
-      where: { email, organizationId },
-    });
+    let customer = null;
+    let customerName = name || "";
+    let customerEmail = email || "";
+    let customerPhone = phone || "";
 
-    const defaultStatus = await prisma.status.findFirst({
-      where: { organizationId, isDefault: true },
-    });
+    // If customerId provided, use existing customer
+    if (customerId) {
+      customer = await prisma.customer.findUnique({ where: { id: customerId } });
+      if (customer) {
+        customerName = customer.name || customerName;
+        customerEmail = customer.email || customerEmail;
+        customerPhone = customer.phone || customerPhone;
+        await prisma.customer.update({
+          where: { id: customer.id },
+          data: { isNeedAction: true },
+        });
+      }
+    }
 
-    if (!customer) {
+    // Fallback: find by email or create new
+    if (!customer && customerEmail) {
+      customer = await prisma.customer.findFirst({
+        where: { email: customerEmail, organizationId },
+      });
+      if (customer) {
+        await prisma.customer.update({
+          where: { id: customer.id },
+          data: { isNeedAction: true },
+        });
+      }
+    }
+
+    if (!customer && customerName && customerEmail) {
+      const defaultStatus = await prisma.status.findFirst({
+        where: { organizationId, isDefault: true },
+      });
       customer = await prisma.customer.create({
         data: {
-          name,
-          email,
-          phone: phone || "",
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
           organizationId,
           sourcePortal: "STORE_VISIT",
           isNeedAction: true,
           statusId: defaultStatus?.id || undefined,
         },
       });
-    } else {
-      await prisma.customer.update({
-        where: { id: customer.id },
-        data: { isNeedAction: true },
-      });
+    }
+
+    if (!customer) {
+      return NextResponse.json({ error: "Customer not found" }, { status: 400 });
     }
 
     const booking = await prisma.storeVisitBooking.create({
       data: {
         organizationId,
         customerId: customer.id,
-        name,
-        email,
-        phone: phone || "",
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
         visitDate: new Date(visitDate),
         visitTime,
         visitMethod: visitMethod || "",
@@ -77,7 +103,7 @@ export async function POST(request: Request) {
       data: {
         organizationId,
         customerId: customer.id,
-        title: `${name} - \u6765\u5e97\u4e88\u7d04`,
+        title: `${customerName} - \u6765\u5e97\u4e88\u7d04`,
         description: `${visitMethod ? visitMethod + "\n" : ""}${memo || ""}`,
         type: "VISIT",
         startAt,
@@ -85,13 +111,13 @@ export async function POST(request: Request) {
       },
     });
 
-    if (setting.autoReplySubject && setting.autoReplyBody && email) {
+    if (setting.autoReplySubject && setting.autoReplyBody && customerEmail) {
       const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
       const fromName = org.storeName || org.name || "CRM";
-      const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${organizationId}`;
+      const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${organizationId}?c=${customer.id}`;
 
       const vars: Record<string, string> = {
-        "{{customer_name}}": name,
+        "{{customer_name}}": customerName,
         "{{store_name}}": org.storeName || org.name || "",
         "{{store_address}}": org.storeAddress || org.address || "",
         "{{store_phone}}": org.storePhone || org.phone || "",
@@ -112,7 +138,7 @@ export async function POST(request: Request) {
       try {
         await resend.emails.send({
           from: `${fromName} <${fromEmail}>`,
-          to: email,
+          to: customerEmail,
           subject: subjectText,
           text: bodyText,
         });

@@ -7,6 +7,9 @@ export async function GET(
 ) {
   try {
     const { orgId } = await params;
+    const url = new URL(request.url);
+    const customerId = url.searchParams.get("c");
+
     const setting = await prisma.storeVisitSetting.findUnique({
       where: { organizationId: orgId },
     });
@@ -17,6 +20,16 @@ export async function GET(
       where: { id: orgId },
       select: { id: true, name: true, storeName: true, storeAddress: true, storePhone: true, storeHours: true },
     });
+
+    let customer = undefined;
+    if (customerId) {
+      const c = await prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { id: true, name: true },
+      });
+      if (c) customer = c;
+    }
+
     return NextResponse.json({
       setting: {
         closedDays: setting.closedDays,
@@ -26,6 +39,7 @@ export async function GET(
         storeNotice: setting.storeNotice,
       },
       organization: org,
+      customer,
     });
   } catch (error) {
     console.error("GET public visit error:", error);
