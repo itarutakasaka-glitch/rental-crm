@@ -10,7 +10,7 @@ function Logo() {
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
       <div className={rajdhani.className} style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-        <span style={{ fontSize: 26, fontWeight: 700, letterSpacing: 2, color: "#0891b2", lineHeight: 1 }}>Claude</span>
+        <span style={{ fontSize: 26, fontWeight: 500, letterSpacing: 2, color: "#0891b2", lineHeight: 1 }}>Claude</span>
         <span style={{ fontSize: 26, fontWeight: 500, letterSpacing: 2, color: "#0891b2", lineHeight: 1 }}>Cloud</span>
       </div>
     </div>

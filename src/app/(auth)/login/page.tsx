@@ -44,7 +44,7 @@ export default function LoginPage() {
         <div style={{ textAlign: "center", marginBottom: 32 }}>
 
           <div style={{ display: "flex", justifyContent: "center", gap: 6, alignItems: "baseline" }}>
-            <span style={{ fontSize: 26, fontWeight: 700, letterSpacing: 2, fontFamily: "Rajdhani, sans-serif", color: "#0891b2" }}>Claude</span>
+            <span style={{ fontSize: 26, fontWeight: 500, letterSpacing: 2, fontFamily: "Rajdhani, sans-serif", color: "#0891b2" }}>Claude</span>
             <span style={{ fontSize: 26, fontWeight: 500, letterSpacing: 2, fontFamily: "Rajdhani, sans-serif", color: "#0891b2" }}>Cloud</span>
           </div>
           
