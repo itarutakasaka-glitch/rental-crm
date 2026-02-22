@@ -9,16 +9,14 @@ function Logo() {
 
       <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
         <span style={{
-          fontSize: 20, fontWeight: 700, letterSpacing: 2,
+          fontSize: 26, fontWeight: 700, letterSpacing: 2,
           fontFamily: "Rajdhani, 'Courier New', sans-serif",
           color: "#0891b2",
-          textShadow: "0 0 8px rgba(8,145,178,0.3)",
         }}>Claude</span>
         <span style={{
-          fontSize: 20, fontWeight: 500, letterSpacing: 2,
+          fontSize: 26, fontWeight: 500, letterSpacing: 2,
           fontFamily: "Rajdhani, 'Courier New', sans-serif",
           color: "#0891b2",
-          textShadow: "0 0 8px rgba(8,145,178,0.3)",
         }}>Cloud</span>
       </div>
     </div>
