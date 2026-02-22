@@ -14,6 +14,7 @@ const menuItems = [
       { label: "\u30EF\u30FC\u30AF\u30D5\u30ED\u30FC", href: "/settings/workflow" },
       { label: "\u7D44\u7E54\u60C5\u5831", href: "/settings/organization" },
       { label: "\u62C5\u5F53\u8005", href: "/settings/staff" },
+      { label: "\u6765\u5E97\u4E88\u7D04", href: "/settings/store-visit" },
     ],
   },
 ];
