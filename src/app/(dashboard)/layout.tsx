@@ -1,23 +1,17 @@
 import { redirect } from "next/navigation";
+import { Rajdhani } from "next/font/google";
+
+const rajdhani = Rajdhani({ subsets: ["latin"], weight: ["400", "500", "600", "700"], display: "swap" });
 import { createClient } from "@/lib/supabase/server";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { LogoutButton } from "@/components/layout/logout-button";
 
 function Logo() {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-
-      <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-        <span style={{
-          fontSize: 26, fontWeight: 700, letterSpacing: 2,
-          fontFamily: "Rajdhani, 'Courier New', sans-serif",
-          color: "#0891b2",
-        }}>Claude</span>
-        <span style={{
-          fontSize: 26, fontWeight: 500, letterSpacing: 2,
-          fontFamily: "Rajdhani, 'Courier New', sans-serif",
-          color: "#0891b2",
-        }}>Cloud</span>
+    <div style={{ display: "flex", alignItems: "center" }}>
+      <div className={rajdhani.className} style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+        <span style={{ fontSize: 26, fontWeight: 700, letterSpacing: 2, color: "#0891b2", lineHeight: 1 }}>Claude</span>
+        <span style={{ fontSize: 26, fontWeight: 500, letterSpacing: 2, color: "#0891b2", lineHeight: 1 }}>Cloud</span>
       </div>
     </div>
   );
@@ -47,7 +41,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <a key={item.href} href={item.href} style={{
                 padding: "6px 16px", fontSize: 12, fontWeight: 500, color: "#6b7280",
                 textDecoration: "none", borderRadius: 4, letterSpacing: 1,
-                fontFamily: "Rajdhani, 'Courier New', sans-serif",
+                
               }}>{item.label}</a>
             ))}
           </nav>
