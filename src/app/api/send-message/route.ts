@@ -6,7 +6,6 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const CALL_RESULT_LABELS: Record<string, string> = {
-  "\u6210\u529F\uFF08\u901A\u8A71\u3042\u308A\uFF09": "\u6210\u529F\uFF08\u901A\u8A71\u3042\u308A\uFF09",
   success: "\u6210\u529F\uFF08\u901A\u8A71\u3042\u308A\uFF09",
   noanswer: "\u4E0D\u5728",
   busy: "\u8A71\u3057\u4E2D",
@@ -31,6 +30,20 @@ function resolveVars(text: string, customer: any, org: any, staffName: string) {
     .replace(/\{\{visit_url\}\}/g, visitUrl);
 }
 
+function textToHtml(text: string): string {
+  let h = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  h = h.replace(/\[\u25A0\s*(.+?)\]\s*(https?:\/\/\S+)/g, (_m: string, label: string, url: string) =>
+    `<a href="${url}" style="display:inline-block;padding:12px 28px;background:#0891b2;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;margin:4px 0;">${label}</a>`);
+  h = h.replace(/\u25BC\s*(.+?)\n\s*(https?:\/\/\S+)/g, (_m: string, label: string, url: string) =>
+    `<strong>${label}</strong><br><a href="${url}" style="color:#0891b2;">${url}</a>`);
+  h = h.replace(/(https?:\/\/\S+)/g, (url: string) => {
+    if (url.includes('"')) return url;
+    return `<a href="${url}" style="color:#0891b2;">${url}</a>`;
+  });
+  h = h.replace(/\n/g, "<br>");
+  return h;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -43,14 +56,12 @@ export async function POST(request: NextRequest) {
     const { customerId, channel, subject, body, to, lineUserId, phone, callResult } = await request.json();
     if (!customerId || !body) return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
 
-    // Fetch customer with relations + org for variable expansion
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
       include: { assignee: true, properties: true },
     });
     const org = await prisma.organization.findFirst({ where: { id: dbUser.organizationId! } });
 
-    // Resolve template variables
     let finalBody = resolveVars(body, customer || {}, org, dbUser.name || "");
     let finalSubject = subject ? resolveVars(subject, customer || {}, org, dbUser.name || "") : null;
 
@@ -65,7 +76,7 @@ export async function POST(request: NextRequest) {
         from: `${fromName} <${fromEmail}>`,
         to: [to],
         subject: finalSubject || "\uFF08\u4EF6\u540D\u306A\u3057\uFF09",
-        text: finalBody,
+        html: textToHtml(finalBody),
         replyTo: fromEmail,
       });
       if (result.error) {
@@ -90,7 +101,6 @@ export async function POST(request: NextRequest) {
       }
     } else if (channel === "SMS") {
       if (!phone) return NextResponse.json({ error: "Missing phone" }, { status: 400 });
-      console.log("[send-message] SMS to", phone, "body:", finalBody);
       messageStatus = "SENT";
     } else if (channel === "CALL") {
       const resultLabel = CALL_RESULT_LABELS[callResult] || callResult || "\u4E0D\u660E";
@@ -113,18 +123,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Auto clear isNeedAction on outbound communication
     if (channel === "EMAIL" || channel === "LINE" || channel === "SMS") {
-      await prisma.customer.update({
-        where: { id: customerId },
-        data: { isNeedAction: false, lastContactAt: new Date() },
-      });
+      await prisma.customer.update({ where: { id: customerId }, data: { isNeedAction: false, lastContactAt: new Date() } });
     }
     if (channel === "CALL" && callResult === "success") {
-      await prisma.customer.update({
-        where: { id: customerId },
-        data: { isNeedAction: false, lastContactAt: new Date() },
-      });
+      await prisma.customer.update({ where: { id: customerId }, data: { isNeedAction: false, lastContactAt: new Date() } });
     }
 
     return NextResponse.json(message, { status: 201 });
