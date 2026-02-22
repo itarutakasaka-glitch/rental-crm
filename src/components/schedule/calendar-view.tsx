@@ -7,9 +7,10 @@ import type { AuthUser } from "@/lib/auth";
 
 const SCH_TYPES: Record<string, { l: string; i: string; c: string }> = {
   VISIT: { l: "\u6765\u5e97", i: "\ud83c\udfe2", c: "#8b5cf6" },
-  VIEWING: { l: "\u5185\u898b", i: "\ud83c\udfe0", c: "#3b82f6" },
+  ONSITE: { l: "\u73fe\u5730\u5f85\u3061\u5408\u308f\u305b", i: "\ud83d\udccd", c: "#3b82f6" },
+  ONLINE: { l: "\u30aa\u30f3\u30e9\u30a4\u30f3\u63a5\u5ba2", i: "\ud83d\udcbb", c: "#06b6d4" },
   CALL: { l: "\u67b6\u96fb", i: "\ud83d\udcde", c: "#f59e0b" },
-  FOLLOW_UP: { l: "\u30d5\u30a9\u30ed\u30fc", i: "\ud83d\udce7", c: "#10b981" },
+  RECEPTION: { l: "\u63a5\u5ba2", i: "\ud83e\udd1d", c: "#10b981" },
   CONTRACT: { l: "\u5951\u7d04", i: "\ud83d\udcdd", c: "#ef4444" },
   OTHER: { l: "\u305d\u306e\u4ed6", i: "\ud83d\udccc", c: "#6b7280" },
 };
