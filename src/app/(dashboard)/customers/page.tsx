@@ -125,7 +125,7 @@ export default function CustomersPage() {
                 {statuses.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               <select value={filterStaff} onChange={(e) => setFilterStaff(e.target.value)}
-                style={{ padding: "5px 28px 5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 5, color: "#374151", minWidth: 100, appearance: "auto" as const }}>
+                style={{ padding: "5px 32px 5px 10px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 5, color: "#374151", minWidth: 120 }}>
                 <option value="">全担当者</option>
                 {staffList.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
