@@ -141,7 +141,7 @@ export default function StoreVisitSettingPage() {
       </div>
 
       {/* 郢ｧ・ｫ郢ｧ・ｹ郢ｧ・ｿ郢晢｣ｰ髫ｪ・ｭ陜繝ｻ*/}
-      <div style={S.card}>
+      <div style={{...S.card, display: "none"}}>
         <div style={S.sectionHeader}>
           <span style={S.sectionTitle}>{"\u30AB\u30B9\u30BF\u30E0\u8A2D\u554F"}</span>
           <button style={{ ...S.saveBtn, padding: "6px 16px", fontSize: 12 }}>{"\u8A2D\u554F\u3092\u8FFD\u52A0"}</button>
