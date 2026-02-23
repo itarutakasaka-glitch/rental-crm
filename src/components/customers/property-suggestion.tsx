@@ -141,7 +141,7 @@ export default function PropertySuggestion({ customerId, customerName, customerE
   return (
     <div style={{ display: "flex", height: "100%", gap: 0, background: "#f9fafb" }}>
       {/* Left: Preference Panel */}
-      <div style={{ width: 280, minWidth: 280, background: "#fff", borderRight: "1px solid #e5e7eb", overflowY: "auto", padding: "16px" }}>
+      <div style={{ width: 220, minWidth: 220, background: "#fff", borderRight: "1px solid #e5e7eb", overflowY: "auto", padding: "16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{"\u5E0C\u671B\u6761\u4EF6"}</span>
           {saved && <span style={{ fontSize: 11, color: "#16a34a" }}>{"\u2705 \u4FDD\u5B58\u6E08"}</span>}
@@ -252,9 +252,9 @@ export default function PropertySuggestion({ customerId, customerName, customerE
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {filtered.map((p: any) => (
-            <div key={p.id} style={{ display: "flex", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
+            <div key={p.id} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
               {/* Property Image */}
-              <div style={{ width: 140, minWidth: 140, height: 120, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
+              <div style={{ width: "100%", height: 60, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
