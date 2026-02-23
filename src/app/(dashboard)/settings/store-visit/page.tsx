@@ -91,11 +91,11 @@ export default function StoreVisitSettingPage() {
         </div>
       )}
 
-      {/* 邵ｺ髮・ｽｮ・｢隶貞･竊馴勗・ｨ驕会ｽｺ邵ｺ蜷ｶ・玖ｫ繝ｻ・ｰ・ｱ */}
+      {/* 驍ｵ・ｺ鬮ｮ繝ｻ・ｽ・ｮ繝ｻ・｢髫ｶ雋楪・･遶企ｦｴ蜍励・・ｨ鬩穂ｼ夲ｽｽ・ｺ驍ｵ・ｺ陷ｷ・ｶ繝ｻ邇厄ｽｫ・ｰ郢晢ｽｻ繝ｻ・ｰ繝ｻ・ｱ */}
       <div style={S.card}>
         <div style={S.sectionHeader}>
           <span style={S.sectionTitle}>{"\u304A\u5BA2\u69D8\u306B\u8868\u793A\u3059\u308B\u60C5\u5831"}</span>
-          <button style={{ padding: "4px 12px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#374151" }} onClick={() => setEditInfo(!editInfo)}>{"\u270F"}</button>
+          <button style={{ padding: "4px 12px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#374151" }} onClick={() => setEditInfo(!editInfo)}>{"\u2710 \u7DE8\u96C6"}</button>
         </div>
         {!editInfo ? (
           <>
@@ -140,7 +140,7 @@ export default function StoreVisitSettingPage() {
         )}
       </div>
 
-      {/* 郢ｧ・ｫ郢ｧ・ｹ郢ｧ・ｿ郢晢｣ｰ髫ｪ・ｭ陜繝ｻ*/}
+      {/* 驛｢・ｧ繝ｻ・ｫ驛｢・ｧ繝ｻ・ｹ驛｢・ｧ繝ｻ・ｿ驛｢譎｢・｣・ｰ鬮ｫ・ｪ繝ｻ・ｭ髯懶｣ｰ郢晢ｽｻ*/}
       <div style={{...S.card, display: "none"}}>
         <div style={S.sectionHeader}>
           <span style={S.sectionTitle}>{"\u30AB\u30B9\u30BF\u30E0\u8A2D\u554F"}</span>
@@ -149,11 +149,11 @@ export default function StoreVisitSettingPage() {
         <p style={{ fontSize: 13, color: "#9ca3af" }}>{"\u30AB\u30B9\u30BF\u30E0\u8A2D\u554F\u306F\u307E\u3060\u767B\u9332\u3055\u308C\u3066\u3044\u307E\u305B\u3093"}</p>
       </div>
 
-      {/* 隴夲ｽ･陟主ｶｺ・ｺ閧ｲ・ｴ繝ｻ・ｾ蠕後・髢ｾ・ｪ陷肴・・ｿ豈費ｽｿ・｡髫ｪ・ｭ陞ｳ繝ｻ*/}
+      {/* 髫ｴ螟ｲ・ｽ・･髯滉ｸｻ・ｶ・ｺ繝ｻ・ｺ髢ｧ・ｲ繝ｻ・ｴ郢晢ｽｻ繝ｻ・ｾ陟募ｾ後・鬮｢・ｾ繝ｻ・ｪ髯ｷ閧ｴ繝ｻ繝ｻ・ｿ雎郁ｲｻ・ｽ・ｿ繝ｻ・｡鬮ｫ・ｪ繝ｻ・ｭ髯橸ｽｳ郢晢ｽｻ*/}
       <div style={S.card}>
         <div style={S.sectionHeader}>
           <span style={S.sectionTitle}>{"\u6765\u5E97\u4E88\u7D04\u5F8C\u306E\u81EA\u52D5\u8FD4\u4FE1\u8A2D\u5B9A"}</span>
-          <button style={{ padding: "4px 12px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#374151" }} onClick={() => setEditReply(!editReply)}>{"\u270F"}</button>
+          <button style={{ padding: "4px 12px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#374151" }} onClick={() => setEditReply(!editReply)}>{"\u2710 \u7DE8\u96C6"}</button>
         </div>
         {!editReply ? (
           <div style={S.replyPreview}>
