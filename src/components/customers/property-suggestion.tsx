@@ -123,7 +123,7 @@ export default function PropertySuggestion({ customerId, customerName, customerE
       const res = await fetch("/api/send-message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId, email: customerEmail, subject, body, channel: "EMAIL" }),
+        body: JSON.stringify({ customerId, to: customerEmail, subject, body, channel: "EMAIL" }),
       });
       if (res.ok) {
         setSent(prev => new Set(prev).add(prop.id));
