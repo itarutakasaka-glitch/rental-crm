@@ -91,7 +91,7 @@ export default function StoreVisitSettingPage() {
         </div>
       )}
 
-      {/* お客様に表示する情報 */}
+      {/* 縺雁ｮ｢讒倥↓陦ｨ遉ｺ縺吶ｋ諠・ｱ */}
       <div style={S.card}>
         <div style={S.sectionHeader}>
           <span style={S.sectionTitle}>{"\u304A\u5BA2\u69D8\u306B\u8868\u793A\u3059\u308B\u60C5\u5831"}</span>
@@ -140,7 +140,7 @@ export default function StoreVisitSettingPage() {
         )}
       </div>
 
-      {/* カスタム設問 */}
+      {/* 繧ｫ繧ｹ繧ｿ繝險ｭ蝠・*/}
       <div style={S.card}>
         <div style={S.sectionHeader}>
           <span style={S.sectionTitle}>{"\u30AB\u30B9\u30BF\u30E0\u8A2D\u554F"}</span>
@@ -149,7 +149,7 @@ export default function StoreVisitSettingPage() {
         <p style={{ fontSize: 13, color: "#9ca3af" }}>{"\u30AB\u30B9\u30BF\u30E0\u8A2D\u554F\u306F\u307E\u3060\u767B\u9332\u3055\u308C\u3066\u3044\u307E\u305B\u3093"}</p>
       </div>
 
-      {/* 来店予約後の自動返信設定 */}
+      {/* 譚･蠎嶺ｺ育ｴ・ｾ後・閾ｪ蜍戊ｿ比ｿ｡險ｭ螳・*/}
       <div style={S.card}>
         <div style={S.sectionHeader}>
           <span style={S.sectionTitle}>{"\u6765\u5E97\u4E88\u7D04\u5F8C\u306E\u81EA\u52D5\u8FD4\u4FE1\u8A2D\u5B9A"}</span>
