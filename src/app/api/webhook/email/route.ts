@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     const body = bodyText || bodyHtml || "";
     const fromAddress = typeof fromRaw === "string" ? fromRaw : fromRaw?.address || (Array.isArray(fromRaw) ? fromRaw[0]?.address : "") || "";
 
-    console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] From:", fromAddress, "Subject:", subject);
+    console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] From:", fromAddress, "Subject:", subject);
 
     const org = await prisma.organization.findFirst();
     if (!org) return NextResponse.json({ error: "No organization" }, { status: 400 });
