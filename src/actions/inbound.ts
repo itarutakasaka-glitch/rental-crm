@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 import { prisma } from "@/lib/db/prisma";
 import { parseInquiryEmail } from "@/lib/parsers/inquiry-email-parser";
 import { revalidatePath } from "next/cache";
@@ -23,7 +23,7 @@ export async function processInboundEmail(organizationId: string, data: { from: 
     },
   });
   if (parsed.propertyName) {
-    await prisma.inquiryProperty.create({ data: { customerId: customer.id, name: parsed.propertyName, address: parsed.propertyAddress, station: parsed.station, rent: parsed.rent, area: parsed.area, layout: parsed.layout } });
+    await prisma.inquiryProperty.create({ data: { customerId: customer.id, name: parsed.propertyName, address: parsed.propertyAddress, station: parsed.station, rent: parsed.rent ? String(parsed.rent) : null, area: parsed.area ? String(parsed.area) : null, layout: parsed.layout } });
   }
   await prisma.message.create({ data: { customerId: customer.id, direction: "INBOUND", channel: "EMAIL", subject: data.subject, body: data.body, status: "SENT" } });
   revalidatePath("/customers");
