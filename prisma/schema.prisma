@@ -18,6 +18,9 @@ model Organization {
   email     String?
   address   String?
   website        String?
+  autoReplyEnabled  Boolean  @default(false)
+  autoReplySubject   String   @default("")
+  autoReplyTemplate  String   @default("")
   storeName      String?
   storeAddress   String?
   storePhone     String?

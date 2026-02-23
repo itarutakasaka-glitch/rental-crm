@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 type Reminder = {
   id: string;
@@ -37,6 +37,18 @@ const TIMING_LABELS: Record<string, string> = {
   "2_hours_before": "\u6765\u5E97\u4E88\u5B9A\u306E2\u6642\u9593\u524D",
 };
 
+const VARS = [
+  { label: "{{customer_name}}", desc: "\u9867\u5BA2\u540D" },
+  { label: "{{customer_email}}", desc: "\u30E1\u30FC\u30EB" },
+  { label: "{{customer_phone}}", desc: "\u96FB\u8A71" },
+  { label: "{{staff_name}}", desc: "\u62C5\u5F53\u8005" },
+  { label: "{{store_name}}", desc: "\u5E97\u8217\u540D" },
+  { label: "{{store_phone}}", desc: "\u5E97\u8217\u96FB\u8A71" },
+  { label: "{{visit_date}}", desc: "\u6765\u5E97\u65E5\u6642" },
+  { label: "{{property_name}}", desc: "\u7269\u4EF6\u540D" },
+  { label: "{{line_url}}", desc: "LINE URL" },
+];
+
 export default function ReminderSettingsPage() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,13 +56,12 @@ export default function ReminderSettingsPage() {
   const [editForm, setEditForm] = useState<Partial<Reminder>>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [newForm, setNewForm] = useState<Partial<Reminder>>({
-    channel: "EMAIL",
-    timing: "1_day_before",
-    timingHour: "10:00",
-    subject: "",
-    body: "",
-    skipLineNotAdded: false,
+    channel: "EMAIL", timing: "1_day_before", timingHour: "10:00",
+    subject: "", body: "", skipLineNotAdded: false,
   });
+  const newSubjectRef = useRef<HTMLInputElement>(null);
+  const newBodyRef = useRef<HTMLTextAreaElement>(null);
+  const editBodyRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchReminders = useCallback(async () => {
     try {
@@ -59,59 +70,25 @@ export default function ReminderSettingsPage() {
         const data = await res.json();
         setReminders(Array.isArray(data) ? data : []);
       }
-    } catch (e) {
-      console.error("Failed to fetch reminders:", e);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    fetchReminders();
-  }, [fetchReminders]);
+  useEffect(() => { fetchReminders(); }, [fetchReminders]);
 
   const handleAdd = async () => {
-    try {
-      const res = await fetch("/api/reminders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newForm),
-      });
-      if (res.ok) {
-        setShowAddForm(false);
-        setNewForm({ channel: "EMAIL", timing: "1_day_before", timingHour: "10:00", subject: "", body: "", skipLineNotAdded: false });
-        fetchReminders();
-      }
-    } catch (e) {
-      console.error("Failed to add reminder:", e);
-    }
+    const res = await fetch("/api/reminders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newForm) });
+    if (res.ok) { setShowAddForm(false); setNewForm({ channel: "EMAIL", timing: "1_day_before", timingHour: "10:00", subject: "", body: "", skipLineNotAdded: false }); fetchReminders(); }
   };
 
   const handleUpdate = async (id: string) => {
-    try {
-      const res = await fetch("/api/reminders", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, ...editForm }),
-      });
-      if (res.ok) {
-        setEditingId(null);
-        setEditForm({});
-        fetchReminders();
-      }
-    } catch (e) {
-      console.error("Failed to update reminder:", e);
-    }
+    const res = await fetch("/api/reminders", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, ...editForm }) });
+    if (res.ok) { setEditingId(null); setEditForm({}); fetchReminders(); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("\u3053\u306E\u30EA\u30DE\u30A4\u30F3\u30C9\u3092\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F")) return;
-    try {
-      const res = await fetch(`/api/reminders?id=${id}`, { method: "DELETE" });
-      if (res.ok) fetchReminders();
-    } catch (e) {
-      console.error("Failed to delete reminder:", e);
-    }
+    const res = await fetch(`/api/reminders?id=${id}`, { method: "DELETE" });
+    if (res.ok) fetchReminders();
   };
 
   const startEdit = (r: Reminder) => {
@@ -119,43 +96,58 @@ export default function ReminderSettingsPage() {
     setEditForm({ channel: r.channel, timing: r.timing, timingHour: r.timingHour, subject: r.subject, body: r.body, skipLineNotAdded: r.skipLineNotAdded });
   };
 
+  const insertVar = (label: string, target: "newSubject" | "newBody" | "editBody") => {
+    if (target === "newSubject") {
+      const el = newSubjectRef.current; if (!el) return;
+      const s = el.selectionStart || 0, e = el.selectionEnd || 0;
+      const nv = (newForm.subject || "").slice(0, s) + label + (newForm.subject || "").slice(e);
+      setNewForm({ ...newForm, subject: nv });
+      setTimeout(() => { el.focus(); el.selectionStart = el.selectionEnd = s + label.length; }, 0);
+    } else if (target === "newBody") {
+      const el = newBodyRef.current; if (!el) return;
+      const s = el.selectionStart || 0, e = el.selectionEnd || 0;
+      const nv = (newForm.body || "").slice(0, s) + label + (newForm.body || "").slice(e);
+      setNewForm({ ...newForm, body: nv });
+      setTimeout(() => { el.focus(); el.selectionStart = el.selectionEnd = s + label.length; }, 0);
+    } else {
+      const el = editBodyRef.current; if (!el) return;
+      const s = el.selectionStart || 0, e = el.selectionEnd || 0;
+      const nv = (editForm.body || "").slice(0, s) + label + (editForm.body || "").slice(e);
+      setEditForm({ ...editForm, body: nv });
+      setTimeout(() => { el.focus(); el.selectionStart = el.selectionEnd = s + label.length; }, 0);
+    }
+  };
+
   const selectStyle: React.CSSProperties = { padding: "6px 10px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6, background: "#fff", color: "#374151", outline: "none" };
   const inputStyle: React.CSSProperties = { ...selectStyle, width: "100%" };
   const btnPrimary: React.CSSProperties = { padding: "7px 20px", fontSize: 13, fontWeight: 600, background: "#d4a017", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" };
   const btnSecondary: React.CSSProperties = { padding: "7px 16px", fontSize: 13, fontWeight: 500, background: "#fff", color: "#6b7280", border: "1px solid #d1d5db", borderRadius: 6, cursor: "pointer" };
   const btnDanger: React.CSSProperties = { padding: "5px 12px", fontSize: 12, fontWeight: 500, background: "#fff", color: "#dc2626", border: "1px solid #fca5a5", borderRadius: 6, cursor: "pointer" };
+  const varBtn: React.CSSProperties = { padding: "2px 8px", fontSize: 11, border: "1px solid #e5e7eb", borderRadius: 4, background: "#f9fafb", color: "#6b7280", cursor: "pointer" };
 
-  if (loading) {
-    return (
-      <div style={{ padding: 40, textAlign: "center" }}>
-        <div style={{ width: 40, height: 40, border: "3px solid #e5e7eb", borderTopColor: "#d4a017", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+  if (loading) return <div style={{ padding: 32 }}>Loading...</div>;
+
+  const varButtons = (target: "newSubject" | "newBody" | "editBody") => (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>{"\u5909\u6570\u3092\u633F\u5165"}</div>
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        {VARS.map((v) => (<button key={v.label} onClick={() => insertVar(v.label, target)} style={varBtn} title={v.label}>{v.desc}</button>))}
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <div style={{ padding: "32px 40px", maxWidth: 960 }}>
-      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111827", margin: 0 }}>
-          {"\u30EA\u30DE\u30A4\u30F3\u30C9\u8A2D\u5B9A"}
-        </h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111827", margin: 0 }}>{"\u30EA\u30DE\u30A4\u30F3\u30C9\u8A2D\u5B9A"}</h1>
       </div>
 
-      {/* Section */}
       <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
-        {/* Section header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", borderBottom: "1px solid #e5e7eb", background: "#fafafa" }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, color: "#374151", margin: 0 }}>
-            {"\u6765\u5E97\u4E88\u5B9A\u304C\u3042\u308B\u9867\u5BA2\u3078\u306E\u30EA\u30DE\u30A4\u30F3\u30C9\u8A2D\u5B9A"}
-          </h2>
-          <button onClick={() => setShowAddForm(true)} style={btnPrimary}>
-            {"\u30EA\u30DE\u30A4\u30F3\u30C9\u8FFD\u52A0"}
-          </button>
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: "#374151", margin: 0 }}>{"\u6765\u5E97\u4E88\u5B9A\u304C\u3042\u308B\u9867\u5BA2\u3078\u306E\u30EA\u30DE\u30A4\u30F3\u30C9\u8A2D\u5B9A"}</h2>
+          <button onClick={() => setShowAddForm(true)} style={btnPrimary}>{"\u30EA\u30DE\u30A4\u30F3\u30C9\u8FFD\u52A0"}</button>
         </div>
 
-        {/* Add form */}
         {showAddForm && (
           <div style={{ padding: "20px 24px", borderBottom: "1px solid #e5e7eb", background: "rgba(212,160,23,0.04)" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
@@ -179,12 +171,14 @@ export default function ReminderSettingsPage() {
             {newForm.channel === "EMAIL" && (
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>{"\u4EF6\u540D"}</label>
-                <input type="text" value={newForm.subject || ""} onChange={(e) => setNewForm({ ...newForm, subject: e.target.value })} placeholder={"\u30EA\u30DE\u30A4\u30F3\u30C9\u30E1\u30FC\u30EBu306E\u4EF6\u540D"} style={inputStyle} />
+                <input ref={newSubjectRef} type="text" value={newForm.subject || ""} onChange={(e) => setNewForm({ ...newForm, subject: e.target.value })} style={inputStyle} />
+                {varButtons("newSubject")}
               </div>
             )}
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>{"\u672C\u6587"}</label>
-              <textarea value={newForm.body || ""} onChange={(e) => setNewForm({ ...newForm, body: e.target.value })} placeholder={"\u30EA\u30DE\u30A4\u30F3\u30C9\u30E1\u30C3\u30BB\u30FC\u30B8\u306E\u672C\u6587"} rows={4} style={{ ...inputStyle, resize: "vertical" }} />
+              <textarea ref={newBodyRef} value={newForm.body || ""} onChange={(e) => setNewForm({ ...newForm, body: e.target.value })} rows={4} style={{ ...inputStyle, resize: "vertical" }} />
+              {varButtons("newBody")}
             </div>
             {(newForm.channel === "LINE" || newForm.channel === "SMS") && (
               <div style={{ marginBottom: 12 }}>
@@ -201,7 +195,6 @@ export default function ReminderSettingsPage() {
           </div>
         )}
 
-        {/* Table */}
         {reminders.length === 0 && !showAddForm ? (
           <div style={{ padding: "48px 24px", textAlign: "center", color: "#9ca3af", fontSize: 14 }}>
             {"\u30EA\u30DE\u30A4\u30F3\u30C9\u304C\u8A2D\u5B9A\u3055\u308C\u3066\u3044\u307E\u305B\u3093\u3002\u300C\u30EA\u30DE\u30A4\u30F3\u30C9\u8FFD\u52A0\u300D\u304B\u3089\u8A2D\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044\u3002"}
@@ -234,7 +227,8 @@ export default function ReminderSettingsPage() {
                         <input type="time" value={editForm.timingHour} onChange={(e) => setEditForm({ ...editForm, timingHour: e.target.value })} style={selectStyle} />
                       </td>
                       <td style={{ padding: "12px 16px" }}>
-                        <textarea value={editForm.body || ""} onChange={(e) => setEditForm({ ...editForm, body: e.target.value })} rows={2} style={{ ...inputStyle, fontSize: 12 }} />
+                        <textarea ref={editBodyRef} value={editForm.body || ""} onChange={(e) => setEditForm({ ...editForm, body: e.target.value })} rows={2} style={{ ...inputStyle, fontSize: 12 }} />
+                        {varButtons("editBody")}
                       </td>
                       <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
                         <div style={{ display: "flex", gap: 6 }}>
@@ -250,16 +244,9 @@ export default function ReminderSettingsPage() {
                           {CHANNEL_OPTIONS.find((o) => o.value === r.channel)?.label || r.channel}
                         </span>
                       </td>
-                      <td style={{ padding: "12px 16px", fontSize: 13, color: "#374151" }}>
-                        {TIMING_LABELS[r.timing] || r.timing}
-                      </td>
-                      <td style={{ padding: "12px 16px", fontSize: 13, color: "#374151" }}>
-                        {r.timingHour}
-                      </td>
-                      <td style={{ padding: "12px 16px", fontSize: 13, color: "#6b7280", maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {r.subject ? `[${r.subject}] ` : ""}
-                        {r.body || "\u2014"}
-                      </td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "#374151" }}>{TIMING_LABELS[r.timing] || r.timing}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "#374151" }}>{r.timingHour}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "#6b7280", maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.subject ? `[${r.subject}] ` : ""}{r.body || "\u2014"}</td>
                       <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
                         <div style={{ display: "flex", gap: 6 }}>
                           <button onClick={() => startEdit(r)} style={btnSecondary}>{"\u7DE8\u96C6"}</button>
@@ -274,11 +261,7 @@ export default function ReminderSettingsPage() {
           </table>
         )}
       </div>
-
-      {/* Help text */}
-      <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 16 }}>
-        {"\u203B \u6765\u5E97\u4E88\u7D04\u304C\u78BA\u5B9A\u3057\u305F\u9867\u5BA2\u306B\u5BFE\u3057\u3066\u3001\u8A2D\u5B9A\u3057\u305F\u30BF\u30A4\u30DF\u30F3\u30B0\u3067\u81EA\u52D5\u7684\u306B\u30EA\u30DE\u30A4\u30F3\u30C9\u3092\u9001\u4FE1\u3057\u307E\u3059\u3002"}
-      </p>
+      <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 16 }}>{"\u203B \u6765\u5E97\u4E88\u7D04\u304C\u78BA\u5B9A\u3057\u305F\u9867\u5BA2\u306B\u5BFE\u3057\u3066\u3001\u8A2D\u5B9A\u3057\u305F\u30BF\u30A4\u30DF\u30F3\u30B0\u3067\u81EA\u52D5\u7684\u306B\u30EA\u30DE\u30A4\u30F3\u30C9\u3092\u9001\u4FE1\u3057\u307E\u3059\u3002"}</p>
     </div>
   );
 }
