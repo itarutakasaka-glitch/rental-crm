@@ -18,14 +18,13 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { customerId, budgetMin, budgetMax, preferredLayouts, preferredStations, preferredAreas, minArea, maxAge, moveInDate, otherNotes } = body;
-
+    const { customerId, ...fields } = body;
     if (!customerId) return NextResponse.json({ error: "Missing customerId" }, { status: 400 });
 
     const pref = await prisma.customerPreference.upsert({
       where: { customerId },
-      update: { budgetMin, budgetMax, preferredLayouts, preferredStations, preferredAreas, minArea, maxAge, moveInDate, otherNotes, updatedAt: new Date() },
-      create: { customerId, budgetMin, budgetMax, preferredLayouts, preferredStations, preferredAreas, minArea, maxAge, moveInDate, otherNotes },
+      update: { ...fields, updatedAt: new Date() },
+      create: { customerId, ...fields },
     });
 
     return NextResponse.json(pref);

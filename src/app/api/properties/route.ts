@@ -17,11 +17,8 @@ export async function GET(request: NextRequest) {
     });
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    // If customerId provided, do matching
     if (customerId) {
-      const pref = await prisma.customerPreference.findUnique({
-        where: { customerId },
-      });
+      const pref = await prisma.customerPreference.findUnique({ where: { customerId } });
 
       const where: any = {
         organizationId: dbUser.organizationId!,
@@ -29,35 +26,29 @@ export async function GET(request: NextRequest) {
       };
 
       if (pref) {
-        if (pref.budgetMax) where.rent = { ...(where.rent || {}), lte: pref.budgetMax };
-        if (pref.budgetMin) where.rent = { ...(where.rent || {}), gte: pref.budgetMin };
-        if (pref.minArea) where.area = { gte: pref.minArea };
-        if (pref.maxAge) where.age = { lte: pref.maxAge };
-        if (pref.preferredLayouts) {
-          const layouts = pref.preferredLayouts.split(",").map((s: string) => s.trim());
+        if (pref.rentMax) where.rent = { ...(where.rent || {}), lte: pref.rentMax };
+        if (pref.rentMin) where.rent = { ...(where.rent || {}), gte: pref.rentMin };
+        if (pref.areaMin) where.area = { gte: pref.areaMin };
+        if (pref.layout) {
+          const layouts = pref.layout.split(",").map((s: string) => s.trim());
           where.layout = { in: layouts };
         }
-        if (pref.preferredStations) {
-          const stations = pref.preferredStations.split(",").map((s: string) => s.trim());
-          where.station = { in: stations };
+        if (pref.station) {
+          where.station = { contains: pref.station };
+        }
+        if (pref.walkMinutes) {
+          where.walkMinutes = { lte: pref.walkMinutes };
         }
       }
 
-      const properties = await prisma.property.findMany({
-        where,
-        orderBy: { rent: "asc" },
-        take: 20,
-      });
-
+      const properties = await prisma.property.findMany({ where, orderBy: { rent: "asc" }, take: 20 });
       return NextResponse.json({ properties, preference: pref });
     }
 
-    // All properties
     const properties = await prisma.property.findMany({
       where: { organizationId: dbUser.organizationId! },
       orderBy: { updatedAt: "desc" },
     });
-
     return NextResponse.json(properties);
   } catch (error) {
     console.error("[GET /api/properties]", error);
