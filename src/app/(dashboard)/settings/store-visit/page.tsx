@@ -70,86 +70,9 @@ export default function StoreVisitSettingPage() {
     <div style={S.page}>
       <h1 style={S.title}>{"\u6765\u5E97\u4E88\u7D04"}</h1>
 
-      {/* Toggle */}
-      <div style={{ ...S.card, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 14, fontWeight: 500, color: "#374151" }}>{"\u6765\u5E97\u4E88\u7D04\u3092\u53EF\u80FD\u306B\u3059\u308B"}</span>
-        <button onClick={() => { upd("enabled", !setting.enabled); setTimeout(() => handleSave("info"), 100); }}
-          style={{ position: "relative", width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", background: setting.enabled ? "#0891b2" : "#d1d5db", transition: "background 0.2s" }}>
-          <span style={{ position: "absolute", top: 2, left: setting.enabled ? 22 : 2, width: 20, height: 20, borderRadius: 10, background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
-        </button>
-      </div>
+      {/* custom questions hidden */}
 
-      {/* Booking URL */}
-      {setting.enabled && bookingUrl && (
-        <div style={{ ...S.card, background: "#fffbeb", borderColor: "#fde68a" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#92400e", marginBottom: 6 }}>{"\u4E88\u7D04\u30D5\u30A9\u30FC\u30E0URL"}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <code style={{ fontSize: 12, background: "#fff", padding: "6px 10px", borderRadius: 4, border: "1px solid #e5e7eb", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{bookingUrl}</code>
-            <button onClick={() => { navigator.clipboard.writeText(bookingUrl); setMessage("URL\u30B3\u30D4\u30FC\u6E08\u307F"); setTimeout(() => setMessage(""), 2000); }}
-              style={{ ...S.saveBtn, padding: "6px 14px", fontSize: 12 }}>{"\u30B3\u30D4\u30FC"}</button>
-          </div>
-        </div>
-      )}
-
-      {/* 縺雁ｮ｢讒倥↓陦ｨ遉ｺ縺吶ｋ諠・ｱ */}
-      <div style={S.card}>
-        <div style={S.sectionHeader}>
-          <span style={S.sectionTitle}>{"\u304A\u5BA2\u69D8\u306B\u8868\u793A\u3059\u308B\u60C5\u5831"}</span>
-          <button style={S.pencil} onClick={() => setEditInfo(!editInfo)}>{"\u270F"}</button>
-        </div>
-        {!editInfo ? (
-          <>
-            <div style={S.label}>{"\u5B9A\u4F11\u65E5"}</div>
-            <div style={S.value}>{setting.closedDays || "\u2014"}</div>
-            <div style={S.label}>{"\u6765\u5E97\u4E88\u7D04\u53EF\u80FD\u6642\u9593"}</div>
-            <div style={S.value}>{setting.availableTimeStart}\uFF5E{setting.availableTimeEnd}</div>
-            <div style={S.label}>{"\u6765\u5E97\u65B9\u6CD5"}</div>
-            <div style={S.value}>{setting.visitMethods ? setting.visitMethods.split(",").join("\u3001") : "\u2014"}</div>
-            <div style={S.label}>{"\u5E97\u8217\u304B\u3089\u306E\u304A\u77E5\u3089\u305B"}</div>
-            <div style={{ ...S.value, borderBottom: "none", whiteSpace: "pre-wrap" }}>{setting.storeNotice || "\u2014"}</div>
-          </>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <div style={S.label}>{"\u5B9A\u4F11\u65E5"}</div>
-              <input style={S.input} value={setting.closedDays} onChange={e => upd("closedDays", e.target.value)} placeholder={"\u4F8B: \u6C34\u66DC\u65E5"} />
-            </div>
-            <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <div style={S.label}>{"\u958B\u59CB\u6642\u9593"}</div>
-                <input type="time" style={S.input} value={setting.availableTimeStart} onChange={e => upd("availableTimeStart", e.target.value)} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={S.label}>{"\u7D42\u4E86\u6642\u9593"}</div>
-                <input type="time" style={S.input} value={setting.availableTimeEnd} onChange={e => upd("availableTimeEnd", e.target.value)} />
-              </div>
-            </div>
-            <div>
-              <div style={S.label}>{"\u6765\u5E97\u65B9\u6CD5\uFF08\u30AB\u30F3\u30DE\u533A\u5207\u308A\uFF09"}</div>
-              <input style={S.input} value={setting.visitMethods} onChange={e => upd("visitMethods", e.target.value)} placeholder={"\u4F8B: \u5E97\u8217\u3078\u6765\u5E97,\u30D3\u30C7\u30AA\u901A\u8A71,\u5185\u898B,\u305D\u306E\u4ED6"} />
-            </div>
-            <div>
-              <div style={S.label}>{"\u5E97\u8217\u304B\u3089\u306E\u304A\u77E5\u3089\u305B"}</div>
-              <textarea style={{ ...S.textarea, minHeight: 100 }} value={setting.storeNotice} onChange={e => upd("storeNotice", e.target.value)} />
-            </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button style={S.cancelBtn} onClick={() => { setEditInfo(false); fetchSetting(); }}>{"\u30AD\u30E3\u30F3\u30BB\u30EB"}</button>
-              <button style={S.saveBtn} disabled={saving} onClick={() => handleSave("info")}>{saving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 繧ｫ繧ｹ繧ｿ繝險ｭ蝠・*/}
-      <div style={S.card}>
-        <div style={S.sectionHeader}>
-          <span style={S.sectionTitle}>{"\u30AB\u30B9\u30BF\u30E0\u8A2D\u554F"}</span>
-          <button style={{ ...S.saveBtn, padding: "6px 16px", fontSize: 12 }}>{"\u8A2D\u554F\u3092\u8FFD\u52A0"}</button>
-        </div>
-        <p style={{ fontSize: 13, color: "#9ca3af" }}>{"\u30AB\u30B9\u30BF\u30E0\u8A2D\u554F\u306F\u307E\u3060\u767B\u9332\u3055\u308C\u3066\u3044\u307E\u305B\u3093"}</p>
-      </div>
-
-      {/* 譚･蠎嶺ｺ育ｴ・ｾ後・閾ｪ蜍戊ｿ比ｿ｡險ｭ螳・*/}
+      {/* 隴夲ｽ･陟主ｶｺ・ｺ閧ｲ・ｴ繝ｻ・ｾ蠕後・髢ｾ・ｪ陷肴・・ｿ豈費ｽｿ・｡髫ｪ・ｭ陞ｳ繝ｻ*/}
       <div style={S.card}>
         <div style={S.sectionHeader}>
           <span style={S.sectionTitle}>{"\u6765\u5E97\u4E88\u7D04\u5F8C\u306E\u81EA\u52D5\u8FD4\u4FE1\u8A2D\u5B9A"}</span>
