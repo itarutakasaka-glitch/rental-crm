@@ -172,7 +172,7 @@ export default function StoreVisitSettingPage() {
             </div>
             <div style={{ background: "#f9fafb", borderRadius: 6, padding: "10px 14px" }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "#9ca3af", marginBottom: 4 }}>{"\u5229\u7528\u53EF\u80FD\u306A\u5909\u6570:"}</div>
-              <div style={{ fontSize: 11, color: "#b0b0b0" }}>{"{{customer_name}} {{store_name}} {{store_address}} {{store_phone}} {{visit_date}} {{visit_time}} {{visit_method}} {{visit_url}} {{line_url}}"}</div>
+              <div style={{ fontSize: 11, color: "#b0b0b0" }}>""</div>
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button style={S.cancelBtn} onClick={() => { setEditReply(false); fetchSetting(); }}>{"\u30AD\u30E3\u30F3\u30BB\u30EB"}</button>

@@ -157,6 +157,8 @@ export async function POST(request: Request) {
         "{{visit_date}}": visitDate,
         "{{visit_time}}": visitTime,
         "{{visit_method}}": visitMethod || "",
+        "{{num_guests}}": String(body.numGuests || 1),
+        "{{visit_memo}}": memo || "",
         "{{visit_url}}": visitUrl,
         "{{line_url}}": org.lineUrl || "",
       };
