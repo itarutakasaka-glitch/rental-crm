@@ -36,8 +36,8 @@ export default function HomePage() {
   const needAction = customers.filter((c: any) => c.isNeedAction);
   const tabs = [
     { id: "all", label: "すべて", count: needAction.length },
-    { id: "inquiry", label: "反響", count: needAction.filter((c: any) => c.sourcePortal).length },
-    { id: "message", label: "メッセージ", count: needAction.filter((c: any) => c.lastMessage).length },
+    { id: "inquiry", label: "反響", count: needAction.filter((c: any) => !c.lastContactAt).length },
+    { id: "message", label: "メッセージ", count: needAction.filter((c: any) => c.lastContactAt).length },
   ];
 
   const filtered = activeTab === "all" ? needAction
@@ -77,7 +77,7 @@ export default function HomePage() {
               <a key={c.id} href={"/customers?id=" + c.id} style={{ display: "block", padding: "14px 16px", borderBottom: "1px solid #f3f4f6", textDecoration: "none", color: "inherit" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
                   <div>
-                    <span style={{ fontSize: 11, color: "#9ca3af", marginRight: 8 }}>{c.lastMessage?.direction === "INBOUND" ? "受信" : "反響"}</span>
+                    <span style={{ fontSize: 11, color: "#9ca3af", marginRight: 8 }}>{!c.lastContactAt ? "反響" : "受信"}</span>
                     <span style={{ fontSize: 11, color: "#6b7280", marginRight: 8 }}>担当者：{c.assignee?.name || "なし"}</span>
                     <span style={{ fontSize: 11, color: "#b8860b" }}>{timeAgo(c.updatedAt)}</span>
                   </div>
