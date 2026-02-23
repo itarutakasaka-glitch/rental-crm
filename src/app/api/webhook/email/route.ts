@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
 // SUUMO parser
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
               area: ("propertyArea" in parsed ? (parsed as any).propertyArea : null) || null,
               rent: ("propertyRent" in parsed ? (parsed as any).propertyRent : null) || null,
               layout: ("propertyLayout" in parsed ? (parsed as any).propertyLayout : null) || null,
-              portalUrl: ("propertyUrl" in parsed ? (parsed as any).propertyUrl : null) || null,
+              url: ("propertyUrl" in parsed ? (parsed as any).propertyUrl : null) || null,
             },
           });
         }

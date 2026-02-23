@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
@@ -19,7 +19,7 @@ function resolveVars(text: string, customer: any, org: any, staffName: string) {
     .replace(/\{\{customer_phone\}\}/g, customer.phone || "")
     .replace(/\{\{staff_name\}\}/g, staffName || "")
     .replace(/\{\{property_name\}\}/g, customer.properties?.[0]?.name || "")
-    .replace(/\{\{property_url\}\}/g, customer.properties?.[0]?.portalUrl || customer.properties?.[0]?.portalUrl || customer.properties?.[0]?.url || "")
+    .replace(/\{\{property_url\}\}/g, customer.properties?.[0]?.portalUrl || customer.properties?.[0]?.url || "")
     .replace(/\{\{company_name\}\}/g, org?.name || "")
     .replace(/\{\{store_name\}\}/g, org?.storeName || org?.name || "")
     .replace(/\{\{store_address\}\}/g, org?.storeAddress || org?.address || "")
