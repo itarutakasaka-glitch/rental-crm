@@ -46,6 +46,19 @@ function textToHtml(text: string): string {
   return h;
 }
 
+function makeVisitFooter(visitUrl: string, storeName: string, storePhone: string, storeAddress: string): string {
+  return `<br><hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+<div style="text-align:center;margin:20px 0;">
+  <p style="font-size:14px;color:#374151;margin-bottom:16px;">お部屋探しのご相談・内見のご予約はこちらから</p>
+  <a href="${visitUrl}" style="display:inline-block;padding:14px 36px;background:#d4a017;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">来店予約はこちら</a>
+</div>
+<div style="text-align:center;margin-top:20px;font-size:12px;color:#9ca3af;">
+  <p>${storeName || ""}</p>
+  <p>${storeAddress || ""}</p>
+  <p>${storePhone ? "TEL: " + storePhone : ""}</p>
+</div>`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -78,7 +91,12 @@ export async function POST(request: NextRequest) {
         from: `${fromName} <${fromEmail}>`,
         to: [to],
         subject: finalSubject || "\uFF08\u4EF6\u540D\u306A\u3057\uFF09",
-        html: textToHtml(finalBody),
+        html: textToHtml(finalBody) + makeVisitFooter(
+          `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || "org_default"}?c=${customerId}`,
+          org?.storeName || org?.name || "",
+          org?.storePhone || org?.phone || "",
+          org?.storeAddress || org?.address || ""
+        ),
         replyTo: `reply-${customerId}@moutrenoi.resend.app`,
       });
       if (result.error) {
