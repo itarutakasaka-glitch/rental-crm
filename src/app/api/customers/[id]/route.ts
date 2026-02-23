@@ -46,7 +46,7 @@ export async function GET(
         assignee: { select: { id: true, name: true, email: true } },
         messages: {
           orderBy: { createdAt: "asc" },
-          select: { id: true, direction: true, channel: true, subject: true, body: true, status: true, createdAt: true, sender: { select: { id: true, name: true } } },
+          select: { id: true, direction: true, channel: true, subject: true, body: true, status: true, openedAt: true, openCount: true, createdAt: true, sender: { select: { id: true, name: true } } },
         },
         
         
