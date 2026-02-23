@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
           if (!c.email) { results.push({ customerId: c.id, success: false, error: "No email" }); continue; }
           const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
           const fromName = org?.storeName || org?.name || "Claude Cloud CRM";
-          const sent = await resend.emails.send({ from: `${fromName} <${fromEmail}>`, to: [c.email], subject: subject || "No Subject", html: textToHtml(body) });
+          const sent = await resend.emails.send({ from: `${fromName} <${fromEmail}>`, to: [c.email], subject: subject || "No Subject", html: textToHtml(body), replyTo: `reply-${c.id}@moutrenoi.resend.app`, });
           await prisma.message.create({ data: { customerId: c.id, direction: "OUTBOUND", channel: "EMAIL", subject, body, status: "SENT", externalId: (sent as any)?.data?.id || null } });
           await prisma.customer.update({ where: { id: c.id }, data: { isNeedAction: false, lastContactAt: new Date() } });
           results.push({ customerId: c.id, success: true });

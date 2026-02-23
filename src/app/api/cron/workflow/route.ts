@@ -66,8 +66,7 @@ async function resolveAndSend(step: any, template: any, customer: any, org: any)
         from: `${fromName} <${fromEmail}>`,
         to: customer.email,
         subject: subject || "(\u4EF6\u540D\u306A\u3057)",
-        html: textToHtml(body),
-      }),
+        html: textToHtml(body), replyTo: `reply-${customer.id}@moutrenoi.resend.app`, }),
     });
   } else if (step.channel === "LINE" && customer.lineUserId) {
     await sendLineMessage(customer.lineUserId, body);

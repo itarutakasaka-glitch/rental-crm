@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         to: [to],
         subject: finalSubject || "\uFF08\u4EF6\u540D\u306A\u3057\uFF09",
         html: textToHtml(finalBody),
-        replyTo: fromEmail,
+        replyTo: `reply-${customerId}@moutrenoi.resend.app`,
       });
       if (result.error) {
         messageStatus = "FAILED";
