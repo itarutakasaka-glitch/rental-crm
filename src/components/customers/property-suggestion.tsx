@@ -5,9 +5,10 @@ interface Props {
   customerId: string;
   customerName: string;
   customerEmail?: string;
+  onMessageSent?: () => void;
 }
 
-export default function PropertySuggestion({ customerId, customerName, customerEmail }: Props) {
+export default function PropertySuggestion({ customerId, customerName, customerEmail, onMessageSent }: Props) {
   const [pref, setPref] = useState<any>({});
   const [properties, setProperties] = useState<any[]>([]);
   const [allCount, setAllCount] = useState(0);
@@ -126,6 +127,7 @@ export default function PropertySuggestion({ customerId, customerName, customerE
       });
       if (res.ok) {
         setSent(prev => new Set(prev).add(prop.id));
+        onMessageSent?.();
       }
     } catch (e) { console.error(e); }
     finally { setSending(null); }
@@ -242,7 +244,18 @@ export default function PropertySuggestion({ customerId, customerName, customerE
           </div>
         </div>
 
-        {loading && <div style={{ textAlign: "center", padding: 40, color: "#9ca3af", fontSize: 13 }}>{"\u7269\u4EF6\u3092\u691C\u7D22\u4E2D..."}</div>}
+        {loading && (<div style={{ textAlign: "center", padding: 40 }}>
+              <div style={{ display: "inline-block" }}>
+                <div style={{
+                  width: 36, height: 36, border: "3px solid rgba(212,160,23,0.15)",
+                  borderTop: "3px solid #d4a017", borderRadius: "50%",
+                  animation: "cpspin 0.7s linear infinite",
+                  boxShadow: "0 0 10px rgba(212,160,23,0.3), inset 0 0 10px rgba(212,160,23,0.1)",
+                }} />
+                <style>{`@keyframes cpspin { to { transform: rotate(360deg); } }`}</style>
+              </div>
+              <div style={{ fontSize: 12, color: "#d4a017", marginTop: 8, letterSpacing: 2 }}>SCANNING...</div>
+            </div>)}
 
         {!loading && filtered.length === 0 && (
           <div style={{ textAlign: "center", padding: 40, color: "#9ca3af", fontSize: 13 }}>
@@ -303,7 +316,7 @@ export default function PropertySuggestion({ customerId, customerName, customerE
                         color: "#d4a017", fontSize: 11, fontWeight: 600, cursor: sending === p.id ? "not-allowed" : "pointer",
                       }}
                     >
-                      {sending === p.id ? "\u9001\u4FE1\u4E2D..." : "\u3053\u306E\u7269\u4EF6\u3092\u9001\u308B"}
+                      {sending === p.id ? "SENDING..." : "\u3053\u306E\u7269\u4EF6\u3092\u9001\u308B"}
                     </button>
                   )}
                 </div>
