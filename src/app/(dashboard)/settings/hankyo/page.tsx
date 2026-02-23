@@ -98,7 +98,7 @@ export default function HankyoSettingPage() {
       {/* INBOUND EMAIL */}
       <section style={{ marginBottom: 32 }}>
         <label style={{ fontSize: 13, color: "#6b7280", display: "block", marginBottom: 8 }}>
-          {"\u53CD\u97FF\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9"}
+          {"\u53CD\u97FF\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9\uFF1F"}
         </label>
         <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid #e5e7eb", borderRadius: 6, padding: "10px 12px", background: "#fff" }}>
           <span style={{ flex: 1, fontSize: 14, color: "#111" }}>{inboundEmail}</span>
@@ -120,7 +120,7 @@ export default function HankyoSettingPage() {
         </h2>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 13, color: "#374151" }}>
-            {"\u521D\u56DE\u53CD\u97FF\u6599\u30A1\u8EDF\u52A0\u6642\u306B\u81EA\u52D5\u3067\u8FD4\u4FE1\u3059\u308B"}
+            {"\u521D\u56DE\u53CD\u97FF\u30E1\u30FC\u30EB\u6642\u306B\u81EA\u52D5\u3067\u8FD4\u4FE1\u3059\u308B"}
           </span>
           <button onClick={() => setAutoReply(!autoReply)} style={{ width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", background: autoReply ? "#0891b2" : "#d1d5db", position: "relative", transition: "background 0.2s" }}>
             <span style={{ position: "absolute", top: 2, left: autoReply ? 22 : 2, width: 20, height: 20, borderRadius: 10, background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
@@ -137,7 +137,7 @@ export default function HankyoSettingPage() {
             {"\u81EA\u52D5\u8FD4\u4FE1\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8"}
           </h2>
           <button onClick={() => setEditing(!editing)} style={{ padding: "4px 12px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#374151" }}>
-            {editing ? "\u30AD\u30E3\u30F3\u30BB\u30EB" : "\u2710 \u7DE8Uõ96C6"}
+            {editing ? "\u30AD\u30E3\u30F3\u30BB\u30EB" : "\u2710 \u7DE8\u96C6"}
           </button>
         </div>
 
@@ -171,14 +171,14 @@ export default function HankyoSettingPage() {
 
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={saveSettings} disabled={saving} style={{ padding: "8px 24px", fontSize: 13, fontWeight: 600, background: "#d4a017", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
-                {saving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDDUõ5B58"}
+                {saving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}
               </button>
             </div>
           </div>
         ) : (
           <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "20px 24px", background: "#fafafa", fontSize: 13, lineHeight: 1.8, color: "#374151", whiteSpace: "pre-wrap" }}>
             {subject && <div style={{ fontWeight: 600, marginBottom: 12 }}>{"\u3010\u4EF6\u540D: "}{subject}{"\u3011"}</div>}
-            {template || <span style={{ color: "#9ca3af" }}>{"\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304C\u8A2D\u5B9A\u3055\u308C\u3066\u3044\u307E\u305B\u3093\u3002\u300C\u7DE8Uõ96C6\u300D\u30DC\u30BF\u30F3\u304B\u3089\u8A2D\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044\u3002"}</span>}
+            {template || <span style={{ color: "#9ca3af" }}>{"\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304C\u8A2D\u5B9A\u3055\u308C\u3066\u3044\u307E\u305B\u3093\u3002\u300C\u7DE8\u96C6\u300D\u30DC\u30BF\u30F3\u304B\u3089\u8A2D\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044\u3002"}</span>}
           </div>
         )}
       </section>
