@@ -53,7 +53,7 @@ async function main() {
     data: { organizationId: org.id, name: "瀬戸泉", email: "giabbit.izumi@iCloud.com", phone: "090-4327-1424", preferredContact: "電話", sourcePortal: "アパマンショップ",
       statusId: statuses["新規対応"].id, assigneeId: user.id, isNeedAction: true, lastActiveAt: new Date() },
   });
-  await prisma.inquiryProperty.create({ data: { customerId: cust1.id, name: "ビレッジハウス小比企5号棟", address: "東京都八王子市小比企町", station: "多摩モノレール/山田駅", roomNumber: "205号室", rent: 61100, area: 49.2, layout: "2DK" } });
+  await prisma.inquiryProperty.create({ data: { customerId: cust1.id, name: "ビレッジハウス小比企5号棟", address: "東京都八王子市小比企町", station: "多摩モノレール/山田駅", roomNumber: "205号室", rent: "61100", area: "49.2", layout: "2DK" } });
   await prisma.customerTag.create({ data: { customerId: cust1.id, name: "アパマン反響" } });
   await prisma.message.create({ data: { customerId: cust1.id, direction: "INBOUND", channel: "EMAIL", subject: "空室確認", body: "最新の空室状況を知りたい", status: "SENT" } });
 
