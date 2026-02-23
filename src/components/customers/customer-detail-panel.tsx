@@ -390,8 +390,6 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   };
 
 
-  useEffect(() => { if (customerId) { setShowNayose(false); setNayoseCandidates([]); fetchNayose(); } }, [customerId]);
-
   const fetchNayose = async () => {
     try {
       const res = await fetch("/api/customers/" + customerId + "/duplicates");
@@ -411,6 +409,8 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
       if (data.success) { setShowNayose(false); setNayoseCandidates([]); onUpdated(); }
     } catch {} finally { setNayoseMerging(false); }
   };
+
+  useEffect(() => { if (customerId) { setShowNayose(false); setNayoseCandidates([]); fetch("/api/customers/" + customerId + "/duplicates").then(r => r.json()).then(data => { const dups = data.duplicates || []; setNayoseCandidates(dups); if (dups.length > 0) setShowNayose(true); }).catch(() => {}); } }, [customerId]);
 
   return (
     <div style={{ display: "flex", position: "relative" }}>
