@@ -390,14 +390,16 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   };
 
 
+  useEffect(() => { if (customerId) { setShowNayose(false); setNayoseCandidates([]); fetchNayose(); } }, [customerId]);
+
   const fetchNayose = async () => {
     try {
-      const res = await fetch("/api/customers/duplicates");
+      const res = await fetch("/api/customers/" + customerId + "/duplicates");
       const data = await res.json();
-      const group = (data.groups || []).find((g) => g.customers.some((c) => c.id === customerId));
-      setNayoseCandidates(group ? group.customers.filter((c) => c.id !== customerId) : []);
-      setShowNayose(true);
-    } catch { setNayoseCandidates([]); setShowNayose(true); }
+      const dups = data.duplicates || [];
+      setNayoseCandidates(dups);
+      if (dups.length > 0) setShowNayose(true);
+    } catch { setNayoseCandidates([]); }
   };
 
   const handleNayoseMerge = async (removeId) => {
@@ -426,7 +428,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
               {customer.sourcePortal && <span style={{ fontSize: 11, color: "#9ca3af" }}>/ {customer.sourcePortal}</span>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <button onClick={fetchNayose} title="名寄せ" style={{ padding: "3px 8px", fontSize: 11, fontWeight: 600, background: showNayose ? "#d4a017" : "rgba(212,160,23,0.1)", color: showNayose ? "#fff" : "#b8860b", border: "1px solid #d4a017", borderRadius: 6, cursor: "pointer" }}>名寄せ</button>
+              {nayoseCandidates.length > 0 && <button onClick={() => setShowNayose(!showNayose)} style={{ padding: "3px 8px", fontSize: 11, fontWeight: 600, background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", animation: "none" }}>{"⚠️"} 名寄せ候補 {nayoseCandidates.length}件</button>}
               {customer.assignee && (
               <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(212,160,23,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#b8860b" }}>
                 {customer.assignee.avatarUrl ? <img src={customer.assignee.avatarUrl} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} /> : customer.assignee.name?.charAt(0)}
