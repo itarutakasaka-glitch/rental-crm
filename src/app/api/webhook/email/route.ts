@@ -4,38 +4,38 @@ import { prisma } from "@/lib/db/prisma";
 // SUUMO parser
 function parseSuumo(text: string) {
   if (!/suumo|SUUMO|\u30B9\u30FC\u30E2|\u304A\u554F\u5408\u305B\u304C\u3042\u308A\u307E\u3057\u305F/i.test(text)) return null;
-  // \u540D\u524D = åå‰, \u6F22\u5B57 = æ¼¢å­E \u30AB\u30CA = ã‚«ãƒE  const name = (text.match(/\u540D\u524D[\(EE\u6F22\u5B57[\)E‰][EE]\s*(.+)/) || text.match(/\u540D\u524D\(\u6F22\u5B57\)[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  const nameKana = (text.match(/\u540D\u524D[\(EE\u30AB\u30CA[\)E‰][EE]\s*(.+)/) || text.match(/\u540D\u524D\(\u30AB\u30CA\)[EE]\s*(.+)/) || [])[1]?.trim() || "";
+  // \u540D\u524D = åå‰, \u6F22\u5B57 = æ¼¢å­E \u30AB\u30CA = ã‚«ãƒE  const name = (text.match(/\u540D\u524D[\(ï¿½Eï¿½E\u6F22\u5B57[\)ï¿½Eï¿½][ï¿½Eï¿½E]\s*(.+)/) || text.match(/\u540D\u524D\(\u6F22\u5B57\)[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  const nameKana = (text.match(/\u540D\u524D[\(ï¿½Eï¿½E\u30AB\u30CA[\)ï¿½Eï¿½][ï¿½Eï¿½E]\s*(.+)/) || text.match(/\u540D\u524D\(\u30AB\u30CA\)[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
   // \u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9 = ãƒ¡ãƒ¼ãƒ«ã‚¢ãƒ‰ãƒ¬ã‚¹
-  const email = (text.match(/\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9[EE]\s*(\S+)/) || [])[1]?.trim() || "";
-  // TEL or \uFF34\uFF25\uFF2C = E´E¥E¬, \u96FB\u8A71\u756A\u53F7 = é›»è©±ç•ªå·
-  const phone = (text.match(/[\uFF34T][\uFF25E][\uFF2CL][EE]\s*(\S+)/) || text.match(/\u96FB\u8A71\u756A\u53F7[EE]\s*(\S+)/) || [])[1]?.trim() || "";
-  // \u7269\u4EF6\u540D = ç‰©ä»¶åE  const propertyName = (text.match(/\u7269\u4EF6\u540D[EE]\s*(.+)/) || [])[1]?.trim() || "";
+  const email = (text.match(/\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9[ï¿½Eï¿½E]\s*(\S+)/) || [])[1]?.trim() || "";
+  // TEL or \uFF34\uFF25\uFF2C = ï¿½Eï¿½ï¿½Eï¿½ï¿½Eï¿½, \u96FB\u8A71\u756A\u53F7 = é›»è©±ç•ªå·
+  const phone = (text.match(/[\uFF34T][\uFF25E][\uFF2CL][ï¿½Eï¿½E]\s*(\S+)/) || text.match(/\u96FB\u8A71\u756A\u53F7[ï¿½Eï¿½E]\s*(\S+)/) || [])[1]?.trim() || "";
+  // \u7269\u4EF6\u540D = ç‰©ä»¶åE  const propertyName = (text.match(/\u7269\u4EF6\u540D[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
   // \u7269\u4EF6\u8A73\u7D30\u753B\u9762 = ç‰©ä»¶è©³ç´°ç”»é¢
-  const propertyUrl = (text.match(/\u7269\u4EF6\u8A73\u7D30\u753B\u9762[EE]\s*(https?:\/\/\S+)/) || text.match(/(https?:\/\/suumo\.jp\S+)/) || [])[1]?.trim() || "";
-  // \u304A\u554F\u5408\u305B\u5185\u5BB9 = ãŠå•åˆã›å†E®¹
-  const inquiryContent = (text.match(/\u304A\u554F\u5408\u305B\u5185\u5BB9[EE]\s*(.+)/) || text.match(/\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  // \u6700\u5BC4\u308A\u99C5 = æœ€å¯E‚Šé§E \u6700\u5BC4\u99C5 = æœ€å¯E§E  const station = (text.match(/\u6700\u5BC4\u308A\u99C5[EE]\s*(.+)/) || text.match(/\u6700\u5BC4\u99C5[EE]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyUrl = (text.match(/\u7269\u4EF6\u8A73\u7D30\u753B\u9762[ï¿½Eï¿½E]\s*(https?:\/\/\S+)/) || text.match(/(https?:\/\/suumo\.jp\S+)/) || [])[1]?.trim() || "";
+  // \u304A\u554F\u5408\u305B\u5185\u5BB9 = ãŠå•åˆã›å†Eï¿½ï¿½
+  const inquiryContent = (text.match(/\u304A\u554F\u5408\u305B\u5185\u5BB9[ï¿½Eï¿½E]\s*(.+)/) || text.match(/\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  // \u6700\u5BC4\u308A\u99C5 = æœ€å¯Eï¿½ï¿½é§E \u6700\u5BC4\u99C5 = æœ€å¯Eï¿½ï¿½E  const station = (text.match(/\u6700\u5BC4\u308A\u99C5[ï¿½Eï¿½E]\s*(.+)/) || text.match(/\u6700\u5BC4\u99C5[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
   // \u6240\u5728\u5730 = æ‰€åœ¨åœ°
-  const address = (text.match(/\u6240\u5728\u5730[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  // \u8CC3\u6599 = è³E–™
-  const rent = (text.match(/\u8CC3\u6599[EE]\s*(.+)/) || [])[1]?.trim() || "";
+  const address = (text.match(/\u6240\u5728\u5730[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  // \u8CC3\u6599 = è³Eï¿½ï¿½
+  const rent = (text.match(/\u8CC3\u6599[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
   // \u9593\u53D6\u308B = é–“å–ã‚E \u9593\u53D6 = é–“å–
-  const layout = (text.match(/\u9593\u53D6\u308A[EE]\s*(.+)/) || text.match(/\u9593\u53D6[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  // \u5C02\u6709\u9762\u7A4D = å°‚æœ‰é¢ç©E  const area = (text.match(/\u5C02\u6709\u9762\u7A4D[EE]\s*(.+)/) || [])[1]?.trim() || "";
+  const layout = (text.match(/\u9593\u53D6\u308A[ï¿½Eï¿½E]\s*(.+)/) || text.match(/\u9593\u53D6[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  // \u5C02\u6709\u9762\u7A4D = å°‚æœ‰é¢ç©E  const area = (text.match(/\u5C02\u6709\u9762\u7A4D[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
   if (!name && !email) return null;
   return { name, nameKana, email, phone, source: "SUUMO", inquiryContent, propertyName, propertyUrl, propertyStation: station, propertyAddress: address, propertyRent: rent, propertyLayout: layout, propertyArea: area };
 }
 
 // APAMANSHOP parser
 function parseApamanshop(text: string) {
-  // \u30A2\u30D1\u30DE\u30F3\u30B7\u30E7\u30C3\u30D7 = ã‚¢ãƒ‘ãEãƒ³ã‚·ãƒ§ãƒEE
+  // \u30A2\u30D1\u30DE\u30F3\u30B7\u30E7\u30C3\u30D7 = ã‚¢ãƒ‘ï¿½Eãƒ³ã‚·ãƒ§ãƒEï¿½E
   if (!/\u30A2\u30D1\u30DE\u30F3\u30B7\u30E7\u30C3\u30D7|apamanshop/i.test(text)) return null;
   // \u3010\u540D\u524D\u3011 = ã€åå‰ã€E \u3010\u304A\u540D\u524D\u3011 = ã€ãŠåå‰ã€E  const name = (text.match(/\u3010\u540D\u524D\u3011\s*(.+)/) || text.match(/\u3010\u304A\u540D\u524D\u3011\s*(.+)/) || [])[1]?.trim() || "";
   const nameKana = (text.match(/\u3010\u540D\u524D\u30AB\u30CA\u3011\s*(.+)/) || [])[1]?.trim() || "";
   // \u3010\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9\u3011 = ã€ãƒ¡ãƒ¼ãƒ«ã‚¢ãƒ‰ãƒ¬ã‚¹ã€E  const email = (text.match(/\u3010\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9\u3011\s*(\S+)/) || [])[1]?.trim() || "";
   // \u3010\u96FB\u8A71\u756A\u53F7\u3011 = ã€é›»è©±ç•ªå·ã€E  const phone = (text.match(/\u3010\u96FB\u8A71\u756A\u53F7\u3011\s*(.+)/) || [])[1]?.trim() || "";
-  // \u3010\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9\u3011 = ã€ãŠå•ã„åˆã‚ã›åEå®¹ã€E  const inquiryContent = (text.match(/\u3010\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9\u3011\s*([\s\S]*?)(?:\u3010|$)/) || [])[1]?.trim() || "";
+  // \u3010\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9\u3011 = ã€ãŠå•ã„åˆã‚ã›ï¿½Eå®¹ã€E  const inquiryContent = (text.match(/\u3010\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9\u3011\s*([\s\S]*?)(?:\u3010|$)/) || [])[1]?.trim() || "";
   // \u3014\u7269 \u4EF6 \u540D\u3015 = ã€”ç‰© ä»¶ åã€E \u3010\u7269\u4EF6\u540D\u3011 = ã€ç‰©ä»¶åã€E  const propertyName = (text.match(/\u3014\u7269\s*\u4EF6\s*\u540D\u3015\s*(.+)/) || text.match(/\u3010\u7269\u4EF6\u540D\u3011\s*(.+)/) || [])[1]?.trim() || "";
   const propertyUrl = (text.match(/(https?:\/\/www\.apamanshop\.com\S+)/) || [])[1]?.trim() || "";
   if (!name && !email) return null;
@@ -45,17 +45,17 @@ function parseApamanshop(text: string) {
 // HOME'S parser
 function parseHomes(text: string) {
   if (!/LIFULL HOME'S|HOME'S|homes\.co\.jp/i.test(text)) return null;
-  const name = (text.match(/\u540D\u524D[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  const email = (text.match(/\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9[EE]\s*(\S+)/) || [])[1]?.trim() || "";
-  const phone = (text.match(/\u96FB\u8A71\u756A\u53F7[EE]\s*(\S+)/) || [])[1]?.trim() || "";
-  const propertyName = (text.match(/\u7269\u4EF6\u540D[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyRent = (text.match(/\u8CC3\u6599[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyAddress = (text.match(/\u6240\u5728\u5730[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyStation = (text.match(/\u4EA4\u901A[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyArea = (text.match(/\u9762\u7A4D[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyLayout = (text.match(/\u9593\u53D6[EE]\s*(.+)/) || text.match(/\u9593\u53D6\u308A[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  const inquiryContent = (text.match(/\u304A\u554F\u5408\u305B\u5185\u5BB9[EE]\s*(.+)/) || [])[1]?.trim() || "";
-  const note = (text.match(/\u5099\u8003[EE]\s*(.+)/) || [])[1]?.trim() || "";
+  const name = (text.match(/\u540D\u524D[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  const email = (text.match(/\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9[ï¿½Eï¿½E]\s*(\S+)/) || [])[1]?.trim() || "";
+  const phone = (text.match(/\u96FB\u8A71\u756A\u53F7[ï¿½Eï¿½E]\s*(\S+)/) || [])[1]?.trim() || "";
+  const propertyName = (text.match(/\u7269\u4EF6\u540D[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyRent = (text.match(/\u8CC3\u6599[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyAddress = (text.match(/\u6240\u5728\u5730[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyStation = (text.match(/\u4EA4\u901A[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyArea = (text.match(/\u9762\u7A4D[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyLayout = (text.match(/\u9593\u53D6[ï¿½Eï¿½E]\s*(.+)/) || text.match(/\u9593\u53D6\u308A[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  const inquiryContent = (text.match(/\u304A\u554F\u5408\u305B\u5185\u5BB9[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
+  const note = (text.match(/\u5099\u8003[ï¿½Eï¿½E]\s*(.+)/) || [])[1]?.trim() || "";
   const propertyUrl = (text.match(/(https?:\/\/www\.homes\.co\.jp\S+)/) || [])[1]?.trim() || "";
   if (!name && !email) return null;
   const fullInquiry = [inquiryContent, note].filter(Boolean).join("\n");
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     const body = bodyText || bodyHtml || "";
     const fromAddress = typeof fromRaw === "string" ? fromRaw : fromRaw?.address || (Array.isArray(fromRaw) ? fromRaw[0]?.address : "") || "";
 
-    console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] From:", fromAddress, "Subject:", subject);
+    console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] Keys:", Object.keys(emailData), "text?", typeof emailData.text, "html?", typeof emailData.html, "body?", typeof emailData.body); console.log("[Email Webhook] From:", fromAddress, "Subject:", subject);
 
     const org = await prisma.organization.findFirst();
     if (!org) return NextResponse.json({ error: "No organization" }, { status: 400 });
