@@ -389,6 +389,27 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     fontSize: 12, fontWeight: 600, color: "#6b7280", marginBottom: 4, display: "block",
   };
 
+
+  const fetchNayose = async () => {
+    try {
+      const res = await fetch("/api/customers/duplicates");
+      const data = await res.json();
+      const group = (data.groups || []).find((g) => g.customers.some((c) => c.id === customerId));
+      setNayoseCandidates(group ? group.customers.filter((c) => c.id !== customerId) : []);
+      setShowNayose(true);
+    } catch { setNayoseCandidates([]); setShowNayose(true); }
+  };
+
+  const handleNayoseMerge = async (removeId) => {
+    if (!confirm("この顧客をマージしますか？取り消せません。")) return;
+    setNayoseMerging(true);
+    try {
+      const res = await fetch("/api/customers/merge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ keepId: customerId, removeId }) });
+      const data = await res.json();
+      if (data.success) { setShowNayose(false); setNayoseCandidates([]); onUpdated(); }
+    } catch {} finally { setNayoseMerging(false); }
+  };
+
   return (
     <div style={{ display: "flex", position: "relative" }}>
       {/* Panel resize handle */}
