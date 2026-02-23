@@ -53,7 +53,7 @@ export default function LoginPage() {
         <form onSubmit={handleLogin}>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 6 }}>EMAIL</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@example.com" required
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="" required
               style={{
                 width: "100%", padding: "10px 12px", fontSize: 13, boxSizing: "border-box",
                 background: "#fff", border: "1px solid #e5e7eb", borderRadius: 6,
@@ -62,7 +62,7 @@ export default function LoginPage() {
           </div>
           <div style={{ marginBottom: 24 }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 6 }}>PASSWORD</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" required
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="" required
               style={{
                 width: "100%", padding: "10px 12px", fontSize: 13, boxSizing: "border-box",
                 background: "#fff", border: "1px solid #e5e7eb", borderRadius: 6,
