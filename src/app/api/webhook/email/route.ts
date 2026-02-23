@@ -82,7 +82,7 @@ function parsePortalEmail(subject: string, body: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = await request.json();
+    const rawBody = await request.text(); console.log("[Email Webhook] Raw body (first 1000):", rawBody.substring(0, 1000)); const payload = JSON.parse(rawBody);
 
     // Support both Resend webhook format (nested in data) and direct format
     const emailData = payload.data || payload;
