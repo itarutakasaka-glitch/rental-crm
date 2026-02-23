@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
 type Reminder = {
   id: string;
@@ -125,7 +126,7 @@ export default function ReminderSettingsPage() {
   const btnDanger: React.CSSProperties = { padding: "5px 12px", fontSize: 12, fontWeight: 500, background: "#fff", color: "#dc2626", border: "1px solid #fca5a5", borderRadius: 6, cursor: "pointer" };
   const varBtn: React.CSSProperties = { padding: "2px 8px", fontSize: 11, border: "1px solid #e5e7eb", borderRadius: 4, background: "#f9fafb", color: "#6b7280", cursor: "pointer" };
 
-  if (loading) return <div style={{ padding: 32 }}>Loading...</div>;
+  if (loading) return <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><CyberpunkSpinner size={36} /></div>;
 
   const varButtons = (target: "newSubject" | "newBody" | "editBody") => (
     <div style={{ marginTop: 6 }}>

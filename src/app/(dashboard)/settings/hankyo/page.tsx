@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
 const VARS = [
   { label: "{{customer_name}}", desc: "\u9867\u5BA2\u540D" },
@@ -87,7 +88,7 @@ export default function HankyoSettingPage() {
 
   const btnStyle: React.CSSProperties = { padding: "2px 8px", fontSize: 11, border: "1px solid #e5e7eb", borderRadius: 4, background: "#f9fafb", color: "#6b7280", cursor: "pointer" };
 
-  if (loading) return <div style={{ padding: 32 }}>Loading...</div>;
+  if (loading) return <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><CyberpunkSpinner size={36} /></div>;
 
   return (
     <div style={{ padding: "24px 32px", maxWidth: 800 }}>
