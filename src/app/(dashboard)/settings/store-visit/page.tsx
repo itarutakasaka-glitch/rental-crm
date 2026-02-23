@@ -172,7 +172,24 @@ export default function StoreVisitSettingPage() {
             </div>
             <div style={{ background: "#f9fafb", borderRadius: 6, padding: "10px 14px" }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "#9ca3af", marginBottom: 4 }}>{"\u5229\u7528\u53EF\u80FD\u306A\u5909\u6570:"}</div>
-              <div style={{ fontSize: 11, color: "#b0b0b0" }}>""</div>
+              <div style={{ marginTop: 8, background: "rgba(212,160,23,0.06)", border: "1px solid rgba(212,160,23,0.2)", borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#b8860b", marginBottom: 8 }}>{"使用可能な変数"}</div>
+              <table style={{ fontSize: 11, color: "#555", width: "100%", borderCollapse: "collapse" }}>
+                <tbody>
+                  <tr><td style={{ padding: "3px 8px", fontFamily: "monospace", color: "#0891b2" }}>{"{{customer_name}}"}</td><td>{"お客様名"}</td></tr>
+                  <tr style={{ background: "rgba(0,0,0,0.02)" }}><td style={{ padding: "3px 8px", fontFamily: "monospace", color: "#0891b2" }}>{"{{visit_date}}"}</td><td>{"予約日（2025-01-15形式）"}</td></tr>
+                  <tr><td style={{ padding: "3px 8px", fontFamily: "monospace", color: "#0891b2" }}>{"{{visit_time}}"}</td><td>{"予約時間（10:00形式）"}</td></tr>
+                  <tr style={{ background: "rgba(0,0,0,0.02)" }}><td style={{ padding: "3px 8px", fontFamily: "monospace", color: "#0891b2" }}>{"{{visit_method}}"}</td><td>{"来店方法"}</td></tr>
+                  <tr><td style={{ padding: "3px 8px", fontFamily: "monospace", color: "#0891b2" }}>{"{{num_guests}}"}</td><td>{"予約人数"}</td></tr>
+                  <tr style={{ background: "rgba(0,0,0,0.02)" }}><td style={{ padding: "3px 8px", fontFamily: "monospace", color: "#0891b2" }}>{"{{visit_memo}}"}</td><td>{"ご要望・メモ"}</td></tr>
+                  <tr><td style={{ padding: "3px 8px", fontFamily: "monospace", color: "#0891b2" }}>{"{{store_name}}"}</td><td>{"店舗名"}</td></tr>
+                  <tr style={{ background: "rgba(0,0,0,0.02)" }}><td style={{ padding: "3px 8px", fontFamily: "monospace", color: "#0891b2" }}>{"{{store_address}}"}</td><td>{"店舗住所"}</td></tr>
+                  <tr><td style={{ padding: "3px 8px", fontFamily: "monospace", color: "#0891b2" }}>{"{{store_phone}}"}</td><td>{"店舗電話"}</td></tr>
+                  <tr style={{ background: "rgba(0,0,0,0.02)" }}><td style={{ padding: "3px 8px", fontFamily: "monospace", color: "#0891b2" }}>{"{{visit_url}}"}</td><td>{"予約ページURL"}</td></tr>
+                  <tr><td style={{ padding: "3px 8px", fontFamily: "monospace", color: "#0891b2" }}>{"{{line_url}}"}</td><td>{"LINE URL"}</td></tr>
+                </tbody>
+              </table>
+            </div>
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button style={S.cancelBtn} onClick={() => { setEditReply(false); fetchSetting(); }}>{"\u30AD\u30E3\u30F3\u30BB\u30EB"}</button>
