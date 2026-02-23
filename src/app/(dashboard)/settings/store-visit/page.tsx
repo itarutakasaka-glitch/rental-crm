@@ -95,7 +95,7 @@ export default function StoreVisitSettingPage() {
       <div style={S.card}>
         <div style={S.sectionHeader}>
           <span style={S.sectionTitle}>{"\u304A\u5BA2\u69D8\u306B\u8868\u793A\u3059\u308B\u60C5\u5831"}</span>
-          <button style={S.pencil} onClick={() => setEditInfo(!editInfo)}>{"\u270F"}</button>
+          <button style={{ padding: "4px 12px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#374151" }} onClick={() => setEditInfo(!editInfo)}>{"\u270F"}</button>
         </div>
         {!editInfo ? (
           <>
@@ -153,7 +153,7 @@ export default function StoreVisitSettingPage() {
       <div style={S.card}>
         <div style={S.sectionHeader}>
           <span style={S.sectionTitle}>{"\u6765\u5E97\u4E88\u7D04\u5F8C\u306E\u81EA\u52D5\u8FD4\u4FE1\u8A2D\u5B9A"}</span>
-          <button style={S.pencil} onClick={() => setEditReply(!editReply)}>{"\u270F"}</button>
+          <button style={{ padding: "4px 12px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#374151" }} onClick={() => setEditReply(!editReply)}>{"\u270F"}</button>
         </div>
         {!editReply ? (
           <div style={S.replyPreview}>
