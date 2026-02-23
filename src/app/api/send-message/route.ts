@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
+import { sendSms } from "@/lib/channels/sms";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -121,7 +122,14 @@ export async function POST(request: NextRequest) {
       }
     } else if (channel === "SMS") {
       if (!phone) return NextResponse.json({ error: "Missing phone" }, { status: 400 });
-      messageStatus = "SENT";
+      try {
+        const smsResult = await sendSms(phone, finalBody);
+        externalId = smsResult.sid;
+        messageStatus = "SENT";
+      } catch (smsErr: any) {
+        console.error("[send-message] SMS error:", smsErr);
+        messageStatus = "FAILED";
+      }
     } else if (channel === "CALL") {
       const resultLabel = CALL_RESULT_LABELS[callResult] || callResult || "\u4E0D\u660E";
       finalSubject = `\u67B6\u96FB\u8A18\u9332\uFF08${resultLabel}\uFF09`;
