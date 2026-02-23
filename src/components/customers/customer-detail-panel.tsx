@@ -354,6 +354,8 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     finally { setSending(false); }
   };
 
+  useEffect(() => { if (customerId) { setShowNayose(false); setNayoseCandidates([]); fetch("/api/customers/" + customerId + "/duplicates").then(r => r.json()).then(data => { const dups = data.duplicates || []; setNayoseCandidates(dups); if (dups.length > 0) setShowNayose(true); }).catch(() => {}); } }, [customerId]);
+
   if (loading) {
     return (
       <div style={{ width: panelW, minWidth: panelW, borderLeft: "1px solid #e5e7eb", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -410,8 +412,6 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     } catch {} finally { setNayoseMerging(false); }
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (customerId) { setShowNayose(false); setNayoseCandidates([]); fetch("/api/customers/" + customerId + "/duplicates").then(r => r.json()).then(data => { const dups = data.duplicates || []; setNayoseCandidates(dups); if (dups.length > 0) setShowNayose(true); }).catch(() => {}); } }, [customerId]);
 
   return (
     <div style={{ display: "flex", position: "relative" }}>
