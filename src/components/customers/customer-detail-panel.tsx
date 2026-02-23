@@ -426,7 +426,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
               {customer.sourcePortal && <span style={{ fontSize: 11, color: "#9ca3af" }}>/ {customer.sourcePortal}</span>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <button onClick={fetchNayose} title="\u540D\u5BC4\u305B" style={{ padding: "3px 8px", fontSize: 11, fontWeight: 600, background: showNayose ? "#d4a017" : "rgba(212,160,23,0.1)", color: showNayose ? "#fff" : "#b8860b", border: "1px solid #d4a017", borderRadius: 6, cursor: "pointer" }}>\u540D\u5BC4\u305B</button>
+              <button onClick={fetchNayose} title="名寄せ" style={{ padding: "3px 8px", fontSize: 11, fontWeight: 600, background: showNayose ? "#d4a017" : "rgba(212,160,23,0.1)", color: showNayose ? "#fff" : "#b8860b", border: "1px solid #d4a017", borderRadius: 6, cursor: "pointer" }}>名寄せ</button>
               {customer.assignee && (
               <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(212,160,23,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#b8860b" }}>
                 {customer.assignee.avatarUrl ? <img src={customer.assignee.avatarUrl} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} /> : customer.assignee.name?.charAt(0)}
@@ -436,16 +436,16 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
           </div>
           {showNayose && (
             <div style={{ margin: "8px 0", padding: 10, background: "rgba(212,160,23,0.05)", border: "1px solid #fde68a", borderRadius: 8, fontSize: 12 }}>
-              <div style={{ fontWeight: 600, marginBottom: 6, color: "#92400e" }}>\u91CD\u8907\u5019\u88DC</div>
+              <div style={{ fontWeight: 600, marginBottom: 6, color: "#92400e" }}>重複候補</div>
               {nayoseCandidates.length === 0 ? (
-                <div style={{ color: "#9ca3af" }}>\u91CD\u8907\u5019\u88DC\u306F\u3042\u308A\u307E\u305B\u3093</div>
+                <div style={{ color: "#9ca3af" }}>重複候補\u306F\u3042\u308A\u307E\u305B\u3093</div>
               ) : nayoseCandidates.map((nc: any) => (
                 <div key={nc.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0", borderBottom: "1px solid #f3f4f6" }}>
                   <div><span style={{ fontWeight: 600 }}>{nc.name}</span> <span style={{ color: "#6b7280" }}>{nc.phone || ""} {nc.email || ""}</span></div>
-                  <button onClick={() => handleNayoseMerge(nc.id)} disabled={nayoseMerging} style={{ padding: "2px 10px", background: "#dc2626", color: "#fff", border: "none", borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>{nayoseMerging ? "..." : "\u30DE\u30FC\u30B8"}</button>
+                  <button onClick={() => handleNayoseMerge(nc.id)} disabled={nayoseMerging} style={{ padding: "2px 10px", background: "#dc2626", color: "#fff", border: "none", borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>{nayoseMerging ? "..." : "マージ"}</button>
                 </div>
               ))}
-              <button onClick={() => setShowNayose(false)} style={{ marginTop: 6, fontSize: 11, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}>\u9589\u3058\u308B</button>
+              <button onClick={() => setShowNayose(false)} style={{ marginTop: 6, fontSize: 11, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}>閉じる</button>
             </div>
           )}
           <div style={{ marginBottom: 6 }}>
