@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
       };
 
       if (pref) {
-        if (pref.rentMax) where.rent = { ...(where.rent || {}), lte: pref.rentMax };
-        if (pref.rentMin) where.rent = { ...(where.rent || {}), gte: pref.rentMin };
+        if (pref.rentMax) where.rent = { ...(where.rent || {}), lte: pref.rentMax * 10000 };
+        if (pref.rentMin) where.rent = { ...(where.rent || {}), gte: pref.rentMin * 10000 };
         if (pref.areaMin) where.area = { gte: pref.areaMin };
         if (pref.layout) {
           const layouts = pref.layout.split(",").map((s: string) => s.trim());
