@@ -116,7 +116,6 @@ model Customer {
   messages        Message[]
   schedules       Schedule[]
   storeVisitBookings  StoreVisitBooking[]
-  visitReminders      VisitReminder[]
   workflowRuns    WorkflowRun[]
   records         CustomerRecord[]
   preference      CustomerPreference?
