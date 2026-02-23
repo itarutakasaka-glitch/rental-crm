@@ -34,9 +34,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <a href="/home" style={{ textDecoration: "none" }}><Logo /></a>
           <nav style={{ display: "flex", gap: 2 }}>
             {[
-              { label: "ホーム", href: "/home" },
-              { label: "顧客", href: "/customers" },
-              { label: "スケジュール", href: "/schedule" },
+              { label: "繝帙・繝", href: "/home" },
+              { label: "鬘ｧ螳｢", href: "/customers" },
+              { label: "繧ｹ繧ｱ繧ｸ繝･繝ｼ繝ｫ", href: "/schedule" },
             ].map((item) => (
               <a key={item.href} href={item.href} style={{
                 padding: "6px 16px", fontSize: 12, fontWeight: 500, color: "#6b7280",
@@ -53,7 +53,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </header>
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <SidebarNav />
-        <main style={{ flex: 1, overflow: "hidden", background: "#F8F9FB", display: "flex", flexDirection: "column" }}>
+        <main style={{ flex: 1, overflow: "auto", background: "#F8F9FB", display: "flex", flexDirection: "column" }}>
           {children}
         </main>
       </div>
