@@ -18,13 +18,36 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { customerId, ...fields } = body;
+    const { customerId, ...raw } = body;
     if (!customerId) return NextResponse.json({ error: "Missing customerId" }, { status: 400 });
+
+    const toInt = (v: any) => { const n = parseInt(v); return isNaN(n) ? null : n; };
+    const toFloat = (v: any) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+
+    const data = {
+      area: raw.area || null,
+      station: raw.station || null,
+      walkMinutes: toInt(raw.walkMinutes),
+      layout: raw.layout || null,
+      rentMin: toInt(raw.rentMin),
+      rentMax: toInt(raw.rentMax),
+      areaMin: toFloat(raw.areaMin),
+      moveInDate: raw.moveInDate || null,
+      petOk: !!raw.petOk,
+      autoLock: !!raw.autoLock,
+      bathToiletSeparate: !!raw.bathToiletSeparate,
+      flooring: !!raw.flooring,
+      aircon: !!raw.aircon,
+      reheating: !!raw.reheating,
+      washletToilet: !!raw.washletToilet,
+      freeInternet: !!raw.freeInternet,
+      note: raw.note || null,
+    };
 
     const pref = await prisma.customerPreference.upsert({
       where: { customerId },
-      update: { ...fields, updatedAt: new Date() },
-      create: { customerId, ...fields },
+      update: { ...data, updatedAt: new Date() },
+      create: { customerId, ...data },
     });
 
     return NextResponse.json(pref);
