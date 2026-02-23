@@ -42,6 +42,7 @@ export async function GET(
       where: { id },
       include: {
         status: true,
+        properties: true,
         assignee: { select: { id: true, name: true, email: true } },
         messages: {
           orderBy: { createdAt: "asc" },
