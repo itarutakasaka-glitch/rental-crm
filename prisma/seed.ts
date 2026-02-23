@@ -1,4 +1,4 @@
-﻿import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
@@ -61,7 +61,7 @@ async function main() {
     data: { organizationId: org.id, name: "赤星", email: "tommygatta@yahoo.co.jp", phone: "080-1043-2464", preferredContact: "メール", sourcePortal: "SUUMO",
       statusId: statuses["初期対応済"].id, assigneeId: user.id, isNeedAction: false, lastActiveAt: new Date(Date.now() - 86400000) },
   });
-  await prisma.inquiryProperty.create({ data: { customerId: cust2.id, name: "鹿島団地2号棟408", address: "東京都八王子市鹿島", station: "多摩都市モノレール/松が谷", rent: "92000", area: "52.58", layout: "2LDK", portalUrl: "https://suumo.jp/chintai/bc_100489123435/" } });
+  await prisma.inquiryProperty.create({ data: { customerId: cust2.id, name: "鹿島団地2号棟408", address: "東京都八王子市鹿島", station: "多摩都市モノレール/松が谷", rent: "92000", area: "52.58", layout: "2LDK", url: "https://suumo.jp/chintai/bc_100489123435/" } });
   await prisma.customerTag.create({ data: { customerId: cust2.id, name: "SUUMO反響" } });
   await prisma.message.create({ data: { customerId: cust2.id, direction: "INBOUND", channel: "EMAIL", subject: "お問い合わせ", body: "この部屋に関して詳しく教えて欲しい", status: "SENT" } });
   await prisma.message.create({ data: { customerId: cust2.id, senderId: user.id, direction: "OUTBOUND", channel: "EMAIL", subject: "【アパマンショップ多摩センター店】お問い合わせありがとうございます", body: "赤星様\n\nこの度はお問い合わせいただき、誠にありがとうございます。\nアパマンショップ多摩センター店の吉田が担当させていただきます。\n\n鹿島団地2号棟408について、現在空室でご案内可能です。\n\nご来店・オンライン相談も承っております。", status: "SENT", openedAt: new Date(Date.now() - 43200000), openCount: 2 } });
