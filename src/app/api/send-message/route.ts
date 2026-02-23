@@ -60,6 +60,10 @@ function makeVisitFooter(visitUrl: string, storeName: string, storePhone: string
 </div>`;
 }
 
+function addTrackingPixel(html: string, msgId: string): string {
+  return html + `<img src="https://tama-fudosan-crm-2026.vercel.app/api/track/open/${msgId}" width="1" height="1" style="display:none" alt="" />`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();

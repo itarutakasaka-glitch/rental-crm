@@ -539,6 +539,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         {formatDate(msg.createdAt)}
                         {out && msg.openedAt && <span style={{ color: "#2563eb", fontWeight: 600, marginLeft: 4 }}>{"\u65E2\u8AAD"}</span>}
                         {out && msg.status === "DELIVERED" && !msg.openedAt && <span style={{ color: "#6b7280", marginLeft: 4 }}>{"\u9001\u4FE1\u6E08"}</span>}
+                        {out && msg.status === "SENT" && msg.openedAt && <span style={{ color: "#0891b2", marginLeft: 4, fontWeight: 600 }}>{"✅ 既読"}</span>}
                         {out && msg.status === "SENT" && !msg.openedAt && <span style={{ color: "#9ca3af", marginLeft: 4 }}>{msg.channel === "LINE" ? "\u9001\u4FE1\u6E08" : msg.channel === "SMS" ? "SMS\u9001\u4FE1\u6E08" : "\u9001\u4FE1\u6E08"}</span>}
                       </div>
                     </div>
