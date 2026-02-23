@@ -92,24 +92,33 @@ export async function POST(request: NextRequest) {
       if (!to) return NextResponse.json({ error: "Missing email" }, { status: 400 });
       const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
       const fromName = org?.storeName || org?.name || "Claude Cloud CRM";
+      // Create message first to get ID for tracking pixel
+      const preMsg = await prisma.message.create({
+        data: { customerId, senderId: dbUser.id, direction: "OUTBOUND", channel: "EMAIL", subject: finalSubject, body: finalBody, status: "PENDING" as any },
+      });
+      const baseHtml = textToHtml(finalBody) + makeVisitFooter(
+        `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || "org_default"}?c=${customerId}`,
+        org?.storeName || org?.name || "",
+        org?.storePhone || org?.phone || "",
+        org?.storeAddress || org?.address || ""
+      );
+      const htmlWithPixel = addTrackingPixel(baseHtml, preMsg.id);
       const result = await resend.emails.send({
         from: `${fromName} <${fromEmail}>`,
         to: [to],
         subject: finalSubject || "\uFF08\u4EF6\u540D\u306A\u3057\uFF09",
-        html: textToHtml(finalBody) + makeVisitFooter(
-          `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || "org_default"}?c=${customerId}`,
-          org?.storeName || org?.name || "",
-          org?.storePhone || org?.phone || "",
-          org?.storeAddress || org?.address || ""
-        ),
+        html: htmlWithPixel,
         replyTo: `reply-${customerId}@moutrenoi.resend.app`,
       });
       if (result.error) {
-        messageStatus = "FAILED";
+        await prisma.message.update({ where: { id: preMsg.id }, data: { status: "FAILED" } });
         console.error("[send-message] Resend error:", result.error);
       } else {
-        externalId = result.data?.id;
+        await prisma.message.update({ where: { id: preMsg.id }, data: { status: "SENT", externalId: result.data?.id || null } });
       }
+      // Update customer and return (skip generic message creation below)
+      await prisma.customer.update({ where: { id: customerId }, data: { isNeedAction: false, lastContactAt: new Date() } });
+      return NextResponse.json(preMsg, { status: 201 });
     } else if (channel === "LINE") {
       if (!lineUserId) return NextResponse.json({ error: "Missing lineUserId" }, { status: 400 });
       const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
