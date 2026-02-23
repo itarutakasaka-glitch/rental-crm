@@ -127,7 +127,7 @@ export default function PropertySuggestion({ customerId, customerName, customerE
       });
       if (res.ok) {
         setSent(prev => new Set(prev).add(prop.id));
-        onMessageSent?.();
+        setTimeout(() => onMessageSent?.(), 500);
       }
     } catch (e) { console.error(e); }
     finally { setSending(null); }
@@ -265,7 +265,7 @@ export default function PropertySuggestion({ customerId, customerName, customerE
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {filtered.map((p: any) => (
-            <div key={p.id} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
+            <div key={p.id} style={{ background: sent.has(p.id) ? "#f3f4f6" : "#fff", border: sent.has(p.id) ? "1px solid #d1d5db" : "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden", opacity: sent.has(p.id) ? 0.6 : 1 }}>
               {/* Property Image */}
               <div style={{ width: "100%", height: 60, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
                 {p.imageUrl ? (
@@ -306,7 +306,7 @@ export default function PropertySuggestion({ customerId, customerName, customerE
                 </div>
                 <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
                   {sent.has(p.id) ? (
-                    <span style={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>{"\u2705 \u9001\u4FE1\u6E08"}</span>
+                    <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 600, background: "#e5e7eb", padding: "3px 10px", borderRadius: 4 }}>{"\u9001\u4ED8\u6E08"}</span>
                   ) : (
                     <button
                       onClick={() => handleSendProperty(p)}
