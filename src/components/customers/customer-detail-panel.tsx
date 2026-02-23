@@ -100,10 +100,22 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [prefForm, setPrefForm] = useState<any>({});
   const [prefSaving, setPrefSaving] = useState(false);
   const [prefSaved, setPrefSaved] = useState(false);
+  const [suggestedProps, setSuggestedProps] = useState<any[]>([]);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+
+  const fetchSuggested = async () => {
+    if (!customerId) return;
+    setSuggestLoading(true);
+    try {
+      const res = await fetch("/api/properties?customerId=" + customerId);
+      if (res.ok) { const d = await res.json(); setSuggestedProps(d.properties || []); }
+    } catch(e) { console.error(e); }
+    finally { setSuggestLoading(false); }
+  };
 
   const fetchPreference = useCallback(async () => {
     try {
-      const res = await fetch("/api/customers/" + customerId + "/preference");
+      const res = await fetch("/api/customers/preference?customerId=" + customerId);
       if (res.ok) { const d = await res.json(); setPrefForm(d || {}); }
     } catch (e) { console.error(e); }
   }, [customerId]);
@@ -111,12 +123,12 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const handlePrefSave = async () => {
     setPrefSaving(true); setPrefSaved(false);
     try {
-      await fetch("/api/customers/" + customerId + "/preference", {
+      await fetch("/api/customers/preference?customerId=" + customerId, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prefForm),
+        body: JSON.stringify({ ...prefForm, customerId }),
       });
-      setPrefSaved(true);
+      setPrefSaved(true); fetchSuggested();
       setTimeout(() => setPrefSaved(false), 2000);
     } catch (e) { console.error(e); }
     finally { setPrefSaving(false); }
@@ -949,6 +961,30 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 cursor: prefSaving ? "not-allowed" : "pointer",
                 background: prefSaving ? "#d1d5db" : "#d4a017", color: "#fff",
               }}>{prefSaving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58"}</button>
+              {!suggestLoading && suggestedProps.length === 0 && prefSaved && (
+                <div style={{ marginTop: 16, padding: 12, background: "#fef9e7", borderRadius: 6, fontSize: 12, color: "#92400e" }}>{"\u6761\u4EF6\u306B\u5408\u3046\u7269\u4EF6\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3067\u3057\u305F"}</div>
+              )}
+              {suggestLoading && <div style={{ marginTop: 16, textAlign: "center", fontSize: 12, color: "#9ca3af" }}>{"\u7269\u4EF6\u691C\u7D22\u4E2D..."}</div>}
+              {suggestedProps.length > 0 && (
+                <div style={{ marginTop: 20 }}>
+                  <h4 style={{ fontSize: 13, fontWeight: 700, color: "#111827", marginBottom: 8 }}>{"\uD83C\uDFE0 \u63D0\u6848\u7269\u4EF6"} ({suggestedProps.length}{"\u4EF6"})</h4>
+                  {suggestedProps.map((p: any) => (
+                    <div key={p.id} style={{ padding: "10px 12px", marginBottom: 8, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{p.name} {p.roomNumber && <span style={{ fontSize: 11, color: "#6b7280" }}>{p.roomNumber}</span>}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#d4a017" }}>{(p.rent / 10000).toFixed(1)}{"\u4E07\u5186"}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.6 }}>
+                        {p.station && <span>{p.station} {p.walkMinutes && <span>{"\u5F92\u6B69"}{p.walkMinutes}{"\u5206"}</span>}</span>}
+                        {p.layout && <span style={{ marginLeft: 8 }}>{p.layout}</span>}
+                        {p.area && <span style={{ marginLeft: 8 }}>{p.area}m{"\u00B2"}</span>}
+                        {p.age != null && <span style={{ marginLeft: 8 }}>{"\u7築"}{p.age}{"\u5E74"}</span>}
+                      </div>
+                      {p.features && <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{p.features}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
