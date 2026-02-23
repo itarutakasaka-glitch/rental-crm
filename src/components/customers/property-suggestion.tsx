@@ -127,7 +127,7 @@ export default function PropertySuggestion({ customerId, customerName, customerE
       });
       if (res.ok) {
         setSent(prev => new Set(prev).add(prop.id));
-        setTimeout(() => onMessageSent?.(), 500);
+        await new Promise(r => setTimeout(r, 1000)); onMessageSent?.(); await new Promise(r => setTimeout(r, 2000)); onMessageSent?.();
       }
     } catch (e) { console.error(e); }
     finally { setSending(null); }
