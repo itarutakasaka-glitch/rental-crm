@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
         });
         const emailDetail = await emailRes.json();
         body = emailDetail.text || emailDetail.html || "";
-        console.log("[Email Webhook] Fetched body length:", body.length);
+        console.log("[Email Webhook] emailDetail keys:", Object.keys(emailDetail)); console.log("[Email Webhook] Fetched body length:", body.length);
       } catch (e) {
         console.error("[Email Webhook] Failed to fetch email body:", e);
       }
