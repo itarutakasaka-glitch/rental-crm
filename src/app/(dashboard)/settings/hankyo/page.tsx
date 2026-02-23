@@ -153,7 +153,7 @@ export default function HankyoSettingPage() {
             <div>
               <label style={{ fontSize: 12, color: "#6b7280", display: "block", marginBottom: 4 }}>{"\u672C\u6587"}</label>
               <textarea ref={bodyRef} value={template} onChange={(e) => setTemplate(e.target.value)}
-                rows={16}
+                rows={8}
                 style={{ width: "100%", padding: "8px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6, outline: "none", resize: "vertical", lineHeight: 1.7 }}
               />
             </div>
