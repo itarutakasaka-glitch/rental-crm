@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
 // SUUMO parser
@@ -12,7 +12,7 @@ function parseSuumo(text: string) {
   // TEL or \uFF34\uFF25\uFF2C = ＴＥＬ, \u96FB\u8A71\u756A\u53F7 = 電話番号
   const phone = (text.match(/[\uFF34T][\uFF25E][\uFF2CL][：:]\s*(\S+)/) || text.match(/\u96FB\u8A71\u756A\u53F7[：:]\s*(\S+)/) || [])[1]?.trim() || "";
   // \u7269\u4EF6\u540D = 物件名
-  const propertyName = (text.match(/\u7269\u4EF6\u540E[：:]\s*(.+)/) || [])[1]?.trim() || "";
+  const propertyName = (text.match(/\u7269\u4EF6\u540D[：:]\s*(.+)/) || [])[1]?.trim() || "";
   // \u7269\u4EF6\u8A73\u7D30\u753B\u9762 = 物件詳細画面
   const propertyUrl = (text.match(/\u7269\u4EF6\u8A73\u7D30\u753B\u9762[：:]\s*(https?:\/\/\S+)/) || text.match(/(https?:\/\/suumo\.jp\S+)/) || [])[1]?.trim() || "";
   // \u304A\u554F\u5408\u305B\u5185\u5BB9 = お問合せ内容
