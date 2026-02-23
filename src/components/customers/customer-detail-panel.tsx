@@ -410,6 +410,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     } catch {} finally { setNayoseMerging(false); }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (customerId) { setShowNayose(false); setNayoseCandidates([]); fetch("/api/customers/" + customerId + "/duplicates").then(r => r.json()).then(data => { const dups = data.duplicates || []; setNayoseCandidates(dups); if (dups.length > 0) setShowNayose(true); }).catch(() => {}); } }, [customerId]);
 
   return (
