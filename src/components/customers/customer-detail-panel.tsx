@@ -978,7 +978,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         {p.station && <span>{p.station} {p.walkMinutes && <span>{"\u5F92\u6B69"}{p.walkMinutes}{"\u5206"}</span>}</span>}
                         {p.layout && <span style={{ marginLeft: 8 }}>{p.layout}</span>}
                         {p.area && <span style={{ marginLeft: 8 }}>{p.area}m{"\u00B2"}</span>}
-                        {p.age != null && <span style={{ marginLeft: 8 }}>{"\u7築"}{p.age}{"\u5E74"}</span>}
+                        {p.age != null && <span style={{ marginLeft: 8 }}>{"\u7BC9"}{p.age}{"\u5E74"}</span>}
                       </div>
                       {p.features && <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{p.features}</div>}
                     </div>
