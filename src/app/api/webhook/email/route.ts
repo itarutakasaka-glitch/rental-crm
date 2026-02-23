@@ -91,12 +91,12 @@ export async function POST(request: NextRequest) {
     let body = "";
     if (emailData.email_id && process.env.RESEND_API_KEY) {
       try {
-        const emailRes = await fetch(`https://api.resend.com/emails/${emailData.email_id}`, {
+        const emailRes = await fetch(`https://api.resend.com/emails/receiving/${emailData.email_id}`, {
           headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
         });
         const emailDetail = await emailRes.json();
         body = emailDetail.text || emailDetail.html || "";
-        console.log("[Email Webhook] emailDetail:", JSON.stringify(emailDetail)); console.log("[Email Webhook] full payload:", JSON.stringify(emailData).substring(0, 500)); console.log("[Email Webhook] Fetched body length:", body.length);
+          console.log("[Email Webhook] Fetched body length:", body.length);
       } catch (e) {
         console.error("[Email Webhook] Failed to fetch email body:", e);
       }
