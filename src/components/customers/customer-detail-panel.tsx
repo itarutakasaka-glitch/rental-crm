@@ -896,7 +896,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
         /* ============ CONDITION TAB ============ */
         ) : activeTab === "condition" ? (
           <div style={{ flex: 1, overflow: "hidden" }}>
-            <PropertySuggestion customerId={customerId} customerName={customer?.name || ""} customerEmail={customer?.email} onMessageSent={() => { fetchCustomer(); onUpdated(); }} />
+            <PropertySuggestion customerId={customerId} customerName={customer?.name || ""} customerEmail={customer?.email} messages={customer?.messages || []} onMessageSent={() => { fetchCustomer(); onUpdated(); }} />
           </div>
 
         /* ============ WORKFLOW TAB ============ */

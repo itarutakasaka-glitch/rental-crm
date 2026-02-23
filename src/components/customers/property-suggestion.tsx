@@ -5,10 +5,11 @@ interface Props {
   customerId: string;
   customerName: string;
   customerEmail?: string;
+  messages?: any[];
   onMessageSent?: () => void;
 }
 
-export default function PropertySuggestion({ customerId, customerName, customerEmail, onMessageSent }: Props) {
+export default function PropertySuggestion({ customerId, customerName, customerEmail, onMessageSent, messages = [] }: Props) {
   const [pref, setPref] = useState<any>({});
   const [properties, setProperties] = useState<any[]>([]);
   const [allCount, setAllCount] = useState(0);
@@ -18,6 +19,16 @@ export default function PropertySuggestion({ customerId, customerName, customerE
   const [search, setSearch] = useState("");
   const [sending, setSending] = useState<string | null>(null);
   const [sent, setSent] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (messages.length > 0 && properties.length > 0) {
+      const sentSubjects = messages.filter((m: any) => m.direction === "OUTBOUND" && m.subject).map((m: any) => m.subject);
+      const alreadySent = new Set<string>();
+      properties.forEach((p: any) => {
+        if (sentSubjects.some((s: string) => s.includes(p.name))) alreadySent.add(p.id);
+      });
+      if (alreadySent.size > 0) setSent(prev => new Set([...prev, ...alreadySent]));
+    }
+  }, [messages, properties]);
 
   const layouts = ["1R","1K","1DK","1LDK","2K","2DK","2LDK","3K","3DK","3LDK","4K","4DK","4LDK"];
 
