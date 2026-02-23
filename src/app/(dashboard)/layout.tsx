@@ -34,9 +34,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <a href="/home" style={{ textDecoration: "none" }}><Logo /></a>
           <nav style={{ display: "flex", gap: 2 }}>
             {[
-              { label: "繝帙・繝", href: "/home" },
-              { label: "鬘ｧ螳｢", href: "/customers" },
-              { label: "繧ｹ繧ｱ繧ｸ繝･繝ｼ繝ｫ", href: "/schedule" },
+              { label: "\u30DB\u30FC\u30E0", href: "/home" },
+              { label: "\u9867\u5BA2", href: "/customers" },
+              { label: "\u30B9\u30B1\u30B8\u30E5\u30FC\u30EB", href: "/schedule" },
             ].map((item) => (
               <a key={item.href} href={item.href} style={{
                 padding: "6px 16px", fontSize: 12, fontWeight: 500, color: "#6b7280",
