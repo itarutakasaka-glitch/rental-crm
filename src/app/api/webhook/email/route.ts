@@ -88,9 +88,19 @@ export async function POST(request: NextRequest) {
     const emailData = payload.data || payload;
     const fromRaw = emailData.from;
     const subject = emailData.subject || "";
-    const bodyText = emailData.text || "";
-    const bodyHtml = emailData.html || "";
-    const body = bodyText || bodyHtml || "";
+    let body = "";
+    if (emailData.email_id && process.env.RESEND_API_KEY) {
+      try {
+        const emailRes = await fetch(`https://api.resend.com/emails/${emailData.email_id}`, {
+          headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+        });
+        const emailDetail = await emailRes.json();
+        body = emailDetail.text || emailDetail.html || "";
+        console.log("[Email Webhook] Fetched body length:", body.length);
+      } catch (e) {
+        console.error("[Email Webhook] Failed to fetch email body:", e);
+      }
+    }
     const fromAddress = typeof fromRaw === "string" ? fromRaw : fromRaw?.address || (Array.isArray(fromRaw) ? fromRaw[0]?.address : "") || "";
 
     console.log("[Email Webhook] From:", fromAddress, "Subject:", subject);
