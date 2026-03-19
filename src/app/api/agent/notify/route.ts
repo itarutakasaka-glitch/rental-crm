@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { pushMessage } from '@/lib/channels/line';
 
 export async function POST(req: NextRequest) {
   try {
