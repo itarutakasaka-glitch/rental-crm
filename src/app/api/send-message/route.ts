@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
@@ -66,8 +66,15 @@ function addTrackingPixel(html: string, msgId: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const agentSecret = req.headers.get("x-agent-secret");
+    let user: any = null;
+    if (agentSecret === process.env.CRON_SECRET) {
+      user = { id: "agent", email: "agent@system" };
+    } else {
+      const supabase = await createClient();
+      const { data } = await supabase.auth.getUser();
+      user = data?.user;
+    }
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { id: true, name: true, organizationId: true } });
