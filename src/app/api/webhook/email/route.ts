@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
 // SUUMO parser
@@ -133,6 +133,7 @@ export async function POST(request: NextRequest) {
             inquiryContent: parsed.inquiryContent || null,
             isNeedAction: true,
             organizationId: org.id,
+            memo: '[AGENT_PENDING]',
           },
         });
         if (parsed.propertyName) {
