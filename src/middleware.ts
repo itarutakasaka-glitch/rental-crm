@@ -1,4 +1,4 @@
-import { type NextRequest } from "next/server";
+﻿import { type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
@@ -6,5 +6,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/webhook|api/cron|api/public|api/store-visit-bookings|visit).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/webhook|api/cron|api/agent|api/public|api/store-visit-bookings|visit).*)"],
 };
