@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ cust
         assignee: { select: { id: true, name: true, email: true } },
         properties: true,
         messages: { orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, direction: true, channel: true, subject: true, body: true, status: true, openedAt: true, createdAt: true } },
-        preferences: true,
+        preference: true,
         organization: { select: { id: true, name: true, storeName: true, storeAddress: true, storePhone: true, storeHours: true, storeAccess: true, lineUrl: true, email: true, phone: true } },
       },
     });
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ cust
     const statuses = await prisma.status.findMany({ where: { organizationId: customer.organizationId }, orderBy: { order: 'asc' }, select: { id: true, name: true } });
     return NextResponse.json({
       customer: { id: customer.id, name: customer.name, nameKana: customer.nameKana, email: customer.email, phone: customer.phone, sourcePortal: customer.sourcePortal, inquiryContent: customer.inquiryContent, memo: customer.memo, isNeedAction: customer.isNeedAction, lineUserId: customer.lineUserId, lineDisplayName: customer.lineDisplayName, createdAt: customer.createdAt, status: customer.status, assignee: customer.assignee },
-      properties: customer.properties, messages: customer.messages, preferences: customer.preferences, organization: customer.organization, templates, staff, statuses,
+      properties: customer.properties, messages: customer.messages, preference: customer.preference, organization: customer.organization, templates, staff, statuses,
     });
   } catch (error: any) {
     console.error('[Agent Context] Error:', error?.message || error);
