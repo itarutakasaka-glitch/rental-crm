@@ -66,7 +66,7 @@ function addTrackingPixel(html: string, msgId: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const agentSecret = req.headers.get("x-agent-secret");
+    const agentSecret = request.headers.get("x-agent-secret");
     let user: any = null;
     if (agentSecret === process.env.CRON_SECRET) {
       user = { id: "agent", email: "agent@system" };
