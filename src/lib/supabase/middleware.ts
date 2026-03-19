@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr";
+﻿import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
@@ -26,6 +26,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/favicon") ||
     request.nextUrl.pathname.startsWith("/api/webhook") ||
     request.nextUrl.pathname.startsWith("/api/cron") ||
+    request.nextUrl.pathname.startsWith("/api/agent") ||
     request.nextUrl.pathname.startsWith("/visit") ||
     request.nextUrl.pathname.startsWith("/api/public") ||
     request.nextUrl.pathname.startsWith("/api/store-visit-bookings");
