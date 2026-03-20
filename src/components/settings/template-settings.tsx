@@ -64,7 +64,7 @@ export function TemplateSettings({
   const [subj, setSubj] = useState("");
   const [body, setBody] = useState("");
   const [isPending, start] = useTransition();
-  const [showUrlMenu, setShowUrlMenu] = useState<string | null>(null);
+  const [linkPopup, setLinkPopup] = useState<{ type: "link" | "line" | "visit" | "linkMenu"; linkText: string; linkUrl: string } | null>(null);
   const router = useRouter();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const savedSelection = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
@@ -111,49 +111,40 @@ export function TemplateSettings({
     }
   };
 
-  const insertUrlButton = (btn: typeof URL_BUTTONS[0]) => {
-    const ta = bodyRef.current;
+  // Open link popup with pre-filled selected text
+  const openLinkPopup = (type: "link" | "line" | "visit" | "linkMenu") => {
     const { start, end } = savedSelection.current;
     const selectedText = body.slice(start, end).trim();
-    if (selectedText) {
-      // Replace selected text in-place with link format: [■ selectedText] {{url}}
-      const snippet = `[■ ${selectedText}] ${btn.urlVar}`;
-      const newBody = body.slice(0, start) + snippet + body.slice(end);
-      setBody(newBody);
-      if (ta) {
-        setTimeout(() => {
-          ta.focus();
-          ta.selectionStart = ta.selectionEnd = start + snippet.length;
-        }, 0);
-      }
-    } else {
-      // No selection: insert default at cursor
-      const snippet = `\n[■ ${btn.text}] ${btn.urlVar}\n`;
-      insertAtCursor(snippet);
-    }
-    setShowUrlMenu(null);
+    const defaultUrl = type === "line" ? "{{line_url}}" : type === "visit" ? "{{visit_url}}" : "";
+    setLinkPopup({ type, linkText: selectedText, linkUrl: defaultUrl });
   };
 
-  const insertUrlHtmlButton = (btn: typeof URL_BUTTONS[0]) => {
-    const ta = bodyRef.current;
+  // Insert link at saved cursor position, replacing selected text if any
+  const confirmLinkInsert = (mode: "text" | "button") => {
+    if (!linkPopup) return;
+    const { linkText, linkUrl } = linkPopup;
+    if (!linkText.trim() || !linkUrl.trim()) return;
     const { start, end } = savedSelection.current;
     const selectedText = body.slice(start, end).trim();
-    if (selectedText) {
-      // Wrap selected text with ■ button format
-      const snippet = `[■ ${selectedText}] ${btn.urlVar}`;
-      const newBody = body.slice(0, start) + snippet + body.slice(end);
-      setBody(newBody);
-      if (ta) {
-        setTimeout(() => {
-          ta.focus();
-          ta.selectionStart = ta.selectionEnd = start + snippet.length;
-        }, 0);
-      }
+    let snippet: string;
+    if (mode === "button") {
+      snippet = `[■ ${linkText.trim()}] ${linkUrl.trim()}`;
     } else {
-      const snippet = `\n\n[\u25A0 ${btn.text}] ${btn.urlVar}\n`;
-      insertAtCursor(snippet);
+      snippet = `[${linkText.trim()}](${linkUrl.trim()})`;
     }
-    setShowUrlMenu(null);
+    // If user had text selected, replace it; otherwise insert at cursor
+    const newBody = selectedText
+      ? body.slice(0, start) + snippet + body.slice(end)
+      : body.slice(0, start) + snippet + body.slice(start);
+    setBody(newBody);
+    setLinkPopup(null);
+    const ta = bodyRef.current;
+    if (ta) {
+      setTimeout(() => {
+        ta.focus();
+        ta.selectionStart = ta.selectionEnd = start + snippet.length;
+      }, 0);
+    }
   };
 
   const save = () => {
@@ -334,68 +325,62 @@ export function TemplateSettings({
                 className="w-full px-3 py-2 border rounded-lg text-sm font-mono resize-none"
               />
 
-              {/* URL Button insertion */}
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-2">
-                <div className="text-[10px] text-blue-600 font-semibold mb-1.5">
-                  {"\uD83D\uDD17 URL\u30DC\u30BF\u30F3\u3092\u633F\u5165"}
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {URL_BUTTONS.map((btn) => (
-                    <div key={btn.id} className="relative">
-                      <button
-                        onClick={() =>
-                          setShowUrlMenu(showUrlMenu === btn.id ? null : btn.id)
-                        }
-                        className="px-2.5 py-1.5 rounded-md text-xs font-medium text-white"
-                        style={{ background: btn.color }}
-                      >
-                        {btn.label}
-                      </button>
-                      {showUrlMenu === btn.id && (
-                        <div className="absolute top-full left-0 mt-1 bg-white border rounded-lg shadow-lg z-10 min-w-[180px]">
-                          <button
-                            onClick={() => insertUrlButton(btn)}
-                            className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 border-b"
-                          >
-                            {"\uD83D\uDD17 URL\u30EA\u30F3\u30AF\u3068\u3057\u3066\u633F\u5165"}
-                            <div className="text-[10px] text-gray-400 mt-0.5">
-                              {"\u30C6\u30AD\u30B9\u30C8\u9078\u629E\u4E2D: \u9078\u629E\u7B87\u6240\u306B\u30EA\u30F3\u30AF\u3092\u8A2D\u5B9A"}
-                            </div>
-                          </button>
-                          <button
-                            onClick={() => insertUrlHtmlButton(btn)}
-                            className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50"
-                          >
-                            {"\u25A0 \u30DC\u30BF\u30F3\u5F62\u5F0F\u3067\u633F\u5165"}
-                            <div className="text-[10px] text-gray-400 mt-0.5">
-                              {"[\u25A0 "}{btn.text}{"] "}{btn.urlVar}
-                            </div>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              {/* Toolbar (CANARY Cloud style) */}
+              <div className="flex items-center gap-1 border rounded-lg px-2 py-1.5 bg-gray-50">
+                <button type="button" onClick={() => openLinkPopup("linkMenu")} className="px-2 py-1 text-xs rounded hover:bg-gray-200" title="リンク">🔗</button>
+                <button type="button" onClick={() => openLinkPopup("line")} className="px-2 py-1 text-xs rounded hover:bg-green-100 text-green-700" title="LINE友だち追加リンク">💬 LINE追加</button>
+                <button type="button" onClick={() => openLinkPopup("visit")} className="px-2 py-1 text-xs rounded hover:bg-cyan-100 text-cyan-700" title="来店予約リンク">🗓 来店予約</button>
+                <div className="border-l mx-1 h-4" />
+                <span className="text-[10px] text-gray-400 mr-1">変数:</span>
+                {VARS.map((v) => (
+                  <button key={v.label} onClick={() => insertAtCursor(v.label)} className="px-1 py-0.5 text-[10px] bg-white border rounded text-gray-500 hover:bg-gray-100" title={v.desc}>{v.desc}</button>
+                ))}
               </div>
 
-              {/* Variables */}
-              <div>
-                <div className="text-[10px] text-gray-400 mb-1">
-                  {"\u5909\u6570"}
+              {/* Link insertion popup (CANARY Cloud style) */}
+              {linkPopup && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={() => setLinkPopup(null)}>
+                  <div className="bg-white rounded-xl shadow-xl border p-4 w-[340px]" onClick={(e) => e.stopPropagation()}>
+                    <div className="text-sm font-bold mb-3">
+                      {linkPopup.type === "line" ? "LINE友だち追加" : linkPopup.type === "visit" ? "来店予約リンク" : linkPopup.type === "linkMenu" ? "リンク" : "URL"}
+                    </div>
+
+                    {/* linkMenu: choose text link or button */}
+                    {linkPopup.type === "linkMenu" ? (
+                      <div className="space-y-2">
+                        <button onClick={() => setLinkPopup({ ...linkPopup, type: "link" })} className="w-full text-left px-3 py-2.5 text-xs rounded-lg border hover:bg-gray-50">
+                          🔗 テキストリンクを挿入
+                          <div className="text-[10px] text-gray-400 mt-0.5">選択テキストにリンクを設定</div>
+                        </button>
+                        <button onClick={() => setLinkPopup({ ...linkPopup, type: "link", linkUrl: "" })} className="w-full text-left px-3 py-2.5 text-xs rounded-lg border hover:bg-gray-50">
+                          ■ ボタンを挿入
+                          <div className="text-[10px] text-gray-400 mt-0.5">CTAボタン形式で挿入</div>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs text-gray-600 mb-1 block">表示するテキスト</label>
+                          <input value={linkPopup.linkText} onChange={(e) => setLinkPopup({ ...linkPopup, linkText: e.target.value })} placeholder="テキストを入力" className="w-full px-3 py-2 border rounded-lg text-sm" autoFocus />
+                        </div>
+                        {(linkPopup.type === "link") && (
+                          <div>
+                            <label className="text-xs text-gray-600 mb-1 block">リンク先</label>
+                            <input value={linkPopup.linkUrl} onChange={(e) => setLinkPopup({ ...linkPopup, linkUrl: e.target.value })} placeholder="URLを入力 または {{変数名}}" className="w-full px-3 py-2 border rounded-lg text-sm" />
+                          </div>
+                        )}
+                        {(linkPopup.type === "line" || linkPopup.type === "visit") && (
+                          <div className="text-[10px] text-gray-400">リンク先: {linkPopup.linkUrl}（自動設定）</div>
+                        )}
+                        <div className="flex justify-end gap-2 pt-1">
+                          <button onClick={() => setLinkPopup(null)} className="px-3 py-1.5 text-xs bg-gray-100 rounded-lg">キャンセル</button>
+                          <button onClick={() => confirmLinkInsert(linkPopup.type === "link" ? "text" : "button")} disabled={!linkPopup.linkText.trim() || !linkPopup.linkUrl.trim()} className="px-3 py-1.5 text-xs bg-primary text-white rounded-lg font-semibold disabled:opacity-40">挿入</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-1 flex-wrap">
-                  {VARS.map((v) => (
-                    <button
-                      key={v.label}
-                      onClick={() => insertAtCursor(v.label)}
-                      className="px-1.5 py-0.5 text-[10px] bg-gray-50 border rounded text-gray-500 hover:bg-gray-100"
-                      title={v.desc}
-                    >
-                      {v.desc}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              )}
 
               <div className="flex gap-2 justify-end pt-1">
                 <button
