@@ -68,8 +68,10 @@ export async function POST(request: NextRequest) {
   try {
     const agentSecret = request.headers.get("x-agent-secret");
     let user: any = null;
+    let isAgent = false;
     if (agentSecret === process.env.CRON_SECRET) {
       user = { id: "agent", email: "agent@system" };
+      isAgent = true;
     } else {
       const supabase = await createClient();
       const { data } = await supabase.auth.getUser();
@@ -77,8 +79,25 @@ export async function POST(request: NextRequest) {
     }
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { id: true, name: true, organizationId: true } });
-    if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    let dbUser: any;
+    if (isAgent) {
+      // For agent: get customer first, then use assignee or first org user
+      const { customerId: agentCustId } = await request.clone().json();
+      const agentCustomer = await prisma.customer.findUnique({
+        where: { id: agentCustId },
+        include: { assignee: true },
+      });
+      if (agentCustomer?.assignee) {
+        dbUser = agentCustomer.assignee;
+      } else {
+        // fallback: first user in the organization
+        dbUser = await prisma.user.findFirst({ where: { organizationId: agentCustomer?.organizationId || undefined } });
+      }
+      if (!dbUser) return NextResponse.json({ error: "No staff found for agent" }, { status: 404 });
+    } else {
+      dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { id: true, name: true, organizationId: true } });
+      if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
 
     const { customerId, channel, subject, body, to, lineUserId, phone, callResult } = await request.json();
     if (!customerId || !body) return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
