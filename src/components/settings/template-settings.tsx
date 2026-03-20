@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   createTemplate,
@@ -67,6 +67,15 @@ export function TemplateSettings({
   const [showUrlMenu, setShowUrlMenu] = useState<string | null>(null);
   const router = useRouter();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const savedSelection = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+
+  // Save cursor/selection position whenever it changes
+  const handleBodySelect = useCallback(() => {
+    const ta = bodyRef.current;
+    if (ta) {
+      savedSelection.current = { start: ta.selectionStart, end: ta.selectionEnd };
+    }
+  }, []);
 
   const edit = (t: any) => {
     setSel(t.id);
@@ -104,25 +113,21 @@ export function TemplateSettings({
 
   const insertUrlButton = (btn: typeof URL_BUTTONS[0]) => {
     const ta = bodyRef.current;
-    if (ta) {
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const selectedText = body.slice(start, end).trim();
-      if (selectedText) {
-        // Wrap selected text with ▼ link format
-        const snippet = `\n\n▼ ${selectedText}\n${btn.urlVar}\n`;
-        const newBody = body.slice(0, start) + snippet + body.slice(end);
-        setBody(newBody);
+    const { start, end } = savedSelection.current;
+    const selectedText = body.slice(start, end).trim();
+    if (selectedText) {
+      // Wrap selected text with ▼ link format
+      const snippet = `\n\n▼ ${selectedText}\n${btn.urlVar}\n`;
+      const newBody = body.slice(0, start) + snippet + body.slice(end);
+      setBody(newBody);
+      if (ta) {
         setTimeout(() => {
           ta.focus();
           ta.selectionStart = ta.selectionEnd = start + snippet.length;
         }, 0);
-      } else {
-        // No selection: insert default
-        const snippet = `\n\n▼ ${btn.text}\n${btn.urlVar}\n`;
-        insertAtCursor(snippet);
       }
     } else {
+      // No selection: insert default at saved cursor position
       const snippet = `\n\n▼ ${btn.text}\n${btn.urlVar}\n`;
       insertAtCursor(snippet);
     }
@@ -131,22 +136,18 @@ export function TemplateSettings({
 
   const insertUrlHtmlButton = (btn: typeof URL_BUTTONS[0]) => {
     const ta = bodyRef.current;
-    if (ta) {
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const selectedText = body.slice(start, end).trim();
-      if (selectedText) {
-        // Wrap selected text with ■ button format
-        const snippet = `[■ ${selectedText}] ${btn.urlVar}`;
-        const newBody = body.slice(0, start) + snippet + body.slice(end);
-        setBody(newBody);
+    const { start, end } = savedSelection.current;
+    const selectedText = body.slice(start, end).trim();
+    if (selectedText) {
+      // Wrap selected text with ■ button format
+      const snippet = `[■ ${selectedText}] ${btn.urlVar}`;
+      const newBody = body.slice(0, start) + snippet + body.slice(end);
+      setBody(newBody);
+      if (ta) {
         setTimeout(() => {
           ta.focus();
           ta.selectionStart = ta.selectionEnd = start + snippet.length;
         }, 0);
-      } else {
-        const snippet = `\n\n[\u25A0 ${btn.text}] ${btn.urlVar}\n`;
-        insertAtCursor(snippet);
       }
     } else {
       const snippet = `\n\n[\u25A0 ${btn.text}] ${btn.urlVar}\n`;
@@ -325,6 +326,9 @@ export function TemplateSettings({
                 ref={bodyRef}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
+                onSelect={handleBodySelect}
+                onMouseUp={handleBodySelect}
+                onKeyUp={handleBodySelect}
                 placeholder={"\u672C\u6587"}
                 rows={8}
                 className="w-full px-3 py-2 border rounded-lg text-sm font-mono resize-none"
