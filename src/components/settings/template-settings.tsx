@@ -116,8 +116,8 @@ export function TemplateSettings({
     const { start, end } = savedSelection.current;
     const selectedText = body.slice(start, end).trim();
     if (selectedText) {
-      // Wrap selected text with ▼ link format
-      const snippet = `\n\n▼ ${selectedText}\n${btn.urlVar}\n`;
+      // Replace selected text in-place with link format: [■ selectedText] {{url}}
+      const snippet = `[■ ${selectedText}] ${btn.urlVar}`;
       const newBody = body.slice(0, start) + snippet + body.slice(end);
       setBody(newBody);
       if (ta) {
@@ -127,8 +127,8 @@ export function TemplateSettings({
         }, 0);
       }
     } else {
-      // No selection: insert default at saved cursor position
-      const snippet = `\n\n▼ ${btn.text}\n${btn.urlVar}\n`;
+      // No selection: insert default at cursor
+      const snippet = `\n[■ ${btn.text}] ${btn.urlVar}\n`;
       insertAtCursor(snippet);
     }
     setShowUrlMenu(null);
@@ -359,7 +359,7 @@ export function TemplateSettings({
                           >
                             {"\uD83D\uDD17 URL\u30EA\u30F3\u30AF\u3068\u3057\u3066\u633F\u5165"}
                             <div className="text-[10px] text-gray-400 mt-0.5">
-                              {"\u25BC "}{btn.text}{"\n"}{btn.urlVar}
+                              {"\u30C6\u30AD\u30B9\u30C8\u9078\u629E\u4E2D: \u9078\u629E\u7B87\u6240\u306B\u30EA\u30F3\u30AF\u3092\u8A2D\u5B9A"}
                             </div>
                           </button>
                           <button
