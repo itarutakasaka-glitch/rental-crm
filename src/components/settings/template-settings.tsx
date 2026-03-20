@@ -103,14 +103,55 @@ export function TemplateSettings({
   };
 
   const insertUrlButton = (btn: typeof URL_BUTTONS[0]) => {
-    const snippet = `\n\n\u25BC ${btn.text}\n${btn.urlVar}\n`;
-    insertAtCursor(snippet);
+    const ta = bodyRef.current;
+    if (ta) {
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const selectedText = body.slice(start, end).trim();
+      if (selectedText) {
+        // Wrap selected text with ▼ link format
+        const snippet = `\n\n▼ ${selectedText}\n${btn.urlVar}\n`;
+        const newBody = body.slice(0, start) + snippet + body.slice(end);
+        setBody(newBody);
+        setTimeout(() => {
+          ta.focus();
+          ta.selectionStart = ta.selectionEnd = start + snippet.length;
+        }, 0);
+      } else {
+        // No selection: insert default
+        const snippet = `\n\n▼ ${btn.text}\n${btn.urlVar}\n`;
+        insertAtCursor(snippet);
+      }
+    } else {
+      const snippet = `\n\n▼ ${btn.text}\n${btn.urlVar}\n`;
+      insertAtCursor(snippet);
+    }
     setShowUrlMenu(null);
   };
 
   const insertUrlHtmlButton = (btn: typeof URL_BUTTONS[0]) => {
-    const snippet = `\n\n[\u25A0 ${btn.text}] ${btn.urlVar}\n`;
-    insertAtCursor(snippet);
+    const ta = bodyRef.current;
+    if (ta) {
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const selectedText = body.slice(start, end).trim();
+      if (selectedText) {
+        // Wrap selected text with ■ button format
+        const snippet = `[■ ${selectedText}] ${btn.urlVar}`;
+        const newBody = body.slice(0, start) + snippet + body.slice(end);
+        setBody(newBody);
+        setTimeout(() => {
+          ta.focus();
+          ta.selectionStart = ta.selectionEnd = start + snippet.length;
+        }, 0);
+      } else {
+        const snippet = `\n\n[\u25A0 ${btn.text}] ${btn.urlVar}\n`;
+        insertAtCursor(snippet);
+      }
+    } else {
+      const snippet = `\n\n[\u25A0 ${btn.text}] ${btn.urlVar}\n`;
+      insertAtCursor(snippet);
+    }
     setShowUrlMenu(null);
   };
 

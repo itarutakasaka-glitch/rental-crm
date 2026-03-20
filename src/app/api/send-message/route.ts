@@ -39,8 +39,14 @@ function textToHtml(text: string): string {
   });
   h = h.replace(/\u25BC\s*(.+?)\n\s*(https?:\/\/\S+)/g, (_m: string, label: string, url: string) =>
     `<strong>${label}</strong><br><a href="${url}" style="color:#0891b2;">${url}</a>`);
-  h = h.replace(/(https?:\/\/\S+)/g, (url: string) => {
-    if (url.includes('"')) return url;
+  h = h.replace(/(https?:\/\/\S+)/g, (url: string, _offset: number, fullStr: string) => {
+    if (url.includes('"') || url.includes('&lt;')) return url;
+    // Check if already inside an <a> tag (preceded by href=" or >)
+    const idx = fullStr.indexOf(url);
+    if (idx > 0) {
+      const before = fullStr.slice(Math.max(0, idx - 10), idx);
+      if (before.includes('href="') || before.endsWith('>')) return url;
+    }
     return `<a href="${url}" style="color:#0891b2;">${url}</a>`;
   });
   h = h.replace(/\n/g, "<br>");
