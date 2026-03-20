@@ -1,6 +1,30 @@
 "use client";
 import PropertySuggestion from "./property-suggestion";
 import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
+import { textToHtml } from "@/lib/text-to-html";
+
+function previewResolve(text: string, customer: any): string {
+  if (!customer) return text;
+  const org = customer.organization || {};
+  const assignee = customer.assignee || {};
+  const prop = customer.properties?.[0] || {};
+  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org.id || "org_default"}?c=${customer.id || ""}`;
+  return text
+    .replace(/\{\{customer_name\}\}/g, customer.name || "")
+    .replace(/\{\{customer_email\}\}/g, customer.email || "")
+    .replace(/\{\{customer_phone\}\}/g, customer.phone || "")
+    .replace(/\{\{staff_name\}\}/g, assignee.name || "")
+    .replace(/\{\{property_name\}\}/g, prop.name || "")
+    .replace(/\{\{property_url\}\}/g, prop.portalUrl || prop.url || "")
+    .replace(/\{\{company_name\}\}/g, org.name || "")
+    .replace(/\{\{store_name\}\}/g, org.storeName || org.name || "")
+    .replace(/\{\{store_address\}\}/g, org.storeAddress || org.address || "")
+    .replace(/\{\{store_phone\}\}/g, org.storePhone || org.phone || "")
+    .replace(/\{\{store_hours\}\}/g, org.storeHours || "")
+    .replace(/\{\{line_url\}\}/g, org.lineUrl || "")
+    .replace(/\{\{license_number\}\}/g, org.licenseNumber || "")
+    .replace(/\{\{visit_url\}\}/g, visitUrl);
+}
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
@@ -48,7 +72,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const panelDragX = useRef(0);
   const panelDragW = useRef(0);
   const [templates, setTemplates] = useState<any[]>([]);
-  const [showTemplates, setShowTemplates] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);  const [showTemplates, setShowTemplates] = useState(false);
   const [callResult, setCallResult] = useState("success");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [org, setOrg] = useState<any>(null);
@@ -594,8 +618,18 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                           ))}
                         </div>
                       )}
-                      <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={"\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u5165\u529B..."}
-                        style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
+                      {/* Edit / Preview tabs */}
+                      <div style={{ display: "flex", gap: 0, marginBottom: 4 }}>
+                        <button onClick={() => setShowPreview(false)} style={{ padding: "3px 12px", fontSize: 10, fontWeight: showPreview ? 400 : 700, border: "1px solid #d1d5db", borderBottom: showPreview ? "1px solid #d1d5db" : "2px solid #d4a017", borderRadius: "4px 4px 0 0", background: showPreview ? "#f9fafb" : "#fff", color: showPreview ? "#6b7280" : "#d4a017", cursor: "pointer" }}>{"編集"}</button>
+                        <button onClick={() => setShowPreview(true)} style={{ padding: "3px 12px", fontSize: 10, fontWeight: showPreview ? 700 : 400, border: "1px solid #d1d5db", borderBottom: showPreview ? "2px solid #0891b2" : "1px solid #d1d5db", borderRadius: "4px 4px 0 0", background: showPreview ? "#fff" : "#f9fafb", color: showPreview ? "#0891b2" : "#6b7280", cursor: "pointer" }}>{"👁 プレビュー"}</button>
+                      </div>
+                      {showPreview ? (
+                        <div style={{ width: "100%", height: editorH, padding: "8px", fontSize: 12, border: "1px solid #0891b2", borderRadius: "0 4px 4px 4px", overflow: "auto", boxSizing: "border-box", lineHeight: 1.6, background: "#fff" }}
+                          dangerouslySetInnerHTML={{ __html: textToHtml(previewResolve(body || "", customer)) }} />
+                      ) : (
+                        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={"\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u5165\u529B..."}
+                          style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: "0 4px 4px 4px", resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
+                      )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
                         <span style={{ fontSize: 10, color: "#9ca3af" }}>{"\u9001\u4FE1\u5148"}: {customer.email}</span>
                         <button onClick={handleSend} disabled={sending || !body.trim()} style={{
