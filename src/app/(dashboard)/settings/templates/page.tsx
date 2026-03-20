@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
 type Category = { id: string; name: string };
@@ -33,16 +33,22 @@ export default function TemplatesPage() {
   const [editing, setEditing] = useState<Template | null>(null);
   const [form, setForm] = useState({ name: "", categoryId: "", channel: "EMAIL", subject: "", body: "" });
   const [isNew, setIsNew] = useState(false);
-  const [urlMenu, setUrlMenu] = useState<string | null>(null);
+  const [linkPopup, setLinkPopup] = useState<{ type: "link" | "line" | "visit" | "linkMenu"; linkText: string; linkUrl: string } | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const savedSel = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+
+  const handleBodySelect = useCallback(() => {
+    const ta = bodyRef.current;
+    if (ta) savedSel.current = { start: ta.selectionStart, end: ta.selectionEnd };
+  }, []);
 
   const load = () => fetch("/api/templates").then(r => r.json()).then(d => { setTemplates(d.templates); setCategories(d.categories); }).finally(() => setPageLoading(false));
   useEffect(() => { load(); }, []);
 
   const startNew = () => { const catId = categories.length > 0 ? categories[0].id : "cat_general"; setForm({ name: "", categoryId: catId, channel: "EMAIL", subject: "", body: "" }); setIsNew(true); setEditing(null); };
   const startEdit = (t: Template) => { setForm({ name: t.name, categoryId: t.categoryId, channel: t.channel, subject: t.subject || "", body: t.body }); setEditing(t); setIsNew(false); };
-  const cancel = () => { setIsNew(false); setEditing(null); setUrlMenu(null); };
+  const cancel = () => { setIsNew(false); setEditing(null); setLinkPopup(null); };
 
   const save = async () => {
     if (!form.name || !form.body) return;
@@ -68,13 +74,27 @@ export default function TemplatesPage() {
     }
   };
 
-  const insertUrlLink = (btn: typeof URL_BTNS[0]) => {
-    insertAtCursor(`\n\n\u25BC ${btn.text}\n${btn.varKey}\n`);
-    setUrlMenu(null);
+  const openLinkPopup = (type: "link" | "line" | "visit" | "linkMenu") => {
+    const { start, end } = savedSel.current;
+    const selectedText = form.body.slice(start, end).trim();
+    const defaultUrl = type === "line" ? "{{line_url}}" : type === "visit" ? "{{visit_url}}" : "";
+    setLinkPopup({ type, linkText: selectedText, linkUrl: defaultUrl });
   };
-  const insertUrlButton = (btn: typeof URL_BTNS[0]) => {
-    insertAtCursor(`\n\n[\u25A0 ${btn.text}] ${btn.varKey}\n`);
-    setUrlMenu(null);
+
+  const confirmLinkInsert = (mode: "text" | "button") => {
+    if (!linkPopup) return;
+    const { linkText, linkUrl } = linkPopup;
+    if (!linkText.trim() || !linkUrl.trim()) return;
+    const { start, end } = savedSel.current;
+    const selectedText = form.body.slice(start, end).trim();
+    const snippet = mode === "button" ? `[■ ${linkText.trim()}] ${linkUrl.trim()}` : `[${linkText.trim()}](${linkUrl.trim()})`;
+    const newBody = selectedText
+      ? form.body.slice(0, start) + snippet + form.body.slice(end)
+      : form.body.slice(0, start) + snippet + form.body.slice(start);
+    setForm(f => ({ ...f, body: newBody }));
+    setLinkPopup(null);
+    const ta = bodyRef.current;
+    if (ta) setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = start + snippet.length; }, 0);
   };
 
   const grouped = categories.map(c => ({ ...c, items: templates.filter(t => t.categoryId === c.id) }));
@@ -117,35 +137,47 @@ export default function TemplatesPage() {
           )}
           <div className="mb-2">
             <label className="text-xs text-gray-500 mb-1 block">{"\u672C\u6587"}</label>
-            <div className="flex gap-1 flex-wrap mb-2">
-              {VARS.map(v => <button key={v.key} onClick={() => insertAtCursor(v.key)} className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100">{v.label}</button>)}
+            <textarea ref={bodyRef} value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} onSelect={handleBodySelect} onMouseUp={handleBodySelect} onKeyUp={handleBodySelect} rows={8} className="w-full px-3 py-2 border rounded-lg text-sm resize-none font-mono" />
+            {/* Toolbar (CANARY Cloud style) */}
+            <div className="flex items-center gap-1 flex-wrap border rounded-lg px-2 py-1.5 bg-gray-50">
+              <button type="button" onClick={() => openLinkPopup("linkMenu")} className="px-2 py-1 text-xs rounded hover:bg-gray-200" title="リンク">🔗 リンク</button>
+              <button type="button" onClick={() => openLinkPopup("line")} className="px-2 py-1 text-xs rounded hover:bg-green-100 text-green-700 font-semibold" title="LINE友だち追加リンク">💬 LINE追加</button>
+              <button type="button" onClick={() => openLinkPopup("visit")} className="px-2 py-1 text-xs rounded hover:bg-cyan-100 text-cyan-700 font-semibold" title="来店予約リンク">🗓 来店予約</button>
+              <div className="border-l mx-1 h-4" />
+              <span className="text-[10px] text-gray-400 mr-1">変数:</span>
+              {VARS.map(v => <button key={v.key} onClick={() => insertAtCursor(v.key)} className="text-[10px] px-1.5 py-0.5 bg-white border rounded text-gray-500 hover:bg-gray-100" title={v.key}>{v.label}</button>)}
             </div>
-            {/* URL button insertion */}
-            <div className="flex gap-2 mb-2">
-              {URL_BTNS.map(btn => (
-                <div key={btn.id} className="relative">
-                  <button onClick={() => setUrlMenu(urlMenu === btn.id ? null : btn.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{ background: btn.color }}>{btn.label}</button>
-                  {urlMenu === btn.id && (
-                    <div className="absolute top-full left-0 mt-1 bg-white border rounded-lg shadow-lg z-20 min-w-[200px]">
-                      <button onClick={() => insertUrlLink(btn)} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 border-b">
-                        {"\uD83D\uDD17 URL\u30EA\u30F3\u30AF\u3068\u3057\u3066\u633F\u5165"}
-                        <div className="text-[10px] text-gray-400 mt-0.5">{"\u25BC "}{btn.text}</div>
-                      </button>
-                      <button onClick={() => insertUrlButton(btn)} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50">
-                        {"\u25A0 \u30DC\u30BF\u30F3\u5F62\u5F0F\u3067\u633F\u5165"}
-                        <div className="text-[10px] text-gray-400 mt-0.5">{"[\u25A0 "}{btn.text}{"]"}</div>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <textarea ref={bodyRef} value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} rows={8} className="w-full px-3 py-2 border rounded-lg text-sm resize-none font-mono" />
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={cancel} className="px-4 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">{"\u30AD\u30E3\u30F3\u30BB\u30EB"}</button>
             <button onClick={save} className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg font-semibold">{"\u4FDD\u5B58"}</button>
           </div>
+          {/* Link popup (CANARY Cloud style) */}
+          {linkPopup && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={() => setLinkPopup(null)}>
+              <div className="bg-white rounded-xl shadow-xl border p-5 w-[360px]" onClick={e => e.stopPropagation()}>
+                <div className="text-sm font-bold mb-3">
+                  {linkPopup.type === "line" ? "LINE友だち追加" : linkPopup.type === "visit" ? "来店予約リンク" : linkPopup.type === "linkMenu" ? "リンク" : "URL"}
+                </div>
+                {linkPopup.type === "linkMenu" ? (
+                  <div className="space-y-2">
+                    <button onClick={() => setLinkPopup({ ...linkPopup, type: "link" })} className="w-full text-left px-3 py-2.5 text-xs rounded-lg border hover:bg-gray-50">🔗 テキストリンクを挿入<div className="text-[10px] text-gray-400 mt-0.5">選択テキストにリンクを設定</div></button>
+                    <button onClick={() => setLinkPopup({ ...linkPopup, type: "link", linkUrl: "" })} className="w-full text-left px-3 py-2.5 text-xs rounded-lg border hover:bg-gray-50">■ ボタンを挿入<div className="text-[10px] text-gray-400 mt-0.5">CTAボタン形式で挿入</div></button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div><label className="text-xs text-gray-600 mb-1 block">表示するテキスト</label><input value={linkPopup.linkText} onChange={e => setLinkPopup({ ...linkPopup, linkText: e.target.value })} placeholder="テキストを入力" className="w-full px-3 py-2 border rounded-lg text-sm" autoFocus /></div>
+                    {linkPopup.type === "link" && (<div><label className="text-xs text-gray-600 mb-1 block">リンク先</label><input value={linkPopup.linkUrl} onChange={e => setLinkPopup({ ...linkPopup, linkUrl: e.target.value })} placeholder="URLを入力 または {{変数名}}" className="w-full px-3 py-2 border rounded-lg text-sm" /></div>)}
+                    {(linkPopup.type === "line" || linkPopup.type === "visit") && (<div className="text-[10px] text-gray-400">リンク先: {linkPopup.linkUrl}（自動設定）</div>)}
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button onClick={() => setLinkPopup(null)} className="px-3 py-1.5 text-xs bg-gray-100 rounded-lg">キャンセル</button>
+                      <button onClick={() => confirmLinkInsert(linkPopup.type === "link" && linkPopup.linkUrl && !linkPopup.linkUrl.startsWith("{{") ? "text" : "button")} disabled={!linkPopup.linkText.trim() || !linkPopup.linkUrl.trim()} className="px-4 py-1.5 text-xs bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-40">挿入</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
