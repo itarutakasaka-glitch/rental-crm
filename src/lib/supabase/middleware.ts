@@ -31,7 +31,9 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/api/public") ||
     request.nextUrl.pathname.startsWith("/api/store-visit-bookings");
 
-  if (isPublicPath) return supabaseResponse;
+  // Allow agent secret to bypass auth for /api/send-message
+  const hasAgentSecret = request.headers.get("x-agent-secret") === process.env.CRON_SECRET;
+  if (isPublicPath || (hasAgentSecret && request.nextUrl.pathname.startsWith("/api/send-message"))) return supabaseResponse;
 
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone();
