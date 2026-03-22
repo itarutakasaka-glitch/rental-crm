@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/workflow",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/agent",
+      "schedule": "* * * * *"
     }
   ]
 }
