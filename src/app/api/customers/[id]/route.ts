@@ -16,6 +16,8 @@ export async function PATCH(
     if (body.email !== undefined) updateData.email = body.email;
     if (body.phone !== undefined) updateData.phone = body.phone;
     if (body.nameKana !== undefined) updateData.nameKana = body.nameKana;
+    if (body.inquiryContent !== undefined) updateData.inquiryContent = body.inquiryContent;
+    if (body.memo !== undefined) updateData.memo = body.memo;
     const updated = await prisma.customer.update({
       where: { id },
       data: updateData,
