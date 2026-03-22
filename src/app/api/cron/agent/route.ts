@@ -239,6 +239,17 @@ async function confirmAppointment(customer: any, org: any, replyBody: string) {
   const assignee = customer.assigneeId ? await prisma.user.findUnique({ where: { id: customer.assigneeId } }) : null;
   const staffName = assignee?.name || "本田みなみ";
   const storeName = org.storeName || org.name || "";
+  const storeAccess = [
+    "\u25BC\u304A\u554F\u3044\u5408\u308F\u305B\u7269\u4EF6\u306E\u53D6\u308A\u6271\u3044\u5E97\u8217",
+    org.storeName ? `\u5E97\u8217\u540D\uFF1A${org.storeName}` : null,
+    org.storeAddress ? `\u4F4F\u6240\uFF1A${org.storeAddress}` : null,
+    (org as any).storeAccess ? `\u30A2\u30AF\u30BB\u30B9\uFF1A${(org as any).storeAccess}` : null,
+    org.storePhone ? `TEL\uFF1A${org.storePhone}` : null,
+    (org as any).storeWebsite ? `\u5E97\u8217web\u30B5\u30A4\u30C8\uFF1A${(org as any).storeWebsite}` : null,
+    (org as any).storeHours ? `\u55B6\u696D\u6642\u9593\uFF1A${(org as any).storeHours}` : null,
+    (org as any).storeClosedDays ? `\u5B9A\u4F11\u65E5\uFF1A${(org as any).storeClosedDays}` : null,
+    (org as any).storeParking ? `\u99D0\u8ECA\u5834\uFF1A${(org as any).storeParking}` : null,
+  ].filter(Boolean).join("\n");
   const useLineChannel = !!customer.lineUserId;
   const dbTpls = await getAgentTemplates(org.id);
   
@@ -261,12 +272,15 @@ async function confirmAppointment(customer: any, org: any, replyBody: string) {
     return;
   }
 
-  // 【確定】メール送信
-  const confirmTpl = dbTpls["tpl_confirm"] || `{{customer_name}}様\n\nご予約を確定いたしました。ありがとうございます。\n\n【ご予約内容】\n日時：{appointment_datetime}\n\n当日は顔写真付きの身分証と印鑑（認印可）をお持ちください。\nご不明な点がございましたらお気軽にご連絡くださいませ。`;
+  // 【確定】メール送信 — 定型文DB「【アポ確定】★アポ用_来店」を使用
+  const CONFIRM_FALLBACK = `\u305D\u308C\u3067\u306F{appointment_datetime}\u306B\u4E0B\u8A18\u306E\u5E97\u8217\u306B\u3054\u4E88\u7D04\u3044\u305F\u3057\u307E\u3059\u3002\n\n{store_access}\n\n\u307E\u305F\u3001\u6765\u5E97\u6642\u306E\u3054\u6848\u5185\u306B\u969B\u3057\u3066\n\n\u3010\u304A\u96FB\u8A71\u756A\u53F7\u3011\u3068\u4E0B\u8A18\u3010\u5E0C\u671B\u6761\u4EF6\u3011\u3092\u304A\u77E5\u3089\u305B\u304F\u3060\u3055\u3044\u3002\n\n----------------------------------------------\n\n\u25A0\u5E0C\u671B\u6761\u4EF6\n\n\u30FB\u8CC3\u6599\uFF1A\uFF08\u3000\u3000\uFF09\u5186\u307E\u3067\n\n\u30FB\u9593\u53D6\uFF1A\uFF08\u3000\u3000\uFF09\n\n\u30FB\u5E83\u3055\uFF1A\uFF08\u3000\u3000\uFF09\u33A1\u4EE5\u4E0A\n\n\u30FB\u99D0\u8ECA\u5834\uFF08\u3000\u3000\uFF09\u53F0\u5E0C\u671B\n\n\u30FB\u30A8\u30EA\u30A2\uFF1A\uFF08\u3000\u3000\uFF09\n\n\u30FB\u99C5\u304B\u3089\uFF1A\uFF08\u3000\u3000\uFF09\u5206\n\n\u30FB\u5165\u5C45\u4EBA\u6570\uFF1A\uFF08\u3000\u3000\uFF09\u4EBA\n\n\u30FB\u5165\u5C45\u5E0C\u671B\u6642\u671F\uFF1A\uFF08\u3000\u5E74\u3000\u6708\u3000\u65E5\u9803\uFF09\n\n\u30FB\u5F15\u3063\u8D8A\u3057\u7406\u7531\uFF08\u3000\u3000\uFF09\n\n\u30FB\u305D\u306E\u4ED6\u3001\u3053\u3060\u308F\u308A\u6761\u4EF6\uFF08\u3000\u3000\uFF09\n\n----------------------------------------------\n\n\u25A0\u3054\u7559\u610F\u4E8B\u9805\n\n\u203B\u3054\u6848\u5185\u5F53\u65E5\u307E\u3067\u306B\u304A\u554F\u3044\u5408\u308F\u305B\u7269\u4EF6\u306E\u52DF\u96C6\u304C\u7D42\u4E86\u3057\u3066\u3057\u307E\u3046\u53EF\u80FD\u6027\u3082\u3054\u3056\u3044\u307E\u3059\u3001\u305D\u306E\u5834\u5408\u3082\u8FD1\u3044\u6761\u4EF6\u3067\u304A\u90E8\u5C4B\u306E\u3054\u7D39\u4ECB\u3092\u3055\u305B\u3066\u9802\u304D\u307E\u3059\u306E\u3067\u3001\u3054\u5B89\u5FC3\u304F\u3060\u3055\u3044\n\n\u203B\u3054\u6848\u5185\u306E\u969B\u3001\u9375\u624B\u914D\u304C\u5FC5\u8981\u3067\u3059\u3002\u72B6\u6CC1\u306B\u3088\u308A\u3054\u6848\u5185\u51FA\u6765\u306A\u3044\u5834\u5408\u304C\u3054\u3056\u3044\u307E\u3059\u3001\u305D\u306E\u969B\u306F\u3054\u4E86\u627F\u304F\u3060\u3055\u3044`;
+  const confirmTpl = dbTpls["snippet_appointment_48"] || dbTpls["tpl_confirm"] || CONFIRM_FALLBACK;
   const confirmBody = confirmTpl
     .replace(/\{\{customer_name\}\}/g, customer.name || "")
     .replace(/\{appointment_datetime\}/g, datetime)
-    .replace(/\{appointment_location\}/g, storeName);
+    .replace(/\{appointment_location\}/g, storeName)
+    .replace(/\{store_access\}/g, storeAccess)
+    .replace(/\u25CF\u5E97\u8217\u30A2\u30AF\u30BB\u30B9\u8CBC\u308B\u25CF/g, storeAccess);
 
   // Send via LINE or Email
   if (useLineChannel) {
