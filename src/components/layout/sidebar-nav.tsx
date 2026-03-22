@@ -19,6 +19,12 @@ const menuItems = [
       { label: "\u62C5\u5F53\u8005", href: "/settings/staff" },
     ],
   },
+  {
+    label: "\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8", icon: "\u{1F916}", href: "/agent",
+    children: [
+      { label: "\u4F1A\u8A71\u30D5\u30ED\u30FC", href: "/agent/flow" },
+    ],
+  },
 ];
 
 export function SidebarNav() {
