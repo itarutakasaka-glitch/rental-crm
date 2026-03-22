@@ -272,7 +272,7 @@ function SynapseCanvas({ nodes, edges, selected, onSelect, onDrag }: {
 }
 
 // ── Snippet type from CRM DB ──
-type Snippet = { id: string; name: string; body: string; category: string; channel: string };
+type Snippet = { id: string; name: string; body: string; category: any; channel: string };
 
 // ── Right Panel: Template Editor ──
 function TemplatePanel({ nodeId, nodes, tpls, onChange, onSave, saving, saveMsg }: {
@@ -311,7 +311,7 @@ function TemplatePanel({ nodeId, nodes, tpls, onChange, onSave, saving, saveMsg 
     if (!snippetSearch.trim()) return snippets;
     const q = snippetSearch.toLowerCase();
     return snippets.filter(s =>
-      s.name.toLowerCase().includes(q) || s.body.toLowerCase().includes(q) || (s.category || "").toLowerCase().includes(q)
+      (s.name || "").toLowerCase().includes(q) || (s.body || "").toLowerCase().includes(q) || (typeof s.category === "string" ? s.category : s.category?.name || "").toLowerCase().includes(q)
     );
   }, [snippets, snippetSearch]);
 
@@ -480,7 +480,7 @@ function TemplatePanel({ nodeId, nodes, tpls, onChange, onSave, saving, saveMsg 
                 onClick={() => setExpandedSnippet(prev => prev === s.id ? null : s.id)}
               >
                 <span style={{ flex: 1, fontWeight: 600, color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-                {s.category && <span style={{ fontSize: 8, padding: "1px 4px", borderRadius: 3, background: "#f0f0f0", color: "#999" }}>{s.category}</span>}
+                {s.category && <span style={{ fontSize: 8, padding: "1px 4px", borderRadius: 3, background: "#f0f0f0", color: "#999" }}>{typeof s.category === "string" ? s.category : s.category?.name || ""}</span>}
                 <span style={{ fontSize: 8, color: "#ccc" }}>{expandedSnippet === s.id ? "\u25B2" : "\u25BC"}</span>
               </div>
               {expandedSnippet === s.id && (
@@ -491,7 +491,7 @@ function TemplatePanel({ nodeId, nodes, tpls, onChange, onSave, saving, saveMsg 
                     maxHeight: 120, overflowY: "auto", background: "#fafafa",
                     padding: 6, borderRadius: 4,
                   }}>
-                    {s.body.length > 300 ? s.body.slice(0, 300) + "\u2026" : s.body}
+                    {(s.body || "").length > 300 ? (s.body || "").slice(0, 300) + "\u2026" : (s.body || "")}
                   </pre>
                   <button
                     onClick={() => insertSnippet(s.body)}
