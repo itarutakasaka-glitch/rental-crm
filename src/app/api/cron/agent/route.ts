@@ -84,7 +84,7 @@ async function processNewInquiry(customer: any, org: any) {
     .replace(/\{\{store_address\}\}/g, org.storeAddress || "")
     .replace(/\{\{line_url\}\}/g, org.lineUrl || "")
     .replace(/\{\{property_name\}\}/g, props[0]?.name || "")
-    .replace(/\{\{property_url\}\}/g, props[0]?.url || props[0]?.portalUrl || "")
+    .replace(/\{\{property_url\}\}/g, props[0]?.url || (props[0] as any)?.portalUrl || "")
     .replace(/\{\{visit_url\}\}/g, `https://tama-fudosan-crm-2026.vercel.app/visit/${org.id}?c=${customer.id}`);
   
   // Insert vacancy + comment
