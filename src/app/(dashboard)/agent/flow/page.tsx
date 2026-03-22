@@ -279,11 +279,12 @@ function SynapseCanvas({ nodes, edges, selected, onSelect, onDrag }: {
               </>
             )}
             {/* Icon + Label */}
-            <text x={cx} y={cy - (isDiamond ? 4 : 6)} textAnchor={isDiamond ? "middle" : undefined} {...(!isDiamond && { x: node.x + 14 })} fontSize={isDiamond ? 11 : 12} fontWeight="700" fill="#1a1a1a" fontFamily="'Rajdhani', 'Noto Sans JP', sans-serif">
+            {/* Icon + Label */}
+            <text x={isDiamond ? cx : node.x + 14} y={isDiamond ? cy - 4 : cy - 6} textAnchor={isDiamond ? "middle" : "start"} fontSize={isDiamond ? 11 : 12} fontWeight="700" fill="#1a1a1a" fontFamily="'Rajdhani', 'Noto Sans JP', sans-serif">
               {node.icon ? `${node.icon} ` : ""}{node.label}
             </text>
             {/* Description */}
-            <text x={cx} y={cy + (isDiamond ? 12 : 14)} textAnchor={isDiamond ? "middle" : undefined} {...(!isDiamond && { x: node.x + 14 })} fontSize="10" fill="#888" fontFamily="'Noto Sans JP', sans-serif">
+            <text x={isDiamond ? cx : node.x + 14} y={isDiamond ? cy + 12 : cy + 14} textAnchor={isDiamond ? "middle" : "start"} fontSize="10" fill="#888" fontFamily="'Noto Sans JP', sans-serif">
               {node.desc.length > (isDiamond ? 14 : 22) ? node.desc.slice(0, isDiamond ? 14 : 22) + "\u2026" : node.desc}
             </text>
             {/* Template indicator (only on action nodes with tplKey) */}
@@ -440,6 +441,7 @@ function TemplatePanel({ nodeId, nodes, tpls, onChange, onSave, saving, saveMsg 
 
       {/* Snippet DB - only show for nodes with templates */}
       {tpl && (
+      <div style={{ marginTop: 20, borderTop: "1px solid #f0f0f0", paddingTop: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" }}>{"\u5B9A\u578B\u6587DB"}</div>
           {!snippetLoaded && (
