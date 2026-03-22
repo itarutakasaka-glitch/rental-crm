@@ -207,6 +207,18 @@ export async function POST(request: NextRequest) {
       });
       await prisma.customer.update({ where: { id: existingCustomer.id }, data: { isNeedAction: true, updatedAt: new Date() } });
       await prisma.workflowRun.updateMany({ where: { customerId: existingCustomer.id, status: "RUNNING" }, data: { status: "STOPPED_BY_REPLY" } });
+      
+      // Mark for AI ClassifyAgent processing if memo contains agent tracking
+      const currentMemo = existingCustomer.memo || "";
+      if (currentMemo.includes("[AI") || currentMemo.includes("[AGENT")) {
+        // Already tracked by agent - add CLASSIFY_PENDING for ClassifyAgent to pick up
+        await prisma.customer.update({
+          where: { id: existingCustomer.id },
+          data: { memo: currentMemo.replace(/\[AGENT_DONE\]/, "").trim() + " [CLASSIFY_PENDING]" },
+        });
+        console.log("[Email Webhook] Marked for ClassifyAgent:", existingCustomer.name, "reply:", body.slice(0, 80));
+      }
+      
       return NextResponse.json({ success: true, type: "reply", customerId: existingCustomer.id });
     }
 
