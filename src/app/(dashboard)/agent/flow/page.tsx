@@ -108,11 +108,17 @@ const initEdges: Edge[] = [
 
 // ── Edge path calculation ──
 function getEdgePath(from: NodeData, to: NodeData, nodes: NodeData[]): string {
-  const fw = from.type === "branch" ? BRANCH_W : NODE_W;
-  const th = to.type === "branch" ? BRANCH_H : NODE_H;
+  const fromDiamond = from.type === "branch" || from.type === "agent";
+  const toDiamond = to.type === "branch" || to.type === "agent";
+  const fw = fromDiamond ? BRANCH_W : NODE_W;
+  const fh = fromDiamond ? BRANCH_H : NODE_H;
+  const tw = toDiamond ? BRANCH_W : NODE_W;
+  const th = toDiamond ? BRANCH_H : NODE_H;
+  // Bottom center of from node
   const fx = from.x + fw / 2;
-  const fy = from.y + (from.type === "branch" ? BRANCH_H : NODE_H);
-  const tx = to.x + (to.type === "branch" ? BRANCH_W : NODE_W) / 2;
+  const fy = from.y + fh;
+  // Top center of to node
+  const tx = to.x + tw / 2;
   const ty = to.y;
   if (Math.abs(fx - tx) < 5) {
     return `M${fx},${fy} L${tx},${ty}`;
@@ -136,8 +142,8 @@ function SynapseCanvas({ nodes, edges, selected, onSelect, onDrag }: {
     return m;
   }, [nodes]);
 
-  const maxY = useMemo(() => Math.max(...nodes.map(n => n.y + (n.type === "branch" ? BRANCH_H : NODE_H))) + 60, [nodes]);
-  const maxX = useMemo(() => Math.max(...nodes.map(n => n.x + (n.type === "branch" ? BRANCH_W : NODE_W))) + 60, [nodes]);
+  const maxY = useMemo(() => Math.max(...nodes.map(n => n.y + ((n.type === "branch" || n.type === "agent") ? BRANCH_H : NODE_H))) + 60, [nodes]);
+  const maxX = useMemo(() => Math.max(...nodes.map(n => n.x + ((n.type === "branch" || n.type === "agent") ? BRANCH_W : NODE_W))) + 60, [nodes]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -193,10 +199,12 @@ function SynapseCanvas({ nodes, edges, selected, onSelect, onDrag }: {
           <g key={i}>
             <path d={d} fill="none" stroke={edge.color || "#ccc"} strokeWidth="1.5" markerEnd="url(#ah)" opacity={0.6} />
             {edge.label && (() => {
-              const fw = from.type === "branch" ? BRANCH_W : NODE_W;
+              const fromDiamond2 = from.type === "branch" || from.type === "agent";
+              const toDiamond2 = to.type === "branch" || to.type === "agent";
+              const fw = fromDiamond2 ? BRANCH_W : NODE_W;
               const fx = from.x + fw / 2;
-              const fy = from.y + (from.type === "branch" ? BRANCH_H : NODE_H);
-              const tx = to.x + (to.type === "branch" ? BRANCH_W : NODE_W) / 2;
+              const fy = from.y + (fromDiamond2 ? BRANCH_H : NODE_H);
+              const tx = to.x + (toDiamond2 ? BRANCH_W : NODE_W) / 2;
               const ty = to.y;
               const mx = (fx + tx) / 2;
               const my = (fy + ty) / 2;
@@ -210,10 +218,13 @@ function SynapseCanvas({ nodes, edges, selected, onSelect, onDrag }: {
 
       {/* Nodes */}
       {nodes.map(node => {
-        const w = node.type === "branch" ? BRANCH_W : NODE_W;
-        const h = node.type === "branch" ? BRANCH_H : NODE_H;
+        const isDiamond = node.type === "branch" || node.type === "agent";
+        const w = isDiamond ? BRANCH_W : NODE_W;
+        const h = isDiamond ? BRANCH_H : NODE_H;
         const isSel = selected === node.id;
         const hasTpl = !!node.tplKey;
+        const cx = node.x + w / 2;
+        const cy = node.y + h / 2;
 
         return (
           <g
@@ -222,47 +233,65 @@ function SynapseCanvas({ nodes, edges, selected, onSelect, onDrag }: {
             onMouseDown={e => handleMouseDown(e, node.id)}
             onClick={e => { e.stopPropagation(); onSelect(node.id); }}
           >
-            {/* Shadow */}
-            <rect x={node.x + 2} y={node.y + 2} width={w} height={h} rx={node.type === "branch" ? 12 : 8} fill="rgba(0,0,0,0.06)" />
-            {/* Main rect */}
-            <rect
-              x={node.x} y={node.y} width={w} height={h}
-              rx={node.type === "branch" ? 12 : 8}
-              fill="#fff"
-              stroke={isSel ? "#0891b2" : node.color}
-              strokeWidth={isSel ? 2 : 1}
-              filter={isSel ? "url(#sel)" : undefined}
-            />
-            {/* Color accent bar */}
-            <rect x={node.x} y={node.y} width={4} height={h} rx={2} fill={node.color} />
+            {isDiamond ? (
+              <>
+                {/* Diamond shadow */}
+                <polygon
+                  points={`${cx},${node.y + 4} ${node.x + w + 2},${cy + 2} ${cx},${node.y + h + 4} ${node.x - 2},${cy + 2}`}
+                  fill="rgba(0,0,0,0.05)"
+                />
+                {/* Diamond main */}
+                <polygon
+                  points={`${cx},${node.y} ${node.x + w},${cy} ${cx},${node.y + h} ${node.x},${cy}`}
+                  fill="#fff"
+                  stroke={isSel ? "#0891b2" : node.color}
+                  strokeWidth={isSel ? 2.5 : 1.5}
+                  filter={isSel ? "url(#sel)" : undefined}
+                />
+                {/* Diamond color fill overlay */}
+                <polygon
+                  points={`${cx},${node.y} ${node.x + w},${cy} ${cx},${node.y + h} ${node.x},${cy}`}
+                  fill={node.color} opacity={0.06}
+                />
+              </>
+            ) : (
+              <>
+                {/* Rect shadow */}
+                <rect x={node.x + 2} y={node.y + 2} width={w} height={h} rx={node.type === "end" ? 22 : 8} fill="rgba(0,0,0,0.06)" />
+                {/* Rect main */}
+                <rect
+                  x={node.x} y={node.y} width={w} height={h}
+                  rx={node.type === "end" ? 22 : 8}
+                  fill="#fff"
+                  stroke={isSel ? "#0891b2" : node.color}
+                  strokeWidth={isSel ? 2 : 1}
+                  filter={isSel ? "url(#sel)" : undefined}
+                />
+                {/* Color accent bar (only rect nodes) */}
+                {node.type !== "end" && <rect x={node.x} y={node.y} width={4} height={h} rx={2} fill={node.color} />}
+              </>
+            )}
             {/* Phase badge */}
-            {node.phase && (
+            {node.phase && !isDiamond && (
               <>
                 <rect x={node.x + w - 28} y={node.y + 4} width={24} height={14} rx={7} fill={node.color} opacity={0.15} />
                 <text x={node.x + w - 16} y={node.y + 14} textAnchor="middle" fontSize="8" fontWeight="700" fill={node.color} fontFamily="'JetBrains Mono', monospace">{node.phase}</text>
               </>
             )}
             {/* Icon + Label */}
-            <text x={node.x + 14} y={node.y + (node.type === "branch" ? 26 : 22)} fontSize="12" fontWeight="700" fill="#1a1a1a" fontFamily="'Rajdhani', 'Noto Sans JP', sans-serif">
+            <text x={cx} y={cy - (isDiamond ? 4 : 6)} textAnchor={isDiamond ? "middle" : undefined} {...(!isDiamond && { x: node.x + 14 })} fontSize={isDiamond ? 11 : 12} fontWeight="700" fill="#1a1a1a" fontFamily="'Rajdhani', 'Noto Sans JP', sans-serif">
               {node.icon ? `${node.icon} ` : ""}{node.label}
             </text>
             {/* Description */}
-            <text x={node.x + 14} y={node.y + (node.type === "branch" ? 44 : 40)} fontSize="10" fill="#888" fontFamily="'Noto Sans JP', sans-serif">
-              {node.desc.length > 22 ? node.desc.slice(0, 22) + "\u2026" : node.desc}
+            <text x={cx} y={cy + (isDiamond ? 12 : 14)} textAnchor={isDiamond ? "middle" : undefined} {...(!isDiamond && { x: node.x + 14 })} fontSize="10" fill="#888" fontFamily="'Noto Sans JP', sans-serif">
+              {node.desc.length > (isDiamond ? 14 : 22) ? node.desc.slice(0, isDiamond ? 14 : 22) + "\u2026" : node.desc}
             </text>
-            {/* Template indicator */}
-            {hasTpl && (
+            {/* Template indicator (only on action nodes with tplKey) */}
+            {hasTpl && !isDiamond && (
               <>
                 <rect x={node.x + w - 22} y={node.y + h - 18} width={18} height={14} rx={3} fill={isSel ? "#0891b2" : "#f3f4f6"} />
                 <text x={node.x + w - 13} y={node.y + h - 8} textAnchor="middle" fontSize="8" fill={isSel ? "#fff" : "#999"}>T</text>
               </>
-            )}
-            {/* Branch type indicator (diamond) */}
-            {node.type === "branch" && (
-              <polygon
-                points={`${node.x + w / 2},${node.y + h - 10} ${node.x + w / 2 - 5},${node.y + h - 5} ${node.x + w / 2},${node.y + h} ${node.x + w / 2 + 5},${node.y + h - 5}`}
-                fill={node.color} opacity={0.4}
-              />
             )}
           </g>
         );
@@ -400,13 +429,17 @@ function TemplatePanel({ nodeId, nodes, tpls, onChange, onSave, saving, saveMsg 
           </div>
         </div>
       ) : (
-        <div style={{ padding: 20, textAlign: "center", color: "#ccc", fontSize: 11 }}>
-          {"\u3053\u306E\u30CE\u30FC\u30C9\u306B\u306F\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093"}
+        <div style={{ padding: 20, textAlign: "center", color: "#ccc" }}>
+          <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.3 }}>{node.type === "branch" || node.type === "agent" ? "\u25C7" : "\u25A1"}</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "#aaa" }}>
+            {node.type === "branch" ? "\u5206\u5C90\u30CE\u30FC\u30C9" : node.type === "agent" ? "\u5224\u5B9A\u30CE\u30FC\u30C9" : "\u51E6\u7406\u30CE\u30FC\u30C9"}
+          </div>
+          <div style={{ fontSize: 10, color: "#ccc", marginTop: 2 }}>{"\u3053\u306E\u30CE\u30FC\u30C9\u306B\u306F\u5B9A\u578B\u6587\u304C\u3042\u308A\u307E\u305B\u3093"}</div>
         </div>
       )}
 
-      {/* Snippet DB with search */}
-      <div style={{ marginTop: 20, borderTop: "1px solid #f0f0f0", paddingTop: 16 }}>
+      {/* Snippet DB - only show for nodes with templates */}
+      {tpl && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" }}>{"\u5B9A\u578B\u6587DB"}</div>
           {!snippetLoaded && (
@@ -511,6 +544,7 @@ function TemplatePanel({ nodeId, nodes, tpls, onChange, onSave, saving, saveMsg 
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }
