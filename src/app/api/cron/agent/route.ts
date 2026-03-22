@@ -201,7 +201,7 @@ JSONで回答: {"classification":"A","reason":"理由"}`;
     const tentBody = dbTpls[tentKey] || FALLBACK_TEMPLATES[tentKey] || FALLBACK_TEMPLATES["tpl_tent_c"];
     const resolvedBody = tentBody
       .replace(/\{\{customer_name\}\}/g, customer.name || "")
-      .replace(/\{visit_proposal\}/g, "\u25CF\u6708\u25CF\u65E5\uFF08\u25CF\uFF09\u25CF\u25CF:\u25CF\u25CF")
+      .replace(/\{visit_proposal\}/g, "\u25CF\u6708\u25CF\u65E5\uFF08\u25CF\uFF09\u25CF\u25CF:\u25CF\u25CF\u3082\u3057\u304F\u306F\u25CF\u6708\u25CF\u65E5\uFF08\u25CF\uFF09\u25CF\u25CF:\u25CF\u25CF")
       .replace(/\{store_access\}/g, storeAccess || storeName);
     
     await sendReply(resolvedBody, `【ご来店のご案内】${customer.name}様`);
