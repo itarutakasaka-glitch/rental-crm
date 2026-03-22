@@ -52,24 +52,29 @@ async function scrapeVacancyFromUrl(portalUrl: string): Promise<{ pattern: strin
         // Consultation needed
         if (/^\u76F8\u8AC7$/.test(nyukyoVal))
           return { pattern: "E", source: "suumo_nyukyo", detail: `\u5165\u5C45: ${nyukyoVal} (\u8981\u76F8\u8AC7)` };
-        // Future date: distinguish construction (D) vs occupied (B) using 築年月
+        // Future date: distinguish construction (D) vs occupied (B)
         if (/\d{2}\u5E74\d{1,2}\u6708|\d{1,2}\u6708[\u4E0A\u4E2D\u4E0B]\u65EC|\d{1,2}\u6708\u672B|\d{4}\/\d{2}|\d{4}\u5E74\d{1,2}\u6708/.test(nyukyoVal) || /^\d{1,2}\u6708/.test(nyukyoVal)) {
-          // Check 築年月 field to determine if building is under construction
+          // Best check: 築年数 field shows "新築" for new construction
+          const chikuNesuMatch = text.match(/\u7BC9\u5E74\u6570\s+(\S+)/);
+          const chikuNesu = chikuNesuMatch ? chikuNesuMatch[1] : "";
+          if (/\u65B0\u7BC9/.test(chikuNesu)) {
+            return { pattern: "D", source: "suumo_shinchiku", detail: `\u5165\u5C45: ${nyukyoVal} / \u7BC9\u5E74\u6570: ${chikuNesu} (\u65B0\u7BC9=\u5EFA\u7BC9\u4E2D)` };
+          }
+          // Fallback: check 築年月 is in the future
           const chikuMatch = text.match(/\u7BC9\u5E74\u6708\s+(\d{4})\u5E74(\d{1,2})\u6708/);
-          const now = new Date();
-          const nowYM = now.getFullYear() * 100 + (now.getMonth() + 1);
           if (chikuMatch) {
             const chikuYM = parseInt(chikuMatch[1]) * 100 + parseInt(chikuMatch[2]);
+            const nowYM = new Date().getFullYear() * 100 + (new Date().getMonth() + 1);
             if (chikuYM > nowYM) {
-              return { pattern: "D", source: "suumo_nyukyo_chiku", detail: `\u5165\u5C45: ${nyukyoVal} / \u7BC9\u5E74\u6708: ${chikuMatch[1]}\u5E74${chikuMatch[2]}\u6708 (\u5EFA\u7BC9\u4E2D\u30FB\u7BC9\u5E74\u6708\u304C\u672A\u6765)` };
+              return { pattern: "D", source: "suumo_chiku_future", detail: `\u5165\u5C45: ${nyukyoVal} / \u7BC9\u5E74\u6708: ${chikuMatch[1]}\u5E74${chikuMatch[2]}\u6708 (\u7BC9\u5E74\u6708\u304C\u672A\u6765)` };
             }
           }
-          // Also check for 新築 keyword as fallback
-          if (/\u65B0\u7BC9/.test(text)) {
-            return { pattern: "D", source: "suumo_nyukyo_shinchiku", detail: `\u5165\u5C45: ${nyukyoVal} (\u65B0\u7BC9\u30AD\u30FC\u30EF\u30FC\u30C9\u3042\u308A\u30FB\u5EFA\u7BC9\u4E2D)` };
+          // Also check for 建築中/完成予定 keywords in the page text
+          if (/\u5EFA\u7BC9\u4E2D|\u5B8C\u6210\u4E88\u5B9A|\u672A\u5B8C\u6210/.test(text)) {
+            return { pattern: "D", source: "suumo_keyword", detail: `\u5165\u5C45: ${nyukyoVal} (\u5EFA\u7BC9\u4E2D\u30AD\u30FC\u30EF\u30FC\u30C9\u691C\u51FA)` };
           }
-          // 築年月 is past = existing building, so occupied
-          return { pattern: "B", source: "suumo_nyukyo", detail: `\u5165\u5C45: ${nyukyoVal} (\u5165\u5C45\u4E2D\u30FB\u7BC9\u5E74\u6708\u304C\u904E\u53BB)` };
+          // Existing building = occupied
+          return { pattern: "B", source: "suumo_nyukyo", detail: `\u5165\u5C45: ${nyukyoVal} / \u7BC9\u5E74\u6570: ${chikuNesu || "?"} (\u5165\u5C45\u4E2D)` };
         }
         // Dash or empty = unknown
         if (/^[-\u2014\u2015\u2500]$/.test(nyukyoVal))
