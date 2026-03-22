@@ -40,8 +40,18 @@ async function scrapeVacancyFromUrl(portalUrl: string): Promise<{ pattern: strin
 
     // SUUMO specific patterns
     if (portalUrl.includes("suumo.jp")) {
-      if (/\u3053\u306E\u7269\u4EF6\u306F\u63B2\u8F09\u7D42\u4E86|\u63B2\u8F09\u671F\u9593\u304C\u7D42\u4E86|\u53D6\u308A\u6271\u3044\u7D42\u4E86/.test(text))
-        return { pattern: "F", source: "suumo", detail: "SUUMO\u63B2\u8F09\u7D42\u4E86" };
+      if (/\u3053\u306E\u7269\u4EF6\u306F\u639B\u8F09\u7D42\u4E86|\u63B2\u8F09\u671F\u9593\u304C\u7D42\u4E86|\u53D6\u308A\u6271\u3044\u7D42\u4E86/.test(text))
+        return { pattern: "F", source: "suumo", detail: "SUUMO\u639B\u8F09\u7D42\u4E86" };
+      // Check SUUMO "入居" field in property table
+      const nyukyoMatch = text.match(/\u5165\u5C45\s+(.{1,30})/);
+      if (nyukyoMatch) {
+        const nyukyoVal = nyukyoMatch[1].trim();
+        if (/\u5373\u5165\u5C45\u53EF|\u5373\u53EF|\u5373\u65E5/.test(nyukyoVal))
+          return { pattern: "A", source: "suumo_nyukyo", detail: `\u5165\u5C45: ${nyukyoVal} (\u5373\u5165\u5C45\u53EF)` };
+        // Future date like '26年4月中旬 = currently occupied
+        if (/\d{2}\u5E74\d{1,2}\u6708|\u4E2D\u65EC|\u4E0A\u65EC|\u4E0B\u65EC|\u672B/.test(nyukyoVal))
+          return { pattern: "B", source: "suumo_nyukyo", detail: `\u5165\u5C45: ${nyukyoVal} (\u5165\u5C45\u4E2D\u30FB\u5C06\u6765\u65E5\u4ED8)` };
+      }
     }
     // APAMANSHOP specific
     if (portalUrl.includes("apamanshop.com")) {
