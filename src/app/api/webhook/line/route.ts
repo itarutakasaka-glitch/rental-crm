@@ -56,6 +56,15 @@ export async function POST(req: NextRequest) {
             where: { customerId: linked.id, status: "RUNNING" },
             data: { status: "STOPPED_BY_REPLY" },
           });
+          // Mark for AI ClassifyAgent if agent-tracked
+          const currentMemo = linked.memo || "";
+          if (currentMemo.includes("[AI") || currentMemo.includes("[AGENT")) {
+            await prisma.customer.update({
+              where: { id: linked.id },
+              data: { memo: currentMemo.replace(/\[AGENT_DONE\]/, "").trim() + " [CLASSIFY_PENDING]" },
+            });
+            console.log("[LINE Webhook] Marked for ClassifyAgent:", linked.name, "msg:", text.slice(0, 60));
+          }
           continue;
         }
 

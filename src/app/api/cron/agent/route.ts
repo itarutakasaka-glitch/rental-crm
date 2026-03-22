@@ -221,7 +221,7 @@ export async function GET(req: NextRequest) {
     orderBy: { updatedAt: "asc" },
   });
   for (const c of classifyPending) {
-    if (!c.email) continue;
+    if (!c.email && !c.lineUserId) continue;
     const lastMsg = await prisma.message.findFirst({
       where: { customerId: c.id, direction: "INBOUND" },
       orderBy: { createdAt: "desc" },
