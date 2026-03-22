@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 // ── Templates DB ──
 const TEMPLATES: Record<string, { title: string; text: string }> = {
@@ -17,6 +17,8 @@ const TEMPLATES: Record<string, { title: string; text: string }> = {
   tpl_fu4: { title: "追客④5日後", text: "新着物件やネット非掲載の物件もございますので、ぜひ一度ご来店くださいませ。" },
   tpl_fu5: { title: "追客⑤10日後", text: "お引越し時期はいつ頃をご予定されていますか？\nいつでもお気軽にご連絡くださいませ。" },
   tpl_slot: { title: "日程提示", text: "以下の日程でご都合の良いお時間をお選びください。\n\n①3/29(土) 10:00〜\n②3/29(土) 13:00〜\n③3/30(日) 10:00〜\n\n番号でお返事いただけますと幸いです。" },
+  tpl_pet: { title: "ペット確認", text: "ペット飼育の相談可否については物件や飼育内容によって都度確認となりますので、\n以下ご教示いただくこと可能でしょうか?\n\n・飼育されているペットの種別:\n・飼育されているペットの頭数:\n・お引越し時期:" },
+  tpl_cost: { title: "初期費用回答", text: "初期費用につきまして、概算をご案内いたします。\n\n【概算初期費用】\n・敷金: {deposit}\n・礼金: {keyMoney}\n・仲介手数料: {brokerageFee}\n・保証料: {guaranteeFee}\n・火災保険: {insuranceFee}\n・鍵交換費: {lockChangeFee}\n・前家賃: {advanceRent}\n\n※上記は概算となります。正確な金額はお申込み時に確定いたします。" },
 };
 
 // ── Styles ──
@@ -102,10 +104,11 @@ function SplitCard({ num, label, desc, color, tagBg, tagFg, tagText, tplKey, onE
   );
 }
 
-function EditPanel({ tplKey, onClose, templates, onChange }: {
+function EditPanel({ tplKey, onClose, templates, onChange, onSave, saving }: {
   tplKey: string; onClose: () => void;
   templates: Record<string, { title: string; text: string }>;
   onChange: (key: string, text: string) => void;
+  onSave: (key: string) => void; saving: boolean;
 }) {
   const t = templates[tplKey];
   if (!t) return null;
@@ -113,7 +116,10 @@ function EditPanel({ tplKey, onClose, templates, onChange }: {
     <div style={{ background: "#111", borderRadius: 10, padding: 16, margin: "12px 0", color: "#eee" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <span style={{ fontSize: 14, fontWeight: 700 }}>✏️ {t.title}</span>
-        <button onClick={onClose} style={{ background: "none", border: "1px solid #444", color: "#999", borderRadius: 6, padding: "3px 12px", fontSize: 10, cursor: "pointer" }}>閉じる ×</button>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={() => onSave(tplKey)} disabled={saving} style={{ background: saving ? "#666" : "#d4a017", border: "none", color: "#fff", borderRadius: 6, padding: "4px 14px", fontSize: 11, fontWeight: 700, cursor: saving ? "default" : "pointer" }}>{saving ? "保存中..." : "💾 保存"}</button>
+          <button onClick={onClose} style={{ background: "none", border: "1px solid #444", color: "#999", borderRadius: 6, padding: "3px 12px", fontSize: 10, cursor: "pointer" }}>閉じる ×</button>
+        </div>
       </div>
       <textarea
         value={t.text}
@@ -133,17 +139,46 @@ function EditPanel({ tplKey, onClose, templates, onChange }: {
 export default function AgentFlowPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [tpls, setTpls] = useState(TEMPLATES);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
   const edit = useCallback((k: string) => setEditing(prev => prev === k ? null : k), []);
   const changeTpl = useCallback((k: string, text: string) => {
     setTpls(prev => ({ ...prev, [k]: { ...prev[k], text } }));
   }, []);
+  
+  // Load templates from DB on mount
+  useEffect(() => {
+    fetch("/api/agent/templates").then(r => r.json()).then(data => {
+      if (data.templates?.length) {
+        const merged = { ...TEMPLATES };
+        for (const t of data.templates) {
+          if (merged[t.key]) merged[t.key] = { title: t.title, text: t.body };
+        }
+        setTpls(merged);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const saveTpl = useCallback(async (key: string) => {
+    setSaving(true); setSaveMsg("");
+    try {
+      const t = tpls[key];
+      const r = await fetch("/api/agent/templates", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, title: t.title, body: t.text }) });
+      if (r.ok) setSaveMsg("✅ 保存しました");
+      else setSaveMsg("❌ 保存エラー");
+    } catch { setSaveMsg("❌ 保存エラー"); }
+    setSaving(false);
+    setTimeout(() => setSaveMsg(""), 2000);
+  }, [tpls]);
 
   const E = (k: string) => editing === k;
 
   return (
     <div style={S.page}>
       <h1 style={S.h1}>🤖 AIエージェント 会話フロー</h1>
-      <div style={S.sub}>ノードをクリックでテンプレートを編集 · 分岐番号 <span style={{ fontFamily: "'JetBrains Mono'", color: "#555" }}>X-Y</span></div>
+      <div style={S.sub}>ノードをクリックでテンプレートを編集・保存 · 分岐番号 <span style={{ fontFamily: "'JetBrains Mono'", color: "#555" }}>X-Y</span>
+        {saveMsg && <span style={{ marginLeft: 12, fontSize: 12, fontWeight: 700 }}>{saveMsg}</span>}
+      </div>
 
       {/* ── PHASE 1 ── */}
       <div style={S.phaseHdr}><Badge color="#0891b2" text="PHASE 1" /><span style={S.phTitle}>反響取り込み</span></div>
@@ -158,7 +193,7 @@ export default function AgentFlowPage() {
         <FlowNode num="2-1" label="🔍 空室状況判定（8パターン）" desc="A:見学可能 / B:入居中(他部屋ナシ) / C:入居中(他部屋アリ) / D:建築中 / E:相談(不明) / F:募集終了(他部屋ナシ) / G:募集終了(他部屋アリ) / H:予約" color="#a855f7" onEdit={edit} editing={false} />
         <Arrow />
         <FlowNode num="2-2" label="📧 1stメール生成・送信" desc="プレヘッダー + 挨拶 + LINE誘導 + 空室定型文 + コメント回答 + 来店CTA + 署名" tplKey="tpl_1st" onEdit={edit} editing={E("tpl_1st")} />
-        {editing === "tpl_1st" && <EditPanel tplKey="tpl_1st" onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} />}
+        {editing === "tpl_1st" && <EditPanel tplKey="tpl_1st" onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} onSave={saveTpl} saving={saving} />}
       </div>
       <Arrow />
 
@@ -185,10 +220,10 @@ export default function AgentFlowPage() {
           <SplitCard num="3-2-2c" label="c. 見れる（募集中）" desc="店頭ヒアリング → 候補洗い出し → 一気に回る" color="#34d399" tagBg="#e0f2fe" tagFg="#075985" tagText="未確定c" tplKey="tpl_tent_c" onEdit={edit} editing={E("tpl_tent_c")} />
           <SplitCard num="3-2-2d" label="d. 建築中（見れない）" desc="外観・現状案内 + 他物件紹介" color="#34d399" tagBg="#e0f2fe" tagFg="#075985" tagText="未確定d" tplKey="tpl_tent_d" onEdit={edit} editing={E("tpl_tent_d")} />
         </div>
-        {(["tpl_tent_a","tpl_tent_b","tpl_tent_c","tpl_tent_d"] as const).map(k => editing === k && <EditPanel key={k} tplKey={k} onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} />)}
+        {(["tpl_tent_a","tpl_tent_b","tpl_tent_c","tpl_tent_d"] as const).map(k => editing === k && <EditPanel key={k} tplKey={k} onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} onSave={saveTpl} saving={saving} />)}
         <Arrow text="▼ 顧客了承返信" />
         <FlowNode num="4-1" label="✅ ConfirmAgent — アポ確定" desc="顧客了承 → 【確定】メール送信 ＋ ここで初めて担当者に通知" color="#14b8a6" tplKey="tpl_confirm" onEdit={edit} editing={E("tpl_confirm")} />
-        {editing === "tpl_confirm" && <EditPanel tplKey="tpl_confirm" onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} />}
+        {editing === "tpl_confirm" && <EditPanel tplKey="tpl_confirm" onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} onSave={saveTpl} saving={saving} />}
         <Arrow />
         <FlowNode num="4-2" label="🔔 担当者に通知" desc="日時・場所・電話番号・物件情報を担当者へ連携" onEdit={edit} editing={false} />
       </div>
@@ -197,13 +232,13 @@ export default function AgentFlowPage() {
       <div style={S.phaseHdr}><Badge color="#eab308" text="B層" /><span style={S.phTitle}>ソムリエ理論で来店誘導</span></div>
       <div style={S.flow("#eab308")}>
         <FlowNode num="3-3-1" label="🗓 引越し時期を聞く" desc="ソムリエ理論の起点: まず引越し時期を確認" tplKey="tpl_b_time" onEdit={edit} editing={E("tpl_b_time")} />
-        {editing === "tpl_b_time" && <EditPanel tplKey="tpl_b_time" onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} />}
+        {editing === "tpl_b_time" && <EditPanel tplKey="tpl_b_time" onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} onSave={saveTpl} saving={saving} />}
         <Arrow />
         <div style={S.splitGrid(2)}>
           <SplitCard num="3-3-2" label="2ヶ月以内" desc="「来店すべき」と言い切る → アポOK→SchedulingAgent / アポNG→オンライン提案 / それもNG→FollowUpか終了" color="#eab308" tagBg="#fef9c3" tagFg="#854d0e" tagText="2ヶ月以内" tplKey="tpl_b_push" onEdit={edit} editing={E("tpl_b_push")} />
           <SplitCard num="3-3-3" label="2ヶ月より先" desc="「時期を早められる？」→ 可能なら2ヶ月以内フローへ / 不可→FollowUpAgent" color="#f97316" tagBg="#fff7ed" tagFg="#c2410c" tagText="2ヶ月より先" onEdit={edit} editing={false} />
         </div>
-        {editing === "tpl_b_push" && <EditPanel tplKey="tpl_b_push" onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} />}
+        {editing === "tpl_b_push" && <EditPanel tplKey="tpl_b_push" onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} onSave={saveTpl} saving={saving} />}
       </div>
 
       {/* ── C層 詳細 ── */}
@@ -219,7 +254,7 @@ export default function AgentFlowPage() {
           <div key={item.k}>
             {i > 0 && <Arrow />}
             <FlowNode num={item.num} label={item.label} desc={item.desc} tplKey={item.k} onEdit={edit} editing={E(item.k)} />
-            {editing === item.k && <EditPanel tplKey={item.k} onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} />}
+            {editing === item.k && <EditPanel tplKey={item.k} onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} onSave={saveTpl} saving={saving} />}
           </div>
         ))}
         <Arrow />
@@ -232,7 +267,7 @@ export default function AgentFlowPage() {
         <FlowNode num="4-3" label="📅 カレンダーから空き枠取得" desc="Google/サイボウズ/Timetree/CRM連携。3h枠 / 優先10・13・16時 / 定休日除外" color="#0891b2" onEdit={edit} editing={false} />
         <Arrow />
         <FlowNode num="4-4" label="📅 候補日時を選択肢で提示" desc="例:「①3/29(土)10:00〜 ②3/29(土)13:00〜 ③3/30(日)10:00〜」→ 番号で選択" tplKey="tpl_slot" onEdit={edit} editing={E("tpl_slot")} />
-        {editing === "tpl_slot" && <EditPanel tplKey="tpl_slot" onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} />}
+        {editing === "tpl_slot" && <EditPanel tplKey="tpl_slot" onClose={() => setEditing(null)} templates={tpls} onChange={changeTpl} onSave={saveTpl} saving={saving} />}
         <Arrow />
         <div style={S.splitGrid(3)}>
           <SplitCard num="4-5a" label="🏪 来店（優先）" desc="" color="#0891b2" tagBg="#e0f2fe" tagFg="#075985" tagText="来店" onEdit={edit} editing={false} />
