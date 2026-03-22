@@ -271,6 +271,9 @@ function SynapseCanvas({ nodes, edges, selected, onSelect, onDrag }: {
   );
 }
 
+// ── Snippet type from CRM DB ──
+type Snippet = { id: string; name: string; body: string; category: string; channel: string };
+
 // ── Right Panel: Template Editor ──
 function TemplatePanel({ nodeId, nodes, tpls, onChange, onSave, saving, saveMsg }: {
   nodeId: string | null; nodes: NodeData[];
@@ -281,6 +284,43 @@ function TemplatePanel({ nodeId, nodes, tpls, onChange, onSave, saving, saveMsg 
   const node = nodeId ? nodes.find(n => n.id === nodeId) : null;
   const tplKey = node?.tplKey;
   const tpl = tplKey ? tpls[tplKey] : null;
+
+  // Snippet DB state
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [snippetSearch, setSnippetSearch] = useState("");
+  const [snippetLoading, setSnippetLoading] = useState(false);
+  const [snippetLoaded, setSnippetLoaded] = useState(false);
+  const [expandedSnippet, setExpandedSnippet] = useState<string | null>(null);
+
+  // Load snippets from CRM on first expand
+  const loadSnippets = useCallback(async () => {
+    if (snippetLoaded) return;
+    setSnippetLoading(true);
+    try {
+      const r = await fetch("/api/templates");
+      const data = await r.json();
+      const arr = Array.isArray(data) ? data : data.templates || [];
+      setSnippets(arr);
+      setSnippetLoaded(true);
+    } catch { setSnippets([]); }
+    setSnippetLoading(false);
+  }, [snippetLoaded]);
+
+  // Filter snippets by search
+  const filtered = useMemo(() => {
+    if (!snippetSearch.trim()) return snippets;
+    const q = snippetSearch.toLowerCase();
+    return snippets.filter(s =>
+      s.name.toLowerCase().includes(q) || s.body.toLowerCase().includes(q) || (s.category || "").toLowerCase().includes(q)
+    );
+  }, [snippets, snippetSearch]);
+
+  // Insert snippet text into current template
+  const insertSnippet = useCallback((snippetBody: string) => {
+    if (!tplKey || !tpl) return;
+    const newText = tpl.text + "\n\n" + snippetBody;
+    onChange(tplKey, newText);
+  }, [tplKey, tpl, onChange]);
 
   if (!node) {
     return (
@@ -365,11 +405,52 @@ function TemplatePanel({ nodeId, nodes, tpls, onChange, onSave, saving, saveMsg 
         </div>
       )}
 
-      {/* Snippet DB quick list */}
+      {/* Snippet DB with search */}
       <div style={{ marginTop: 20, borderTop: "1px solid #f0f0f0", paddingTop: 16 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "#888", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>{"\u5B9A\u578B\u6587DB"}</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {Object.entries(tpls).map(([key, t]) => (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" }}>{"\u5B9A\u578B\u6587DB"}</div>
+          {!snippetLoaded && (
+            <button onClick={loadSnippets} disabled={snippetLoading} style={{
+              fontSize: 9, padding: "2px 8px", borderRadius: 4, border: "1px solid #e5e7eb",
+              background: snippetLoading ? "#f3f4f6" : "#fff", color: "#888", cursor: snippetLoading ? "default" : "pointer",
+            }}>
+              {snippetLoading ? "\u8AAD\u8FBC\u4E2D..." : "\u{1F504} CRM\u304B\u3089\u53D6\u5F97"}
+            </button>
+          )}
+          {snippetLoaded && <span style={{ fontSize: 9, color: "#22c55e" }}>{snippets.length}\u4EF6</span>}
+        </div>
+
+        {/* Search input */}
+        <div style={{ position: "relative", marginBottom: 8 }}>
+          <input
+            type="text"
+            value={snippetSearch}
+            onChange={e => { setSnippetSearch(e.target.value); if (!snippetLoaded) loadSnippets(); }}
+            onFocus={() => { if (!snippetLoaded) loadSnippets(); }}
+            placeholder={"\u{1F50D} \u5B9A\u578B\u6587\u3092\u691C\u7D22..."}
+            style={{
+              width: "100%", padding: "6px 10px 6px 10px", fontSize: 11,
+              border: "1px solid #e5e7eb", borderRadius: 6, outline: "none",
+              background: "#fafafa", color: "#333", boxSizing: "border-box",
+              transition: "border-color 0.15s", fontFamily: "'Noto Sans JP', sans-serif",
+            }}
+            onFocusCapture={e => (e.target.style.borderColor = "#0891b2")}
+            onBlurCapture={e => (e.target.style.borderColor = "#e5e7eb")}
+          />
+        </div>
+
+        {/* Snippet list */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, maxHeight: 400, overflowY: "auto" }}>
+          {snippetLoading && <div style={{ fontSize: 10, color: "#aaa", textAlign: "center", padding: 12 }}>{"\u8AAD\u307F\u8FBC\u307F\u4E2D..."}</div>}
+
+          {snippetLoaded && filtered.length === 0 && (
+            <div style={{ fontSize: 10, color: "#ccc", textAlign: "center", padding: 12 }}>
+              {snippetSearch ? "\u691C\u7D22\u7D50\u679C\u306A\u3057" : "\u5B9A\u578B\u6587\u304C\u3042\u308A\u307E\u305B\u3093"}
+            </div>
+          )}
+
+          {/* Agent templates (hardcoded) */}
+          {!snippetLoaded && !snippetLoading && Object.entries(tpls).map(([key, t]) => (
             <div
               key={key}
               style={{
@@ -382,6 +463,50 @@ function TemplatePanel({ nodeId, nodes, tpls, onChange, onSave, saving, saveMsg 
               onClick={() => onChange(key, t.text)}
             >
               {t.title}
+            </div>
+          ))}
+
+          {/* CRM snippets with expand/insert */}
+          {snippetLoaded && filtered.map(s => (
+            <div key={s.id} style={{
+              border: "1px solid #f0f0f0", borderRadius: 6, overflow: "hidden",
+              transition: "all 0.15s", background: expandedSnippet === s.id ? "#f8fafc" : "#fff",
+            }}>
+              <div
+                style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 8px",
+                  cursor: "pointer", fontSize: 10,
+                }}
+                onClick={() => setExpandedSnippet(prev => prev === s.id ? null : s.id)}
+              >
+                <span style={{ flex: 1, fontWeight: 600, color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
+                {s.category && <span style={{ fontSize: 8, padding: "1px 4px", borderRadius: 3, background: "#f0f0f0", color: "#999" }}>{s.category}</span>}
+                <span style={{ fontSize: 8, color: "#ccc" }}>{expandedSnippet === s.id ? "\u25B2" : "\u25BC"}</span>
+              </div>
+              {expandedSnippet === s.id && (
+                <div style={{ padding: "0 8px 8px", borderTop: "1px solid #f0f0f0" }}>
+                  <pre style={{
+                    fontSize: 9, color: "#666", lineHeight: 1.5, margin: "6px 0",
+                    fontFamily: "'JetBrains Mono', monospace", whiteSpace: "pre-wrap",
+                    maxHeight: 120, overflowY: "auto", background: "#fafafa",
+                    padding: 6, borderRadius: 4,
+                  }}>
+                    {s.body.length > 300 ? s.body.slice(0, 300) + "\u2026" : s.body}
+                  </pre>
+                  <button
+                    onClick={() => insertSnippet(s.body)}
+                    disabled={!tplKey}
+                    style={{
+                      width: "100%", padding: "4px 0", fontSize: 9, fontWeight: 700,
+                      border: "none", borderRadius: 4, cursor: tplKey ? "pointer" : "not-allowed",
+                      background: tplKey ? "#0891b2" : "#e5e7eb", color: tplKey ? "#fff" : "#aaa",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {tplKey ? "\u2B07 \u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306B\u633F\u5165" : "\u30CE\u30FC\u30C9\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044"}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
