@@ -46,11 +46,21 @@ async function scrapeVacancyFromUrl(portalUrl: string): Promise<{ pattern: strin
       const nyukyoMatch = text.match(/\u5165\u5C45\s+(.{1,30})/);
       if (nyukyoMatch) {
         const nyukyoVal = nyukyoMatch[1].trim();
+        // Immediate availability
         if (/\u5373\u5165\u5C45\u53EF|\u5373\u53EF|\u5373\u65E5/.test(nyukyoVal))
           return { pattern: "A", source: "suumo_nyukyo", detail: `\u5165\u5C45: ${nyukyoVal} (\u5373\u5165\u5C45\u53EF)` };
-        // Future date like '26年4月中旬 = currently occupied
-        if (/\d{2}\u5E74\d{1,2}\u6708|\u4E2D\u65EC|\u4E0A\u65EC|\u4E0B\u65EC|\u672B/.test(nyukyoVal))
+        // Consultation needed
+        if (/^\u76F8\u8AC7$/.test(nyukyoVal))
+          return { pattern: "E", source: "suumo_nyukyo", detail: `\u5165\u5C45: ${nyukyoVal} (\u8981\u76F8\u8AC7)` };
+        // Future date = currently occupied (covers: '26年4月中旬, 26年5月, 4月中旬, 4月末, 2026年4月, 2026/04 etc)
+        if (/\d{2}\u5E74\d{1,2}\u6708|\d{1,2}\u6708[\u4E0A\u4E2D\u4E0B]\u65EC|\d{1,2}\u6708\u672B|\d{4}\/\d{2}|\d{4}\u5E74\d{1,2}\u6708/.test(nyukyoVal))
           return { pattern: "B", source: "suumo_nyukyo", detail: `\u5165\u5C45: ${nyukyoVal} (\u5165\u5C45\u4E2D\u30FB\u5C06\u6765\u65E5\u4ED8)` };
+        // Just a month like "4月" or "5月"
+        if (/^\d{1,2}\u6708/.test(nyukyoVal))
+          return { pattern: "B", source: "suumo_nyukyo", detail: `\u5165\u5C45: ${nyukyoVal} (\u5165\u5C45\u4E2D\u30FB\u6708\u306E\u307F)` };
+        // Dash or empty = unknown
+        if (/^[-\u2014\u2015\u2500]$/.test(nyukyoVal))
+          return { pattern: "E", source: "suumo_nyukyo", detail: `\u5165\u5C45: - (\u60C5\u5831\u306A\u3057)` };
       }
     }
     // APAMANSHOP specific
