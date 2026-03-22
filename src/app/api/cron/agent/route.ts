@@ -234,6 +234,68 @@ JSONで回答: {"classification":"A","reason":"理由"}`;
   });
 }
 
+// ====== PHASE 5: ConfirmAgent equivalent ======
+async function confirmAppointment(customer: any, org: any, replyBody: string) {
+  const assignee = customer.assigneeId ? await prisma.user.findUnique({ where: { id: customer.assigneeId } }) : null;
+  const staffName = assignee?.name || "本田みなみ";
+  const storeName = org.storeName || org.name || "";
+  const useLineChannel = !!customer.lineUserId;
+  const dbTpls = await getAgentTemplates(org.id);
+  
+  // AIで返信内容から日時・電話番号を抽出
+  const aiResponse = await callOpenAI(
+    `顧客の返信からアポイント情報を抽出してJSON形式で返してください。{"datetime":"抽出した日時 or 未記載","phone":"電話番号 or 未記載","accepted":true/false}。了承・同意の意思があればaccepted=true。`,
+    `顧客返信: ${replyBody}`
+  );
+  let datetime = "●月●日（●）●●:●●", phone = "", accepted = true;
+  try {
+    const parsed = JSON.parse(aiResponse.replace(/```json|```/g, "").trim());
+    if (parsed.datetime && parsed.datetime !== "未記載") datetime = parsed.datetime;
+    if (parsed.phone && parsed.phone !== "未記載") phone = parsed.phone;
+    accepted = parsed.accepted !== false;
+  } catch {}
+  
+  if (!accepted) {
+    console.log(`[Agent] Confirm: ${customer.name} did not accept, keeping A-layer`);
+    await prisma.customer.update({ where: { id: customer.id }, data: { memo: (customer.memo || "").replace("[CONFIRM_PENDING]", "[AI分類:A層]") } });
+    return;
+  }
+
+  // 【確定】メール送信
+  const confirmTpl = dbTpls["tpl_confirm"] || `{{customer_name}}様\n\nご予約を確定いたしました。ありがとうございます。\n\n【ご予約内容】\n日時：{appointment_datetime}\n\n当日は顔写真付きの身分証と印鑑（認印可）をお持ちください。\nご不明な点がございましたらお気軽にご連絡くださいませ。`;
+  const confirmBody = confirmTpl
+    .replace(/\{\{customer_name\}\}/g, customer.name || "")
+    .replace(/\{appointment_datetime\}/g, datetime)
+    .replace(/\{appointment_location\}/g, storeName);
+
+  // Send via LINE or Email
+  if (useLineChannel) {
+    const { sendLineMessage } = await import("@/lib/channels/line");
+    await sendLineMessage(customer.lineUserId!, confirmBody);
+    await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "LINE", body: confirmBody, status: "SENT" } });
+  } else if (customer.email) {
+    const { Resend } = await import("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
+    let html = confirmBody.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+    await resend.emails.send({ from: `${storeName} <${fromEmail}>`, to: [customer.email], subject: `【ご予約確定】${customer.name}様`, html });
+    await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject: `【ご予約確定】${customer.name}様`, body: confirmBody, status: "SENT" } });
+  }
+
+  // 担当者に通知（確定時のみ通知 — 会話フロー準拠）
+  const notifyBody = `【アポ確定】${customer.name}様\n日時：${datetime}\n電話：${phone || "未取得"}\n場所：${storeName}\n分類：A層\nURL：https://tama-fudosan-crm-2026.vercel.app/customers?id=${customer.id}`;
+  // TODO: LINE/Slack通知。現在はmemoに記録
+  await prisma.customer.update({
+    where: { id: customer.id },
+    data: {
+      memo: (customer.memo || "").replace("[CONFIRM_PENDING]", `[アポ確定] ${datetime} ${phone}`),
+      isNeedAction: true,
+    },
+  });
+  
+  console.log(`[Agent] CONFIRMED: ${customer.name} datetime=${datetime} phone=${phone} via ${useLineChannel ? "LINE" : "EMAIL"}`);
+}
+
 // ====== Main Cron Handler ======
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -275,5 +337,24 @@ export async function GET(req: NextRequest) {
     catch (e: any) { console.error(`[Agent] Error classify ${c.name}:`, e.message); }
   }
 
-  return NextResponse.json({ success: true, processed, pending: pending.length, classify: classifyPending.length });
+  // 3. Process A-layer confirmations (CONFIRM_PENDING) → ConfirmAgent
+  const confirmPending = await prisma.customer.findMany({
+    where: { memo: { contains: "[CONFIRM_PENDING]" } },
+    take: 5,
+    orderBy: { updatedAt: "asc" },
+  });
+  for (const c of confirmPending) {
+    if (!c.email && !c.lineUserId) continue;
+    const lastMsg = await prisma.message.findFirst({
+      where: { customerId: c.id, direction: "INBOUND" },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!lastMsg?.body) continue;
+    try {
+      await confirmAppointment(c, org, lastMsg.body);
+      processed++;
+    } catch (e: any) { console.error(`[Agent] Error confirm ${c.name}:`, e.message); }
+  }
+
+  return NextResponse.json({ success: true, processed, pending: pending.length, classify: classifyPending.length, confirm: confirmPending.length });
 }

@@ -56,14 +56,17 @@ export async function POST(req: NextRequest) {
             where: { customerId: linked.id, status: "RUNNING" },
             data: { status: "STOPPED_BY_REPLY" },
           });
-          // Mark for AI ClassifyAgent if agent-tracked
+          // Mark for AI agent processing
           const currentMemo = linked.memo || "";
           if (currentMemo.includes("[AI") || currentMemo.includes("[AGENT")) {
+            // A層済み → 確定フローへ、それ以外 → 分類フローへ
+            const nextTag = currentMemo.includes("[AI分類:A層]") ? "[CONFIRM_PENDING]" : "[CLASSIFY_PENDING]";
+            const cleanMemo = currentMemo.replace(/\[AGENT_DONE\]/, "").replace(/\[CLASSIFY_PENDING\]/, "").replace(/\[CONFIRM_PENDING\]/, "").trim();
             await prisma.customer.update({
               where: { id: linked.id },
-              data: { memo: currentMemo.replace(/\[AGENT_DONE\]/, "").trim() + " [CLASSIFY_PENDING]" },
+              data: { memo: cleanMemo + " " + nextTag },
             });
-            console.log("[LINE Webhook] Marked for ClassifyAgent:", linked.name, "msg:", text.slice(0, 60));
+            console.log("[LINE Webhook] Marked", nextTag, ":", linked.name, "msg:", text.slice(0, 60));
           }
           continue;
         }
