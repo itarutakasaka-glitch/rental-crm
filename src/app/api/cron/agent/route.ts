@@ -16,6 +16,65 @@ const VACANCY_TEXTS: Record<string, string> = {
   H: "⇒ただいま空き状況を確認しております。\n2番手以降のご案内も可能ですので、ご興味ございましたらお早めにご連絡くださいませ。",
 };
 
+// ====== URL-based vacancy detection (Phase 2 Step 2: 1st stage) ======
+async function scrapeVacancyFromUrl(portalUrl: string): Promise<{ pattern: string; source: string; detail: string }> {
+  if (!portalUrl) return { pattern: "E", source: "no_url", detail: "URL\u306A\u3057" };
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(portalUrl, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+    });
+    clearTimeout(timeout);
+
+    if (res.status === 404 || res.status === 410) {
+      return { pattern: "F", source: "http_" + res.status, detail: "\u30DA\u30FC\u30B8\u304C\u524A\u9664\u6E08\u307F\uFF08\u52DF\u96C6\u7D42\u4E86\u306E\u53EF\u80FD\u6027\uFF09" };
+    }
+    if (!res.ok) {
+      return { pattern: "E", source: "http_" + res.status, detail: "\u30DA\u30FC\u30B8\u53D6\u5F97\u30A8\u30E9\u30FC" };
+    }
+
+    const html = await res.text();
+    const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 15000);
+
+    // SUUMO specific patterns
+    if (portalUrl.includes("suumo.jp")) {
+      if (/\u3053\u306E\u7269\u4EF6\u306F\u63B2\u8F09\u7D42\u4E86|\u63B2\u8F09\u671F\u9593\u304C\u7D42\u4E86|\u53D6\u308A\u6271\u3044\u7D42\u4E86/.test(text))
+        return { pattern: "F", source: "suumo", detail: "SUUMO\u63B2\u8F09\u7D42\u4E86" };
+    }
+    // APAMANSHOP specific
+    if (portalUrl.includes("apamanshop.com")) {
+      if (/\u3053\u306E\u7269\u4EF6\u306F\u7D42\u4E86|\u52DF\u96C6\u7D42\u4E86|\u304A\u53D6\u308A\u6271\u3044\u3067\u304D\u307E\u305B\u3093/.test(text))
+        return { pattern: "F", source: "apaman", detail: "APAMAN\u52DF\u96C6\u7D42\u4E86" };
+    }
+    // HOME'S specific
+    if (portalUrl.includes("homes.co.jp")) {
+      if (/\u3053\u306E\u7269\u4EF6\u306F\u73FE\u5728\u63B2\u8F09\u3055\u308C\u3066\u3044\u307E\u305B\u3093|\u63B2\u8F09\u7D42\u4E86|\u53D6\u308A\u6271\u3044\u7D42\u4E86/.test(text))
+        return { pattern: "F", source: "homes", detail: "HOME'S\u63B2\u8F09\u7D42\u4E86" };
+    }
+
+    // Generic keyword detection
+    if (/\u52DF\u96C6\u7D42\u4E86|\u6210\u7D04\u6E08|\u6E80\u5BA4|\u53D6\u6271\u7D42\u4E86|\u63B2\u8F09\u304C\u7D42\u4E86/.test(text))
+      return { pattern: "F", source: "keyword", detail: "\u52DF\u96C6\u7D42\u4E86\u30AD\u30FC\u30EF\u30FC\u30C9\u691C\u51FA" };
+    if (/\u5EFA\u7BC9\u4E2D|\u5B8C\u6210\u4E88\u5B9A|\u65B0\u7BC9\u672A\u5B8C\u6210/.test(text))
+      return { pattern: "D", source: "keyword", detail: "\u5EFA\u7BC9\u4E2D\u30AD\u30FC\u30EF\u30FC\u30C9\u691C\u51FA" };
+    if (/\u5373\u5165\u5C45\u53EF|\u7A7A\u5BA4|\u5165\u5C45\u53EF\u80FD|\u898B\u5B66\u53EF/.test(text))
+      return { pattern: "A", source: "keyword", detail: "\u7A7A\u5BA4\u30FB\u5373\u5165\u5C45\u53EF\u30AD\u30FC\u30EF\u30FC\u30C9\u691C\u51FA" };
+    if (/\u5165\u5C45\u4E2D|\u73FE\u5165\u5C45|\u9000\u53BB\u4E88\u5B9A/.test(text))
+      return { pattern: "B", source: "keyword", detail: "\u5165\u5C45\u4E2D\u30AD\u30FC\u30EF\u30FC\u30C9\u691C\u51FA" };
+
+    // Page exists, content looks normal = likely available (E = confirm needed)
+    if (text.length > 500) {
+      return { pattern: "E", source: "page_exists", detail: "\u30DA\u30FC\u30B8\u5B58\u5728\u3001\u78BA\u8A8D\u5FC5\u8981" };
+    }
+    return { pattern: "E", source: "unknown", detail: "\u5224\u5B9A\u4E0D\u80FD" };
+  } catch (e: any) {
+    if (e.name === "AbortError") return { pattern: "E", source: "timeout", detail: "\u30BF\u30A4\u30E0\u30A2\u30A6\u30C8" };
+    return { pattern: "E", source: "error", detail: e.message?.slice(0, 50) || "\u30A8\u30E9\u30FC" };
+  }
+}
+
 async function callOpenAI(systemPrompt: string, userMsg: string): Promise<string> {
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -49,14 +108,26 @@ async function processNewInquiry(customer: any, org: any) {
   const tmpl = templates.find((t: any) => t.name.includes("初回"));
   if (!tmpl) { console.log("[Agent] No initial template found"); return; }
   
-  // Ask AI for vacancy pattern + comment response
-  const systemPrompt = `あなたは不動産賃貸仲介のアシスタントです。顧客の問い合わせ内容から、(1)空室パターン(A-H, 不明ならE)と、(2)質問への回答を判断してください。
+  // Step 2: Scrape vacancy from portal URL
+  const portalUrl = (props[0] as any)?.portalUrl || props[0]?.url || "";
+  const scrapeResult = await scrapeVacancyFromUrl(portalUrl);
+  console.log(`[Agent] Vacancy scrape: pattern=${scrapeResult.pattern} source=${scrapeResult.source} detail=${scrapeResult.detail}`);
+  
+  // Ask AI for vacancy pattern + comment response (with scrape hint)
+  const systemPrompt = `あなたは不動産賃貸仲介のアシスタントです。顧客の問い合わせ内容から、(1)空室パターン(A-H)と、(2)質問への回答を判断してください。
+
+重要: 物件ページのURL読み取り結果が提供されています。この結果を最優先で空室パターン判定に使用してください。
+- URL読み取りで「F」(募集終了)の場合 → vacancy="F"とすること
+- URL読み取りで「A」(空室)の場合 → vacancy="A"とすること
+- URL読み取りで「D」(建築中)の場合 → vacancy="D"とすること
+- URL読み取りで「E」(確認必要)の場合 → AIの判断でA-Hを選択（わからなければE）
+
 回答はJSON形式で: {"vacancy":"E","comment":"回答文 or 空文字"}
 ペットの質問には必ず以下を使うこと: 「ペット飼育の相談可否については物件や飼育内容によって都度確認となりますので、以下ご教示いただくこと可能でしょうか?\\n・飼育されているペットの種別:\\n・飼育されているペットの頭数:\\n・お引越し時期:」
 初期費用の質問には: 「初期費用につきましては、入居時期やお申込み内容によって変動いたしますので、概算のご案内も含めて一度ご来店ください。」
 質問がなければcommentは空文字にすること。`;
   
-  const aiResponse = await callOpenAI(systemPrompt, `顧客名: ${customer.name}\n問い合わせ内容: ${inquiry}\n物件: ${props[0]?.name || "不明"}`);
+  const aiResponse = await callOpenAI(systemPrompt, `顧客名: ${customer.name}\n問い合わせ内容: ${inquiry}\n物件: ${props[0]?.name || "不明"}\n物件URL: ${portalUrl}\n\n【URL読み取り結果】パターン: ${scrapeResult.pattern} / ソース: ${scrapeResult.source} / 詳細: ${scrapeResult.detail}`);
   
   let vacancy = "E", comment = "";
   try {
