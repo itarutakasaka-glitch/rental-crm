@@ -24,6 +24,7 @@ const menuItems = [
     children: [
       { label: "\u4F1A\u8A71\u30D5\u30ED\u30FC", href: "/agent/flow" },
       { label: "\u521D\u671F\u8CBB\u7528\u30EB\u30FC\u30EB", href: "/agent/cost-rules" },
+      { label: "\u5B9A\u578B\u6587DB", href: "/agent/snippets" },
     ],
   },
 ];
