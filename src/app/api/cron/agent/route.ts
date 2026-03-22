@@ -151,35 +151,69 @@ JSONで回答: {"classification":"A","reason":"理由"}`;
   const assignee = customer.assigneeId ? await prisma.user.findUnique({ where: { id: customer.assigneeId } }) : null;
   const staffName = assignee?.name || "本田みなみ";
   const storeName = org.storeName || org.name || "";
+  const storeAccess = [org.storeName, org.storeAddress, org.storePhone].filter(Boolean).join("\n");
   const dbTpls = await getAgentTemplates(org.id);
+  const useLineChannel = !!customer.lineUserId;
+  
+  // Helper: send via LINE or Email based on customer's channel
+  async function sendReply(body: string, subject: string) {
+    if (useLineChannel) {
+      const { sendLineMessage } = await import("@/lib/channels/line");
+      await sendLineMessage(customer.lineUserId!, body);
+      await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "LINE", body, status: "SENT" } });
+      console.log(`[Agent] LINE reply sent to ${customer.name}`);
+    } else if (customer.email) {
+      const { Resend } = await import("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
+      let html = body.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+      await resend.emails.send({ from: `${storeName} <${fromEmail}>`, to: [customer.email], subject, html });
+      await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject, body, status: "SENT" } });
+      console.log(`[Agent] Email reply sent to ${customer.name}`);
+    }
+  }
 
   if (classification === "A") {
-    // A層: 【未確定】テンプレートで返信（担当者通知なし）
-    const tentBody = dbTpls["tpl_tent_c"] || `${customer.name}様\n\nご連絡ありがとうございます。\n\n※現時点でご予約は確定しておりませんので、ご注意ください\n\n当日は店頭で詳しいお話を伺い、物件をご案内できればと思います。\n【お電話番号】を頂くこと可能でしょうか？`;
-    const resolvedBody = tentBody.replace(/\{\{customer_name\}\}/g, customer.name || "").replace(/\{visit_proposal\}/g, "次の週末").replace(/\{store_access\}/g, storeName);
+    // A層: 空室状況に応じた【未確定】テンプレートを選択（会話フロー 3-2-2 a/b/c/d）
+    // 最後の1stメールの空室パターンをmemoから推測、なければAI判定
+    const lastOutbound = await prisma.message.findFirst({ where: { customerId: customer.id, direction: "OUTBOUND" }, orderBy: { createdAt: "desc" } });
+    let vacancyPattern = "E"; // default
+    const lastBody = lastOutbound?.body || "";
+    if (lastBody.includes("見学も可能")) vacancyPattern = "A";
+    else if (lastBody.includes("入居中")) vacancyPattern = "B";
+    else if (lastBody.includes("建築中")) vacancyPattern = "D";
+    else if (lastBody.includes("募集終了") || lastBody.includes("募集が終了")) vacancyPattern = "F";
     
-    const { Resend } = await import("resend");
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
-    let html = resolvedBody.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
-    await resend.emails.send({ from: `${storeName} <${fromEmail}>`, to: [customer.email], subject: `【ご来店のご案内】${customer.name}様`, html });
-    await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject: `【ご来店のご案内】${customer.name}様`, body: resolvedBody, status: "SENT" } });
-    console.log(`[Agent] A層: 【未確定】sent to ${customer.name}`);
+    // 空室パターン → 未確定テンプレートパターン選択
+    let tentKey = "tpl_tent_c"; // default: 見れる
+    if (["F","G"].includes(vacancyPattern)) tentKey = "tpl_tent_b";      // 募集終了
+    else if (["B","E"].includes(vacancyPattern)) tentKey = "tpl_tent_a"; // 入居中
+    else if (vacancyPattern === "D") tentKey = "tpl_tent_d";             // 建築中
+    // A,C,H → tpl_tent_c（見れる）
+    
+    const FALLBACK_TEMPLATES: Record<string, string> = {
+      tpl_tent_a: "{{customer_name}}様\n\nご連絡ありがとうございます。\n\n================================================\n※現時点でご予約は確定しておりませんので、ご注意ください\n================================================\n\nお問い合わせ物件は現在は入居中で内見できないお部屋ですので、外観・共用部のご案内や似ている物件のご紹介ができればと思います。\n\n{visit_proposal}に下記の店舗にてご予約できればと思うのですが、【お電話番号】を頂くこと可能でしょうか？\n\n{store_access}",
+      tpl_tent_b: "{{customer_name}}様\n\nご連絡ありがとうございます。\n\n================================================\n※現時点でご予約は確定しておりませんので、ご注意ください\n================================================\n\nお問い合わせ物件は募集が終了しておりますので、ぜひ店頭で他のお部屋のご紹介ができればと思います。\n\n{visit_proposal}に下記の店舗にてご予約できればと思うのですが、【お電話番号】を頂くこと可能でしょうか？\n\n{store_access}",
+      tpl_tent_c: "{{customer_name}}様\n\nご連絡ありがとうございます。\n\n================================================\n※現時点でご予約は確定しておりませんので、ご注意ください\n================================================\n\n当日は店頭でお話を伺い、お問い合わせ物件に加えて候補物件を洗い出して一気に回る流れでご案内できればと思います。\n\n{visit_proposal}に下記の店舗にてご予約できればと思うのですが、【お電話番号】を頂くこと可能でしょうか？\n\n{store_access}",
+      tpl_tent_d: "{{customer_name}}様\n\nご連絡ありがとうございます。\n\n================================================\n※現時点でご予約は確定しておりませんので、ご注意ください\n================================================\n\nお問い合わせ物件は建築中で内見できないお部屋ですので、外観・現状のご案内や似ている物件のご紹介ができればと思います。\n\n{visit_proposal}に下記の店舗にてご予約できればと思うのですが、【お電話番号】を頂くこと可能でしょうか？\n\n{store_access}",
+    };
+    
+    const tentBody = dbTpls[tentKey] || FALLBACK_TEMPLATES[tentKey] || FALLBACK_TEMPLATES["tpl_tent_c"];
+    const resolvedBody = tentBody
+      .replace(/\{\{customer_name\}\}/g, customer.name || "")
+      .replace(/\{visit_proposal\}/g, "次の週末")
+      .replace(/\{store_access\}/g, storeAccess || storeName);
+    
+    await sendReply(resolvedBody, `【ご来店のご案内】${customer.name}様`);
+    console.log(`[Agent] A層: 【未確定】${tentKey} (vacancy=${vacancyPattern}) via ${useLineChannel ? 'LINE' : 'EMAIL'}`);
     
   } else if (classification === "B") {
-    // B層: ソムリエ提案メール
-    const bBody = `${customer.name}様\n\nご返信いただきありがとうございます。\n${storeName}の${staffName}です。\n\nお問い合わせいただいた物件に加えて、お客様のご条件に合いそうなお部屋をいくつかピックアップしております。\n\nネット非掲載の物件も含め、ぜひ一度ご来店いただければ、より詳しいご案内が可能です。`;
-    
-    const { Resend } = await import("resend");
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
-    let html = bBody.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
-    await resend.emails.send({ from: `${storeName} <${fromEmail}>`, to: [customer.email], subject: `【物件のご提案】${customer.name}様へ`, html });
-    await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject: `【物件のご提案】${customer.name}様へ`, body: bBody, status: "SENT" } });
-    console.log(`[Agent] B層: ソムリエ提案 sent to ${customer.name}`);
+    // B層: ソムリエ提案
+    const bBody = `${customer.name}様\n\nご返信いただきありがとうございます。\n${storeName}の${staffName}です。\n\nお問い合わせいただいた物件に加えて、お客様のご条件に合いそうなお部屋をいくつかピックアップしております。\n\nネット非掲載の物件も含め、ぜひ一度ご来店いただければ、より詳しいご案内が可能です。\n\nお引越しの時期はいつ頃をご予定されていますか？`;
+    await sendReply(bBody, `【物件のご提案】${customer.name}様へ`);
     
   } else {
-    // C層: 追客対象マーク（FollowUpはワークフローで処理）
+    // C層: 追客対象マーク
     console.log(`[Agent] C層: ${customer.name} marked for follow-up`);
   }
 
