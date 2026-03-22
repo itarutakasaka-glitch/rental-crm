@@ -20,6 +20,30 @@ export async function POST(req: NextRequest) {
       );
     `);
 
+    // Add new Organization columns if missing
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "storeWebsite" TEXT`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "storeClosedDays" TEXT`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "storeParking" TEXT`);
+    
+    // Set initial values for our org
+    const org = await prisma.organization.findFirst();
+    if (org) {
+      await prisma.$executeRawUnsafe(`UPDATE "Organization" SET 
+        "storeAccess" = COALESCE("storeAccess", $1),
+        "storeWebsite" = COALESCE("storeWebsite", $2),
+        "storeClosedDays" = COALESCE("storeClosedDays", $3),
+        "storeParking" = COALESCE("storeParking", $4),
+        "storeHours" = COALESCE("storeHours", $5)
+        WHERE "id" = $6`,
+        '京王電鉄相模原線京王多摩センター駅 徒歩4分',
+        'https://www.apamanshop.com/shop/13032804/',
+        '火曜日、水曜日（1,2,3月は水曜日、第1第3火曜日定休日）',
+        '駐車場のご用意がございますので事前にご連絡下さい',
+        '09:30～18:30',
+        org.id
+      );
+    }
+
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "InitialCostRule" (
         "id" TEXT NOT NULL DEFAULT gen_random_uuid()::text,

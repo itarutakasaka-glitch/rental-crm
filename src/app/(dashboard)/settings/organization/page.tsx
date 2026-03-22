@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 
-type Org = { name: string; phone: string; email: string; address: string; website: string; storeName: string; storeAddress: string; storePhone: string; storeHours: string; storeAccess: string; logoUrl: string; lineUrl: string; licenseNumber: string };
+type Org = { name: string; phone: string; email: string; address: string; website: string; storeName: string; storeAddress: string; storePhone: string; storeHours: string; storeAccess: string; storeWebsite: string; storeClosedDays: string; storeParking: string; logoUrl: string; lineUrl: string; licenseNumber: string };
 const FIELDS: { key: keyof Org; label: string; group: string }[] = [
   { key: "name", label: "\u4F1A\u793E\u540D", group: "\u4F1A\u793E\u60C5\u5831" },
   { key: "phone", label: "\u4F1A\u793E\u96FB\u8A71\u756A\u53F7", group: "\u4F1A\u793E\u60C5\u5831" },
@@ -15,13 +15,16 @@ const FIELDS: { key: keyof Org; label: string; group: string }[] = [
   { key: "storePhone", label: "\u5E97\u8217\u96FB\u8A71\u756A\u53F7", group: "\u5E97\u8217\u60C5\u5831" },
   { key: "storeHours", label: "\u55B6\u696D\u6642\u9593", group: "\u5E97\u8217\u60C5\u5831" },
   { key: "storeAccess", label: "\u30A2\u30AF\u30BB\u30B9", group: "\u5E97\u8217\u60C5\u5831" },
+  { key: "storeWebsite", label: "\u5E97\u8217Web\u30B5\u30A4\u30C8", group: "\u5E97\u8217\u60C5\u5831" },
+  { key: "storeClosedDays", label: "\u5B9A\u4F11\u65E5", group: "\u5E97\u8217\u60C5\u5831" },
+  { key: "storeParking", label: "\u99D0\u8ECA\u5834", group: "\u5E97\u8217\u60C5\u5831" },
   { key: "lineUrl", label: "LINE\u53CB\u3060\u3061\u8FFD\u52A0URL", group: "\u305D\u306E\u4ED6" },
   { key: "logoUrl", label: "\u30ED\u30B4URL", group: "\u305D\u306E\u4ED6" },
 ];
 const GROUPS = ["\u4F1A\u793E\u60C5\u5831", "\u5E97\u8217\u60C5\u5831", "\u305D\u306E\u4ED6"];
 
 export default function OrganizationPage() {
-  const [form, setForm] = useState<Org>({ name: "", phone: "", email: "", address: "", website: "", storeName: "", storeAddress: "", storePhone: "", storeHours: "", storeAccess: "", logoUrl: "", lineUrl: "", licenseNumber: "" });
+  const [form, setForm] = useState<Org>({ name: "", phone: "", email: "", address: "", website: "", storeName: "", storeAddress: "", storePhone: "", storeHours: "", storeAccess: "", storeWebsite: "", storeClosedDays: "", storeParking: "", logoUrl: "", lineUrl: "", licenseNumber: "" });
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
 

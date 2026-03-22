@@ -151,7 +151,17 @@ JSONで回答: {"classification":"A","reason":"理由"}`;
   const assignee = customer.assigneeId ? await prisma.user.findUnique({ where: { id: customer.assigneeId } }) : null;
   const staffName = assignee?.name || "本田みなみ";
   const storeName = org.storeName || org.name || "";
-  const storeAccess = [org.storeName, org.storeAddress, org.storePhone].filter(Boolean).join("\n");
+  const storeAccess = [
+    "\u25BC\u304A\u554F\u3044\u5408\u308F\u305B\u7269\u4EF6\u306E\u53D6\u308A\u6271\u3044\u5E97\u8217",
+    org.storeName ? `\u5E97\u8217\u540D\uFF1A${org.storeName}` : null,
+    org.storeAddress ? `\u4F4F\u6240\uFF1A${org.storeAddress}` : null,
+    (org as any).storeAccess ? `\u30A2\u30AF\u30BB\u30B9\uFF1A${(org as any).storeAccess}` : null,
+    org.storePhone ? `TEL\uFF1A${org.storePhone}` : null,
+    (org as any).storeWebsite ? `\u5E97\u8217web\u30B5\u30A4\u30C8\uFF1A${(org as any).storeWebsite}` : null,
+    (org as any).storeHours ? `\u55B6\u696D\u6642\u9593\uFF1A${(org as any).storeHours}` : null,
+    (org as any).storeClosedDays ? `\u5B9A\u4F11\u65E5\uFF1A${(org as any).storeClosedDays}` : null,
+    (org as any).storeParking ? `\u99D0\u8ECA\u5834\uFF1A${(org as any).storeParking}` : null,
+  ].filter(Boolean).join("\n");
   const dbTpls = await getAgentTemplates(org.id);
   const useLineChannel = !!customer.lineUserId;
   
