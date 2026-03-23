@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     const bodyText = scrapeData?.data?.[0]?.results?.[0]?.text || "";
     const text = bodyText.replace(/\s+/g, " ").slice(0, 15000);
 
-    const nyM = text.match(/\u5165\u5C45\s+(.{1,30})/);
+    const nyM = text.match(/\u5165\u5C45\s+(.+?)(?:\s+\u53D6\u5F15\u614B\u69D8|\s+\u6761\u4EF6|\s+\u53D6\u308A\u6271\u3044)/);
     const nyukyo = nyM ? nyM[1].trim() : "NOT_FOUND";
     const cnM = text.match(/\u7BC9\u5E74\u6570\s+(\S+)/);
     const chikuNensu = cnM ? cnM[1].trim() : "NOT_FOUND";

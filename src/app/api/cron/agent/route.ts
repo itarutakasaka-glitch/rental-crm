@@ -204,6 +204,12 @@ async function processNewInquiry(customer: any, org: any) {
     comment = parsed.comment || "";
   } catch { console.log("[Agent] AI parse error, using defaults"); }
   
+  // Override: if scrape found a definitive pattern (not E), use it regardless of AI
+  if (scrapeResult.pattern !== "E") {
+    console.log(`[Agent] Scrape override: AI=${vacancy} -> Scrape=${scrapeResult.pattern}`);
+    vacancy = scrapeResult.pattern;
+  }
+  
   // Pet template fallback from DB
   if (dbTpls["tpl_pet"] && ["ペット","犬","猫","動物"].some(w => inquiry.includes(w))) {
     if (!comment || !comment.includes("ペット")) comment = comment ? comment + "\n\n" + dbTpls["tpl_pet"] : dbTpls["tpl_pet"];
