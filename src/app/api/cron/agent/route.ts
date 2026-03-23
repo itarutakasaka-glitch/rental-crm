@@ -4,16 +4,16 @@ import { prisma } from "@/lib/db/prisma";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const AGENT_MODEL = "gpt-4o-mini";
 
-// Load vacancy texts
+// Load vacancy texts (反響研究所8パターン - agent_flow.html準拠)
 const VACANCY_TEXTS: Record<string, string> = {
-  A: "⇒現在空室、見学も可能なお部屋です。\n※お申込みは先着順につき、万が一ご紹介中に満室となった場合はご容赦ください\n\n物件のご案内に加えて、ぜひ一度店頭で詳しいお話を伺った上で、この他にもお部屋のご紹介ができればと思います。",
-  B: "⇒ご紹介可能なお部屋です。\n現在入居中につき、室内の見学はまだできないお部屋となります。\n街並み・外観・共用部のご案内やエリア情報の紹介、似ている物件のご紹介は可能です。",
-  C: "⇒ご紹介可能なお部屋です。\n現在入居中につき、室内の見学はまだできないお部屋となります。\n同じ物件で類似のお部屋が見学可能ですので、そちらのご案内は可能です。",
-  D: "⇒ご紹介可能なお部屋です。\n現在は建築中となっており、まだ内見のできないお部屋です。\n完成前に8割〜9割お申込みが入ってしまいます。少しでも前向きにご検討頂けるようでしたらお早めにお声がけくださいませ。",
-  E: "⇒ご紹介可能なお部屋です。\n正確な見学可能日時に関しては、確認が必要となりますので、見学希望の場合は希望日程をご連絡くださいませ。",
-  F: "⇒あいにく他のお客様よりお申込みが入り、募集終了となりました。\nぜひ一度店頭で詳しいお話を伺った上で、この他にもお部屋のご紹介ができればと思います。",
-  G: "⇒ただいま募集状況の確認をしております。\n同じ物件で他のお部屋もございますので、ご案内可能です。",
-  H: "⇒ただいま空き状況を確認しております。\n2番手以降のご案内も可能ですので、ご興味ございましたらお早めにご連絡くださいませ。",
+  A: "\u21D2\u73FE\u5728\u7A7A\u5BA4\u3001\u898B\u5B66\u3082\u53EF\u80FD\u306A\u304A\u90E8\u5C4B\u3067\u3059\u3002\n\u203B\u304A\u7533\u8FBC\u307F\u306F\u5148\u7740\u9806\u306B\u3064\u304D\u3001\u4E07\u304C\u4E00\u3054\u7D39\u4ECB\u4E2D\u306B\u6E80\u5BA4\u3068\u306A\u3063\u305F\u5834\u5408\u306F\u3054\u5BB9\u8D66\u304F\u3060\u3055\u3044\n\n\u7269\u4EF6\u306E\u3054\u6848\u5185\u306B\u52A0\u3048\u3066\u3001\u305C\u3072\u4E00\u5EA6\u5E97\u982D\u3067\u8A73\u3057\u3044\u304A\u8A71\u3092\u4F3A\u3063\u305F\u4E0A\u3067\u3001\u3053\u306E\u4ED6\u306B\u3082\u304A\u90E8\u5C4B\u306E\u3054\u7D39\u4ECB\u304C\u3067\u304D\u308C\u3070\u3068\u601D\u3044\u307E\u3059\u3002\n\n{VISIT}\u306F\u3054\u90FD\u5408\u3044\u304B\u304C\u3067\u3057\u3087\u3046\u304B\uFF1F",
+  B: "\u21D2\u3054\u7D39\u4ECB\u53EF\u80FD\u306A\u304A\u90E8\u5C4B\u3067\u3059\u3002\n\u73FE\u5728\u5165\u5C45\u4E2D\u306B\u3064\u304D\u3001\u5BA4\u5185\u306E\u898B\u5B66\u306F\u307E\u3060\u3067\u304D\u306A\u3044\u304A\u90E8\u5C4B\u3068\u306A\u308A\u307E\u3059\u3002\n\u8857\u4E26\u307F\u30FB\u5916\u89B3\u30FB\u5171\u7528\u90E8\u306E\u3054\u6848\u5185\u3084\u30A8\u30EA\u30A2\u60C5\u5831\u306E\u7D39\u4ECB\u3001\u4F3C\u3066\u3044\u308B\u7269\u4EF6\u306E\u3054\u7D39\u4ECB\u306F\u53EF\u80FD\u3067\u3059\u3002\n\n{VISIT}\u306F\u3054\u90FD\u5408\u3044\u304B\u304C\u3067\u3057\u3087\u3046\u304B\uFF1F",
+  C: "\u21D2\u3054\u7D39\u4ECB\u53EF\u80FD\u306A\u304A\u90E8\u5C4B\u3067\u3059\u3002\n\u73FE\u5728\u5165\u5C45\u4E2D\u306B\u3064\u304D\u3001\u5BA4\u5185\u306E\u898B\u5B66\u306F\u307E\u3060\u3067\u304D\u306A\u3044\u304A\u90E8\u5C4B\u3068\u306A\u308A\u307E\u3059\u3002\n\u540C\u3058\u7269\u4EF6\u3067\u985E\u4F3C\u306E\u304A\u90E8\u5C4B\u304C\u898B\u5B66\u53EF\u80FD\u3067\u3059\u306E\u3067\u3001\u305D\u3061\u3089\u306E\u3054\u6848\u5185\u306F\u53EF\u80FD\u3067\u3059\u3002\n\n{VISIT}\u306F\u3054\u90FD\u5408\u3044\u304B\u304C\u3067\u3057\u3087\u3046\u304B\uFF1F",
+  D: "\u21D2\u3054\u7D39\u4ECB\u53EF\u80FD\u306A\u304A\u90E8\u5C4B\u3067\u3059\u3002\n\u73FE\u5728\u306F\u5EFA\u7BC9\u4E2D\u3068\u306A\u3063\u3066\u304A\u308A\u3001\u307E\u3060\u5185\u898B\u306E\u3067\u304D\u306A\u3044\u304A\u90E8\u5C4B\u3067\u3059\u3002\n\u5B8C\u6210\u524D\u306B8\u5272\uFF5E9\u5272\u304A\u7533\u8FBC\u307F\u304C\u5165\u3063\u3066\u3057\u307E\u3044\u307E\u3059\u3002\u5C11\u3057\u3067\u3082\u524D\u5411\u304D\u306B\u3054\u691C\u8A0E\u9802\u3051\u308B\u3088\u3046\u3067\u3057\u305F\u3089\u304A\u65E9\u3081\u306B\u304A\u58F0\u304C\u3051\u304F\u3060\u3055\u3044\u307E\u305B\u3002\n\n{VISIT}\u306F\u3054\u90FD\u5408\u3044\u304B\u304C\u3067\u3057\u3087\u3046\u304B\uFF1F",
+  E: "\u21D2\u3054\u7D39\u4ECB\u53EF\u80FD\u306A\u304A\u90E8\u5C4B\u3067\u3059\u3002\n\u6B63\u78BA\u306A\u898B\u5B66\u53EF\u80FD\u65E5\u6642\u306B\u95A2\u3057\u3066\u306F\u3001\u78BA\u8A8D\u304C\u5FC5\u8981\u3068\u306A\u308A\u307E\u3059\u306E\u3067\u3001\u898B\u5B66\u5E0C\u671B\u306E\u5834\u5408\u306F\u5E0C\u671B\u65E5\u7A0B\u3092\u3054\u9023\u7D61\u304F\u3060\u3055\u3044\u307E\u305B\u3002\n\n{VISIT}\u306F\u3054\u90FD\u5408\u3044\u304B\u304C\u3067\u3057\u3087\u3046\u304B\uFF1F",
+  F: "\u21D2\u3042\u3044\u306B\u304F\u4ED6\u306E\u304A\u5BA2\u69D8\u3088\u308A\u304A\u7533\u8FBC\u307F\u304C\u5165\u308A\u3001\u52DF\u96C6\u7D42\u4E86\u3068\u306A\u308A\u307E\u3057\u305F\u3002\n\u305C\u3072\u4E00\u5EA6\u5E97\u982D\u3067\u8A73\u3057\u3044\u304A\u8A71\u3092\u4F3A\u3063\u305F\u4E0A\u3067\u3001\u3053\u306E\u4ED6\u306B\u3082\u304A\u90E8\u5C4B\u306E\u3054\u7D39\u4ECB\u304C\u3067\u304D\u308C\u3070\u3068\u601D\u3044\u307E\u3059\u3002\n\n\u304A\u5F15\u8D8A\u3057\u6642\u671F\u306F\u3044\u3064\u9803\u3092\u4E88\u5B9A\u3055\u308C\u3066\u3044\u307E\u3059\u304B\uFF1F",
+  G: "\u21D2\u305F\u3060\u3044\u307E\u52DF\u96C6\u72B6\u6CC1\u306E\u78BA\u8A8D\u3092\u3057\u3066\u304A\u308A\u307E\u3059\u3002\n\u540C\u3058\u7269\u4EF6\u3067\u4ED6\u306E\u304A\u90E8\u5C4B\u3082\u3054\u3056\u3044\u307E\u3059\u306E\u3067\u3001\u3054\u6848\u5185\u53EF\u80FD\u3067\u3059\u3002\n\n\u304A\u5F15\u8D8A\u3057\u6642\u671F\u306F\u3044\u3064\u9803\u3092\u4E88\u5B9A\u3055\u308C\u3066\u3044\u307E\u3059\u304B\uFF1F",
+  H: "\u21D2\u305F\u3060\u3044\u307E\u7A7A\u304D\u72B6\u6CC1\u3092\u78BA\u8A8D\u3057\u3066\u304A\u308A\u307E\u3059\u3002\n2\u756A\u624B\u4EE5\u964D\u306E\u3054\u6848\u5185\u3082\u53EF\u80FD\u3067\u3059\u306E\u3067\u3001\u3054\u8208\u5473\u3054\u3056\u3044\u307E\u3057\u305F\u3089\u304A\u65E9\u3081\u306B\u3054\u9023\u7D61\u304F\u3060\u3055\u3044\u307E\u305B\u3002\n\n\u304A\u5F15\u8D8A\u3057\u6642\u671F\u306F\u3044\u3064\u9803\u3092\u4E88\u5B9A\u3055\u308C\u3066\u3044\u307E\u3059\u304B\uFF1F",
 };
 
 // ====== URL-based vacancy detection (Phase 2 Step 2: Browserless) ======
@@ -50,8 +50,8 @@ async function scrapeVacancyFromUrl(portalUrl: string): Promise<{ pattern: strin
     if (portalUrl.includes("suumo.jp")) {
       if (/\u3053\u306E\u7269\u4EF6\u306F\u639B\u8F09\u7D42\u4E86|\u63B2\u8F09\u671F\u9593\u304C\u7D42\u4E86|\u53D6\u308A\u6271\u3044\u7D42\u4E86/.test(text))
         return { pattern: "F", source: "suumo", detail: "SUUMO\u639B\u8F09\u7D42\u4E86" };
-      // Check SUUMO "入居" field in property table
-      const nyukyoMatch = text.match(/\u5165\u5C45\s+(.{1,30})/);
+      // Check SUUMO "入居" field in property table (stop before 取引態様)
+      const nyukyoMatch = text.match(/\u5165\u5C45\s+(.+?)(?:\s+\u53D6\u5F15\u614B\u69D8|\s+\u6761\u4EF6|\s+\u53D6\u308A\u6271\u3044)/);
       if (nyukyoMatch) {
         const nyukyoVal = nyukyoMatch[1].trim();
         // Immediate availability
@@ -119,6 +119,28 @@ async function scrapeVacancyFromUrl(portalUrl: string): Promise<{ pattern: strin
     if (e.name === "AbortError") return { pattern: "E", source: "timeout", detail: "\u30BF\u30A4\u30E0\u30A2\u30A6\u30C8" };
     return { pattern: "E", source: "error", detail: e.message?.slice(0, 50) || "\u30A8\u30E9\u30FC" };
   }
+}
+
+// Generate visit proposal: next available weekend/weekday slots
+function generateVisitProposal(): string {
+  const now = new Date();
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const slots: string[] = [];
+  const dayNames = ["\u65E5", "\u6708", "\u706B", "\u6C34", "\u6728", "\u91D1", "\u571F"];
+  for (let d = 1; d <= 14 && slots.length < 3; d++) {
+    const date = new Date(jst.getTime() + d * 24 * 60 * 60 * 1000);
+    const dow = date.getDay();
+    if (dow === 2 || dow === 3) continue; // skip Tue/Wed (定休日)
+    const m = date.getMonth() + 1;
+    const day = date.getDate();
+    const dayName = dayNames[dow];
+    if (dow === 0 || dow === 6) {
+      slots.push(`${m}/${day}(${dayName})10:00\uFF5E`);
+    } else {
+      slots.push(`${m}/${day}(${dayName})13:00\uFF5E`);
+    }
+  }
+  return slots.join("\u3001");
 }
 
 async function callOpenAI(systemPrompt: string, userMsg: string): Promise<string> {
@@ -191,7 +213,10 @@ async function processNewInquiry(customer: any, org: any) {
   const assignee = customer.assigneeId ? await prisma.user.findUnique({ where: { id: customer.assigneeId } }) : null;
   const staffName = assignee?.name || "本田みなみ";
   const storeName = org.storeName || org.name || "";
-  const vacancyText = VACANCY_TEXTS[vacancy] || VACANCY_TEXTS["E"];
+  const vacancyTextRaw = VACANCY_TEXTS[vacancy] || VACANCY_TEXTS["E"];
+  // Generate visit proposal dates (next 3 available slots: Sat/Sun preferred)
+  const visitProposal = generateVisitProposal();
+  const vacancyText = vacancyTextRaw.replace(/\{VISIT\}/g, visitProposal);
   
   let body = tmpl.body
     .replace(/\{\{customer_name\}\}/g, customer.name || "")
