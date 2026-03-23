@@ -20,10 +20,18 @@ export async function GET(req: NextRequest) {
     const chikuNensu = cnM ? cnM[1].trim() : "NOT_FOUND";
     const cmM = text.match(/\u7BC9\u5E74\u6708\s+(\d{4})\u5E74(\d{1,2})\u6708/);
     const chikuNengetsu = cmM ? `${cmM[1]}/${cmM[2]}` : "NOT_FOUND";
-    const pageLen = text.length;
-    const hasEnd = /\u639B\u8F09\u7D42\u4E86|\u63B2\u8F09\u671F\u9593\u304C\u7D42\u4E86|\u53D6\u308A\u6271\u3044\u7D42\u4E86/.test(text);
-    const sample = text.slice(0, 500);
-    return NextResponse.json({ nyukyo, chikuNensu, chikuNengetsu, pageLen, hasEnd, httpStatus: res.status, sample });
+    // Search in raw HTML (not stripped) for table data
+    const nyRawM = html.match(/\u5165\u5C45<\/th>\s*<td[^>]*>([^<]+)/);
+    const nyRaw = nyRawM ? nyRawM[1].trim() : null;
+    const cnRawM = html.match(/\u7BC9\u5E74\u6570<\/th>\s*<td[^>]*>([^<]+)/);
+    const cnRaw = cnRawM ? cnRawM[1].trim() : null;
+    const cmRawM = html.match(/\u7BC9\u5E74\u6708<\/th>\s*<td[^>]*>([^<]+)/);
+    const cmRaw = cmRawM ? cmRawM[1].trim() : null;
+    // Also try JSON-LD or script data
+    const jsonLdM = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    const jsonLd = jsonLdM ? jsonLdM[1].slice(0, 300) : null;
+    const sample = text.slice(0, 300);
+    return NextResponse.json({ nyukyo, nyRaw, chikuNensu, cnRaw, chikuNengetsu, cmRaw, pageLen, hasEnd, httpStatus: res.status, jsonLd, sample });
   } catch (e: any) {
     return NextResponse.json({ error: e.message?.slice(0, 100) || "unknown" });
   }
