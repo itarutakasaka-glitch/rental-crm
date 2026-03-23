@@ -172,9 +172,12 @@ async function processNewInquiry(customer: any, org: any) {
   const templates = await prisma.template.findMany({ where: { organizationId: org.id } });
   const dbTpls = await getAgentTemplates(org.id);
   
-  // Find initial response template
-  const tmpl = templates.find((t: any) => t.name.includes("初回"));
-  if (!tmpl) { console.log("[Agent] No initial template found"); return; }
+  // Find initial response template (AgentTemplate tpl_1st > CRM Template 初回)
+  const agentTpl1st = dbTpls["tpl_1st"];
+  const crmTmpl = templates.find((t: any) => t.name.includes("\u521D\u56DE"));
+  const tmplBody = agentTpl1st || crmTmpl?.body || "";
+  const tmplSubject = crmTmpl?.subject || "\u304A\u554F\u3044\u5408\u308F\u305B\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3059";
+  if (!tmplBody) { console.log("[Agent] No initial template found"); return; }
   
   // Step 2: Scrape vacancy from portal URL
   const portalUrl = (props[0] as any)?.portalUrl || props[0]?.url || "";
@@ -224,7 +227,7 @@ async function processNewInquiry(customer: any, org: any) {
   const visitProposal = generateVisitProposal();
   const vacancyText = vacancyTextRaw.replace(/\{VISIT\}/g, visitProposal);
   
-  let body = tmpl.body
+  let body = tmplBody
     .replace(/\{\{customer_name\}\}/g, customer.name || "")
     .replace(/\{\{store_name\}\}/g, storeName)
     .replace(/\{\{staff_name\}\}/g, staffName)
@@ -247,7 +250,7 @@ async function processNewInquiry(customer: any, org: any) {
   }
   
   // Send email via internal send-message logic
-  const subject = (tmpl.subject || "お問い合わせありがとうございます").replace(/\{\{customer_name\}\}/g, customer.name || "").replace(/\{\{store_name\}\}/g, storeName);
+  const subject = (tmplSubject).replace(/\{\{customer_name\}\}/g, customer.name || "").replace(/\{\{store_name\}\}/g, storeName);
   
   // Import Resend dynamically
   const { Resend } = await import("resend");
