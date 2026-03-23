@@ -258,17 +258,22 @@ async function processNewInquiry(customer: any, org: any) {
   
   // textToHtml conversion
   let html = body.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // URL pattern: exclude Japanese punctuation from URL match
+  const urlPat = "https?:\\/\\/[^\\s\u300D\u300C\u3001\u3002\uFF09\uFF08\u3008\u3009\u300A\u300B\u3010\u3011\u201C\u201D]+";
   // Standalone [■ text] URL on its own line → CTA button
-  html = html.replace(/^(\[[\u25A0\u25A1]\s*(.+?)\])\s*(https?:\/\/\S+)\s*$/gm, (_m: string, _full: string, label: string, url: string) => {
+  const ctaRe = new RegExp(`^(\\[[\\u25A0\\u25A1]\\s*(.+?)\\])\\s*(${urlPat})\\s*$`, "gm");
+  html = html.replace(ctaRe, (_m: string, _full: string, label: string, url: string) => {
     const bg = url.includes("line.me") ? "#06C755" : "#0891b2";
     return `<a href="${url}" style="display:inline-block;padding:12px 28px;background:${bg};color:#ffffff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">${label}</a>`;
   });
   // Inline [■ text] URL inside text → hyperlink only
-  html = html.replace(/\[[\u25A0\u25A1]\s*(.+?)\]\s*(https?:\/\/\S+)/g, (_m: string, label: string, url: string) => {
+  const inlineRe = new RegExp(`\\[[\\u25A0\\u25A1]\\s*(.+?)\\]\\s*(${urlPat})`, "g");
+  html = html.replace(inlineRe, (_m: string, label: string, url: string) => {
     return `<a href="${url}" style="color:#0891b2;text-decoration:underline;font-weight:bold;">${label}</a>`;
   });
   // Remaining bare URLs → hyperlink
-  html = html.replace(/(https?:\/\/\S+)/g, (url: string) => url.includes('"') ? url : `<a href="${url}">${url}</a>`);
+  const bareRe = new RegExp(`(${urlPat})`, "g");
+  html = html.replace(bareRe, (url: string) => url.includes('"') ? url : `<a href="${url}">${url}</a>`);
   html = html.replace(/\n/g, "<br>");
   
   const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
