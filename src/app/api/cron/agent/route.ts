@@ -258,10 +258,16 @@ async function processNewInquiry(customer: any, org: any) {
   
   // textToHtml conversion
   let html = body.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  // [■ text] URL → plain text with hyperlink (not CTA button)
-  html = html.replace(/\[\u25A0\s*(.+?)\]\s*(https?:\/\/\S+)/g, (_m: string, label: string, url: string) => {
-    return `<a href="${url}" style="color:#0891b2;text-decoration:underline;">${label}</a>`;
+  // Standalone [■ text] URL on its own line → CTA button
+  html = html.replace(/^(\[[\u25A0\u25A1]\s*(.+?)\])\s*(https?:\/\/\S+)\s*$/gm, (_m: string, _full: string, label: string, url: string) => {
+    const bg = url.includes("line.me") ? "#06C755" : "#0891b2";
+    return `<a href="${url}" style="display:inline-block;padding:12px 28px;background:${bg};color:#ffffff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">${label}</a>`;
   });
+  // Inline [■ text] URL inside text → hyperlink only
+  html = html.replace(/\[[\u25A0\u25A1]\s*(.+?)\]\s*(https?:\/\/\S+)/g, (_m: string, label: string, url: string) => {
+    return `<a href="${url}" style="color:#0891b2;text-decoration:underline;font-weight:bold;">${label}</a>`;
+  });
+  // Remaining bare URLs → hyperlink
   html = html.replace(/(https?:\/\/\S+)/g, (url: string) => url.includes('"') ? url : `<a href="${url}">${url}</a>`);
   html = html.replace(/\n/g, "<br>");
   
