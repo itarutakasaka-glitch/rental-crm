@@ -16,27 +16,35 @@ const VACANCY_TEXTS: Record<string, string> = {
   H: "⇒ただいま空き状況を確認しております。\n2番手以降のご案内も可能ですので、ご興味ございましたらお早めにご連絡くださいませ。",
 };
 
-// ====== URL-based vacancy detection (Phase 2 Step 2: 1st stage) ======
+// ====== URL-based vacancy detection (Phase 2 Step 2: Browserless) ======
+const BROWSERLESS_TOKEN = process.env.BROWSERLESS_API_TOKEN || "";
+
 async function scrapeVacancyFromUrl(portalUrl: string): Promise<{ pattern: string; source: string; detail: string }> {
   if (!portalUrl) return { pattern: "E", source: "no_url", detail: "URL\u306A\u3057" };
+  if (!BROWSERLESS_TOKEN) return { pattern: "E", source: "no_token", detail: "BROWSERLESS_API_TOKEN\u672A\u8A2D\u5B9A" };
+
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(portalUrl, {
-      signal: controller.signal,
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+    // Use Browserless /scrape API to get rendered page content
+    const scrapeRes = await fetch(`https://production-sfo.browserless.io/scrape?token=${BROWSERLESS_TOKEN}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: portalUrl,
+        waitForSelector: { selector: "body", timeout: 8000 },
+        elements: [{ selector: "body" }],
+      }),
+      signal: AbortSignal.timeout(15000),
     });
-    clearTimeout(timeout);
 
-    if (res.status === 404 || res.status === 410) {
-      return { pattern: "F", source: "http_" + res.status, detail: "\u30DA\u30FC\u30B8\u304C\u524A\u9664\u6E08\u307F\uFF08\u52DF\u96C6\u7D42\u4E86\u306E\u53EF\u80FD\u6027\uFF09" };
-    }
-    if (!res.ok) {
-      return { pattern: "E", source: "http_" + res.status, detail: "\u30DA\u30FC\u30B8\u53D6\u5F97\u30A8\u30E9\u30FC" };
+    if (!scrapeRes.ok) {
+      const errText = await scrapeRes.text().catch(() => "");
+      return { pattern: "E", source: "browserless_err", detail: `HTTP ${scrapeRes.status}: ${errText.slice(0, 60)}` };
     }
 
-    const html = await res.text();
-    const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 15000);
+    const scrapeData = await scrapeRes.json();
+    const bodyText = scrapeData?.data?.[0]?.results?.[0]?.text || "";
+    const text = bodyText.replace(/\s+/g, " ").slice(0, 15000);
+    if (!text || text.length < 100) return { pattern: "E", source: "empty_page", detail: "\u30DA\u30FC\u30B8\u5185\u5BB9\u304C\u7A7A" };
 
     // SUUMO specific patterns
     if (portalUrl.includes("suumo.jp")) {
