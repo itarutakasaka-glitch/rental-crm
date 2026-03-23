@@ -22,7 +22,8 @@ export async function GET(req: NextRequest) {
     const chikuNengetsu = cmM ? `${cmM[1]}/${cmM[2]}` : "NOT_FOUND";
     const pageLen = text.length;
     const hasEnd = /\u639B\u8F09\u7D42\u4E86|\u63B2\u8F09\u671F\u9593\u304C\u7D42\u4E86|\u53D6\u308A\u6271\u3044\u7D42\u4E86/.test(text);
-    return NextResponse.json({ nyukyo, chikuNensu, chikuNengetsu, pageLen, hasEnd, httpStatus: res.status });
+    const sample = text.slice(0, 500);
+    return NextResponse.json({ nyukyo, chikuNensu, chikuNengetsu, pageLen, hasEnd, httpStatus: res.status, sample });
   } catch (e: any) {
     return NextResponse.json({ error: e.message?.slice(0, 100) || "unknown" });
   }
