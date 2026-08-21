@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { createClient } from "@/lib/supabase/server";
+
+async function requireUser() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
 
 export async function GET() {
   try {
+    if (!(await requireUser())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const org = await prisma.organization.findFirst();
     if (!org) return NextResponse.json({ rules: [] });
     const rules = await prisma.$queryRawUnsafe(
@@ -14,6 +22,7 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   try {
+    if (!(await requireUser())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await req.json();
     const org = await prisma.organization.findFirst();
     if (!org) return NextResponse.json({ error: "No org" }, { status: 400 });
@@ -42,6 +51,7 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    if (!(await requireUser())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { id } = await req.json();
     await prisma.$executeRawUnsafe(`DELETE FROM "InitialCostRule" WHERE "id"=$1`, id);
     return NextResponse.json({ success: true });

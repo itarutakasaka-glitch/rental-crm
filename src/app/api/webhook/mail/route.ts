@@ -3,6 +3,11 @@ import { prisma } from "@/lib/db/prisma";
 
 export async function POST(req: NextRequest) {
   try {
+    const secret = req.headers.get("authorization")?.replace("Bearer ", "") || req.nextUrl.searchParams.get("secret");
+    if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const payload = await req.json();
     const { type, data } = payload;
     if (type === "email.opened" && data?.email_id) {

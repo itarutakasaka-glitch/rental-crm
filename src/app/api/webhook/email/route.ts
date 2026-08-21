@@ -82,6 +82,11 @@ function parsePortalEmail(subject: string, body: string) {
 
 export async function POST(request: NextRequest) {
   try {
+    const secret = request.headers.get("authorization")?.replace("Bearer ", "") || request.nextUrl.searchParams.get("secret");
+    if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const payload = await request.json();
 
     // Support both Resend webhook format (nested in data) and direct format
