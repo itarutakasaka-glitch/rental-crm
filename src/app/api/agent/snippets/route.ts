@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { createClient } from "@/lib/supabase/server";
 import snippetsData from "@/data/text_blaze_all_snippets.json";
 
 // GET: Return all snippets merged with DB overrides
 export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const org = await prisma.organization.findFirst();
   const orgId = org?.id || "org_default";
   
@@ -36,6 +41,10 @@ export async function GET() {
 // PUT: Save snippet override
 export async function PUT(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { key, text } = await req.json();
     if (!key || !text) return NextResponse.json({ error: "key, text required" }, { status: 400 });
     const org = await prisma.organization.findFirst();
