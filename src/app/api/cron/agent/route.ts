@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { notifySlackError } from "@/lib/notify-slack";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const AGENT_MODEL = "gpt-4o-mini";
@@ -213,7 +214,7 @@ async function generateQuestionAnswers(inquiryContent: string, propertyInfo: str
 }
 
 // ====== PHASE 2: 1st Mail (PropertyCheckAgent equivalent) ======
-async function processNewInquiry(customer: any, org: any) {
+async function processNewInquiry(customer: any, org: any, mode: "DRAFT" | "SEND") {
   const inquiry = customer.inquiryContent || "";
   const props = await prisma.inquiryProperty.findMany({ where: { customerId: customer.id } });
   const templates = await prisma.template.findMany({ where: { organizationId: org.id } });
@@ -297,22 +298,29 @@ async function processNewInquiry(customer: any, org: any) {
   html = html.replace(/\n/g, "<br>");
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
-  await resend.emails.send({ from: `${storeName} <${fromEmail}>`, to: [customer.email], subject, html });
+  if (mode === "SEND") {
+    await resend.emails.send({ from: `${storeName} <${fromEmail}>`, to: [customer.email], subject, html });
+  }
 
   await prisma.message.create({
-    data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject, body, status: "SENT", senderId: assignee?.id || null },
+    data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject, body, status: mode === "SEND" ? "SENT" : "PENDING", senderId: assignee?.id || null },
   });
 
+  // Phase1(下書き承認方式): DRAFTモードでは[AGENT_PENDING]を[AGENT_DRAFT_READY]に置き換えて
+  // cronの再処理対象から外しつつ、人間の確認待ちであることを示す。isNeedActionは常にtrue。
   await prisma.customer.update({
     where: { id: customer.id },
-    data: { memo: (customer.memo || "").replace("[AGENT_PENDING]", "[AGENT_DONE]"), isNeedAction: qaResult.needsEscalation },
+    data: {
+      memo: (customer.memo || "").replace("[AGENT_PENDING]", mode === "SEND" ? "[AGENT_DONE]" : "[AGENT_DRAFT_READY]"),
+      isNeedAction: mode === "SEND" ? qaResult.needsEscalation : true,
+    },
   });
 
-  console.log(`[Agent] 1st mail sent to ${customer.name} (vacancy: ${vacancy}, qa: ${comment ? "yes" : "no"})`);
+  console.log(`[Agent] 1st mail ${mode === "SEND" ? "sent" : "drafted"} for ${customer.name} (vacancy: ${vacancy}, qa: ${comment ? "yes" : "no"})`);
 }
 
 // ====== PHASE 3: ClassifyAgent equivalent ======
-async function classifyReply(customer: any, org: any, replyBody: string) {
+async function classifyReply(customer: any, org: any, replyBody: string, mode: "DRAFT" | "SEND") {
   const systemPrompt = `あなたは不動産賃貸仲介の顧客分類AIです。顧客の返信を分析してA/B/C層に分類してください。
 A層: 来店・見学意欲が高い（「見学したい」「内見したい」「行きたい」等）
 B層: 興味あるが迷い中（質問、検討、費用確認等）
@@ -341,20 +349,26 @@ JSONで回答: {"classification":"A","reason":"理由"}`;
   const useLineChannel = !!customer.lineUserId;
 
   async function sendReply(body: string, subject: string) {
+    const status = mode === "SEND" ? "SENT" : "PENDING";
     if (useLineChannel) {
-      const { sendLineMessage } = await import("@/lib/channels/line");
-      await sendLineMessage(customer.lineUserId!, body);
-      await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "LINE", body, status: "SENT" } });
-      console.log(`[Agent] LINE reply sent to ${customer.name}`);
+      if (mode === "SEND") {
+        const { sendLineMessage } = await import("@/lib/channels/line");
+        await sendLineMessage(customer.lineUserId!, body);
+      }
+      await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "LINE", body, status } });
+      console.log(`[Agent] LINE reply ${mode === "SEND" ? "sent" : "drafted"} for ${customer.name}`);
     } else if (customer.email) {
-      const { Resend } = await import("resend");
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
-      let html = body.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
-      await resend.emails.send({ from: `${storeName} <${fromEmail}>`, to: [customer.email], subject, html });
-      await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject, body, status: "SENT" } });
-      console.log(`[Agent] Email reply sent to ${customer.name}`);
+      if (mode === "SEND") {
+        const { Resend } = await import("resend");
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
+        let html = body.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+        await resend.emails.send({ from: `${storeName} <${fromEmail}>`, to: [customer.email], subject, html });
+      }
+      await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject, body, status } });
+      console.log(`[Agent] Email reply ${mode === "SEND" ? "sent" : "drafted"} for ${customer.name}`);
     }
+    if (mode === "DRAFT") await prisma.customer.update({ where: { id: customer.id }, data: { isNeedAction: true } });
   }
 
   if (classification === "A") {
@@ -399,7 +413,7 @@ JSONで回答: {"classification":"A","reason":"理由"}`;
 }
 
 // ====== PHASE 5: ConfirmAgent equivalent ======
-async function confirmAppointment(customer: any, org: any, replyBody: string) {
+async function confirmAppointment(customer: any, org: any, replyBody: string, mode: "DRAFT" | "SEND") {
   const assignee = customer.assigneeId ? await prisma.user.findUnique({ where: { id: customer.assigneeId } }) : null;
   const staffName = assignee?.name || "本田みなみ";
   const storeName = org.storeName || org.name || "";
@@ -442,24 +456,32 @@ async function confirmAppointment(customer: any, org: any, replyBody: string) {
     .replace(/\{store_access\}/g, storeAccess)
     .replace(/●店舗アクセス貼る●/g, storeAccess);
 
+  const confirmStatus = mode === "SEND" ? "SENT" : "PENDING";
   if (useLineChannel) {
-    const { sendLineMessage } = await import("@/lib/channels/line");
-    await sendLineMessage(customer.lineUserId!, confirmBody);
-    await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "LINE", body: confirmBody, status: "SENT" } });
+    if (mode === "SEND") {
+      const { sendLineMessage } = await import("@/lib/channels/line");
+      await sendLineMessage(customer.lineUserId!, confirmBody);
+    }
+    await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "LINE", body: confirmBody, status: confirmStatus } });
   } else if (customer.email) {
-    const { Resend } = await import("resend");
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
-    let html = confirmBody.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
-    await resend.emails.send({ from: `${storeName} <${fromEmail}>`, to: [customer.email], subject: `【ご予約確定】${customer.name}様`, html });
-    await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject: `【ご予約確定】${customer.name}様`, body: confirmBody, status: "SENT" } });
+    if (mode === "SEND") {
+      const { Resend } = await import("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
+      let html = confirmBody.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+      await resend.emails.send({ from: `${storeName} <${fromEmail}>`, to: [customer.email], subject: `【ご予約確定】${customer.name}様`, html });
+    }
+    await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject: `【ご予約確定】${customer.name}様`, body: confirmBody, status: confirmStatus } });
   }
 
+  // DRAFTモードでは[CONFIRM_PENDING]のまま(アポ確定は人間の送信操作で完結させる)扱いにせず、
+  // [アポ確定]マーカーは付けるがドラフト明示のprefixを付ける(承認待ちの下書きが確定扱いに
+  // ならないよう区別する)
   await prisma.customer.update({
     where: { id: customer.id },
-    data: { memo: (customer.memo || "").replace("[CONFIRM_PENDING]", `[アポ確定] ${datetime} ${phone}`), isNeedAction: true },
+    data: { memo: (customer.memo || "").replace("[CONFIRM_PENDING]", mode === "SEND" ? `[アポ確定] ${datetime} ${phone}` : `[アポ確定・下書き] ${datetime} ${phone}`), isNeedAction: true },
   });
-  console.log(`[Agent] CONFIRMED: ${customer.name} datetime=${datetime} phone=${phone} via ${useLineChannel ? "LINE" : "EMAIL"}`);
+  console.log(`[Agent] CONFIRM ${mode === "SEND" ? "sent" : "drafted"}: ${customer.name} datetime=${datetime} phone=${phone} via ${useLineChannel ? "LINE" : "EMAIL"}`);
 }
 
 // ====== Main Cron Handler ======
@@ -473,7 +495,8 @@ export async function GET(req: NextRequest) {
   }
 
   let processed = 0;
-  let skippedByMode = 0;
+  let drafted = 0;
+  const errors: string[] = [];
   const orgCache = new Map<string, any>();
   async function getOrg(organizationId: string) {
     if (!orgCache.has(organizationId)) {
@@ -482,39 +505,51 @@ export async function GET(req: NextRequest) {
     return orgCache.get(organizationId);
   }
   // Phase1決定(2026-08-26): 自動送信はautoReplyEnabled=true かつ autoReplyMode="AUTO_SEND"の
-  // 組織のみ。既定はDRAFT_ONLY=このcronは何も送らない(下書き生成パイプラインはPhase Bで実装。
-  // architecture-v2.md §3参照)。
-  function canAutoSend(org: any): boolean {
-    return !!org && org.autoReplyEnabled === true && org.autoReplyMode === "AUTO_SEND";
+  // 組織のみ。既定はDRAFT_ONLY=下書きを生成しMessage.status="PENDING"で保存、実送信はしない。
+  // 人間が/inboxの「承認待ち」から内容を確認し送信する(architecture-v2.md §3)。
+  function modeFor(org: any): "DRAFT" | "SEND" {
+    return org && org.autoReplyEnabled === true && org.autoReplyMode === "AUTO_SEND" ? "SEND" : "DRAFT";
   }
 
   const pending = await prisma.customer.findMany({ where: { memo: { contains: "[AGENT_PENDING]" } }, take: 5, orderBy: { createdAt: "asc" } });
   for (const c of pending) {
     if (!c.email) continue;
     const org = await getOrg(c.organizationId);
-    if (!canAutoSend(org)) { skippedByMode++; continue; }
-    try { await processNewInquiry(c, org); processed++; } catch (e: any) { console.error(`[Agent] Error 1st mail ${c.name}:`, e.message); }
+    if (!org) continue;
+    const mode = modeFor(org);
+    try { await processNewInquiry(c, org, mode); mode === "SEND" ? processed++ : drafted++; } catch (e: any) { console.error(`[Agent] Error 1st mail ${c.name}:`, e.message); errors.push(`1st mail ${c.name}(${c.id}): ${e.message}`); }
   }
 
   const classifyPending = await prisma.customer.findMany({ where: { memo: { contains: "[CLASSIFY_PENDING]" } }, take: 5, orderBy: { updatedAt: "asc" } });
   for (const c of classifyPending) {
     if (!c.email && !c.lineUserId) continue;
     const org = await getOrg(c.organizationId);
-    if (!canAutoSend(org)) { skippedByMode++; continue; }
+    if (!org) continue;
+    const mode = modeFor(org);
     const lastMsg = await prisma.message.findFirst({ where: { customerId: c.id, direction: "INBOUND" }, orderBy: { createdAt: "desc" } });
     if (!lastMsg?.body) continue;
-    try { await classifyReply(c, org, lastMsg.body); processed++; } catch (e: any) { console.error(`[Agent] Error classify ${c.name}:`, e.message); }
+    try { await classifyReply(c, org, lastMsg.body, mode); mode === "SEND" ? processed++ : drafted++; } catch (e: any) { console.error(`[Agent] Error classify ${c.name}:`, e.message); errors.push(`classify ${c.name}(${c.id}): ${e.message}`); }
   }
 
   const confirmPending = await prisma.customer.findMany({ where: { memo: { contains: "[CONFIRM_PENDING]" } }, take: 5, orderBy: { updatedAt: "asc" } });
   for (const c of confirmPending) {
     if (!c.email && !c.lineUserId) continue;
     const org = await getOrg(c.organizationId);
-    if (!canAutoSend(org)) { skippedByMode++; continue; }
+    if (!org) continue;
+    const mode = modeFor(org);
     const lastMsg = await prisma.message.findFirst({ where: { customerId: c.id, direction: "INBOUND" }, orderBy: { createdAt: "desc" } });
     if (!lastMsg?.body) continue;
-    try { await confirmAppointment(c, org, lastMsg.body); processed++; } catch (e: any) { console.error(`[Agent] Error confirm ${c.name}:`, e.message); }
+    try { await confirmAppointment(c, org, lastMsg.body, mode); mode === "SEND" ? processed++ : drafted++; } catch (e: any) { console.error(`[Agent] Error confirm ${c.name}:`, e.message); errors.push(`confirm ${c.name}(${c.id}): ${e.message}`); }
   }
 
-  return NextResponse.json({ success: true, processed, skippedByMode, pending: pending.length, classify: classifyPending.length, confirm: confirmPending.length });
+  if (errors.length > 0) {
+    // 1回のcron実行につき1通にまとめる(毎分実行のため顧客単位で送ると大量スパムになる)
+    await notifySlackError({
+      title: `cron/agent で${errors.length}件失敗`,
+      detail: errors.slice(0, 10).join("\n") + (errors.length > 10 ? `\n...他${errors.length - 10}件` : ""),
+      source: "api/cron/agent",
+    });
+  }
+
+  return NextResponse.json({ success: true, processed, drafted, errorCount: errors.length, pending: pending.length, classify: classifyPending.length, confirm: confirmPending.length });
 }
