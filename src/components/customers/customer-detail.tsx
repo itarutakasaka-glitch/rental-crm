@@ -8,6 +8,22 @@ import { StoreRoutingPanel } from "./store-routing-panel";
 const CH: Record<string, { label: string; color: string }> = { EMAIL: { label: "Email", color: "#3b82f6" }, LINE: { label: "LINE", color: "#06c755" }, SMS: { label: "SMS", color: "#d4a017" }, CALL: { label: "Tel", color: "#8b5cf6" }, NOTE: { label: "Note", color: "#6b7280" } };
 type Tpl = { id: string; name: string; channel: string; subject: string | null; body: string; category: { name: string } };
 
+// SMS分割セグメント数(Intercomの「670字超えたら2通に分かれます」相当の事前警告)。
+// 日本語(UCS-2)前提: 単一セグメント70字、複数セグメント時は67字/通(UDHヘッダー分を差し引き)。
+function smsSegments(text: string): { count: number; perSegment: number } {
+  const len = text.length;
+  if (len === 0) return { count: 0, perSegment: 70 };
+  if (len <= 70) return { count: 1, perSegment: 70 };
+  return { count: Math.ceil(len / 67), perSegment: 67 };
+}
+
+// 反響対応playbookの知見:「また機会がありましたら」等の"引き"表現は非成立側に多い(最大-26pt)。
+// 送信前に検出して警告する(統合コンポーザーの送信前チェック)。
+const NG_PHRASES = ["また機会がありましたら", "またの機会に", "何かあればご連絡ください"];
+function findNgPhrases(text: string): string[] {
+  return NG_PHRASES.filter((p) => text.includes(p));
+}
+
 function resolveVars(text: string, c: any, user: AuthUser, org: any) {
   return text
     .replace(/\{\{customer_name\}\}/g, c.name || "")
@@ -59,6 +75,8 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
   };
 
   const filteredTpls = tpls.filter(t => t.channel === ch);
+  const segments = smsSegments(body);
+  const ngPhrases = findNgPhrases(body);
 
   return (
     <div className="flex h-full">
@@ -118,10 +136,20 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
             </div>
           </div>
           {ch === "EMAIL" && <input value={subj} onChange={e => setSubj(e.target.value)} placeholder={"\u4EF6\u540D"} className="w-full px-3 py-1.5 border rounded-lg text-sm mb-2" />}
+          {ngPhrases.length > 0 && (
+            <div className="mb-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-700">
+              \u26A0\uFE0F \u300C{ngPhrases[0]}\u300D\u306F\u6210\u7D04\u7387\u304C\u4E0B\u304C\u308A\u3084\u3059\u3044\u8868\u73FE\u3067\u3059\u3002\u5177\u4F53\u7684\u306A\u63D0\u6848\u306B\u7F6E\u304D\u63DB\u3048\u308B\u3053\u3068\u3092\u691C\u8A0E\u3057\u3066\u304F\u3060\u3055\u3044
+            </div>
+          )}
           <div className="flex gap-2">
             <textarea value={body} onChange={e => setBody(e.target.value)} placeholder={"\u30E1\u30C3\u30BB\u30FC\u30B8..."} rows={3} className="flex-1 px-3 py-2 border rounded-lg text-sm resize-none" />
             <button onClick={send} disabled={!body.trim() || isPending} className="self-end px-5 py-2 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-40">{isPending ? "..." : "\u9001\u4FE1"}</button>
           </div>
+          {ch === "SMS" && body.length > 0 && (
+            <div className={`mt-1 text-[11px] ${segments.count > 1 ? "text-amber-600" : "text-gray-400"}`}>
+              {body.length}\u5B57 / {segments.count}\u901A{segments.count > 1 ? `\uFF08${segments.perSegment}\u5B57\u3092\u8D85\u3048\u305F\u305F\u3081\u5206\u5272\u3055\u308C\u307E\u3059\uFF09` : ""}
+            </div>
+          )}
         </div>
       </div>
       <div className="w-72 flex-shrink-0 overflow-auto bg-white border-l p-4">
