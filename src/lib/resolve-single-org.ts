@@ -10,3 +10,13 @@ export async function resolveSingleOrgOrNull() {
   if (orgs.length === 1) return orgs[0];
   return null;
 }
+
+// architecture-v2.md §4: プラスアドレッシング(hankyo+<slug>@ドメイン)から組織を解決する。
+// slugが一致する組織が見つからなければnull(呼び出し側でresolveSingleOrgOrNullへフォールバックする)。
+export async function resolveOrgByRecipient(toAddress: string | undefined | null) {
+  if (!toAddress) return null;
+  const match = toAddress.match(/\+([a-zA-Z0-9-]+)@/);
+  if (!match) return null;
+  const slug = match[1].split("--")[0]; // hankyo+<orgSlug>--<storeSlug>@... の店舗部分は無視、組織部分だけ使う
+  return prisma.organization.findUnique({ where: { slug } });
+}

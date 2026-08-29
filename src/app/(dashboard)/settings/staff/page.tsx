@@ -142,8 +142,21 @@ export default function StaffSettingsPage() {
                 <td style={{ padding: "8px 14px" }}>
                   <button onClick={() => startEdit(s)} style={{
                     padding: "3px 10px", fontSize: 11, border: "1px solid #d1d5db", borderRadius: 4,
-                    background: "#fff", color: "#374151", cursor: "pointer",
+                    background: "#fff", color: "#374151", cursor: "pointer", marginRight: 6,
                   }}>編集</button>
+                  <button
+                    onClick={async () => {
+                      await fetch("/api/staff", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s.id, isStaff: !s.isStaff }) });
+                      fetchStaff();
+                    }}
+                    title="全社ダッシュボード(/inbox)で担当する全クライアントを横断表示できるようにする"
+                    style={{
+                      padding: "3px 10px", fontSize: 11, border: "1px solid", borderRadius: 4, cursor: "pointer",
+                      borderColor: s.isStaff ? "#059669" : "#d1d5db",
+                      background: s.isStaff ? "#ECFDF5" : "#fff",
+                      color: s.isStaff ? "#059669" : "#6b7280",
+                    }}
+                  >{s.isStaff ? "全社アクセスON" : "全社アクセスOFF"}</button>
                 </td>
               </tr>
             ))}

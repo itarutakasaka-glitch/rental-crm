@@ -13,6 +13,7 @@ datasource db {
 model Organization {
   id                 String              @id @default(cuid())
   name               String
+  slug               String?             @unique // architecture-v2.md §4: 反響メール宛先ルーティング用(hankyo+<slug>@...)
   phone              String?
   email              String?
   address            String?
@@ -340,9 +341,12 @@ model Template {
   body           String
   order          Int              @default(0)
   isActive       Boolean          @default(true)
+  agentKey       String? // architecture-v2.md §8: AgentTemplate.keyと対応させ、テンプレート3重構造を統合する橋渡し
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   workflowSteps  WorkflowStep[]
+
+  @@unique([organizationId, agentKey])
 }
 
 model Workflow {

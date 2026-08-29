@@ -1,6 +1,6 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { resolveSingleOrgOrNull } from "@/lib/resolve-single-org";
+import { resolveSingleOrgOrNull, resolveOrgByRecipient } from "@/lib/resolve-single-org";
 import { notifySlackError } from "@/lib/notify-slack";
 
 // SUUMO parser
@@ -108,11 +108,14 @@ export async function POST(request: NextRequest) {
       }
     }
     const fromAddress = typeof fromRaw === "string" ? fromRaw : fromRaw?.address || (Array.isArray(fromRaw) ? fromRaw[0]?.address : "") || "";
+    const toRaw = emailData.to;
+    const toAddress = typeof toRaw === "string" ? toRaw : toRaw?.address || (Array.isArray(toRaw) ? toRaw[0]?.address || toRaw[0] : "") || "";
 
-    console.log("[Email Webhook] From:", fromAddress, "Subject:", subject);
+    console.log("[Email Webhook] From:", fromAddress, "To:", toAddress, "Subject:", subject);
 
-    // TODO: Store.slugベースの宛先ルーティング未実装のため、組織が1社の間だけ動く暫定実装
-    const org = await resolveSingleOrgOrNull();
+    // architecture-v2.md §4: 宛先(hankyo+<slug>@...)から組織を解決。slugが無い/一致しない場合は
+    // 組織が1社の間だけ動く暫定フォールバック(resolveSingleOrgOrNull)。
+    const org = (await resolveOrgByRecipient(toAddress)) || (await resolveSingleOrgOrNull());
     if (!org) return NextResponse.json({ error: "組織を一意に特定できません(複数組織対応は未実装)" }, { status: 400 });
 
     const defaultStatus = await prisma.status.findFirst({
