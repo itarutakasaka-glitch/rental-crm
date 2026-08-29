@@ -76,6 +76,28 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [callResult, setCallResult] = useState("success");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [org, setOrg] = useState<any>(null);
+  const [lockInfo, setLockInfo] = useState<{ locked: boolean; lockedBy: string | null }>({ locked: false, lockedBy: null });
+
+  // 二重対応防止ロック(architecture-v2.md §9)。customer-detail.tsxと同じ仕組み:
+  // 開いている間30秒おきにハートビート、離脱時に解放。
+  useEffect(() => {
+    if (!customerId) return;
+    let cancelled = false;
+    const acquire = async () => {
+      try {
+        const res = await fetch(`/api/customers/${customerId}/lock`, { method: "POST" });
+        const data = await res.json();
+        if (!cancelled) setLockInfo({ locked: res.status === 409, lockedBy: data.lockedBy || null });
+      } catch {}
+    };
+    acquire();
+    const interval = setInterval(acquire, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      fetch(`/api/customers/${customerId}/lock`, { method: "DELETE", keepalive: true }).catch(() => {});
+    };
+  }, [customerId]);
 
   // Info tab editing state
   const [infoForm, setInfoForm] = useState<any>({});
@@ -593,6 +615,11 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                 ))}
               </div>
               <div style={{ padding: "8px 14px", background: "#F8F9FB" }}>
+                {lockInfo.locked && (composeChannel === "EMAIL" || composeChannel === "LINE" || composeChannel === "SMS") && (
+                  <div style={{ marginBottom: 6, padding: "6px 10px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 4, fontSize: 11, color: "#B91C1C" }}>
+                    ⚠️ {lockInfo.lockedBy || "他のオペレーター"}が対応中です。二重送信を防ぐため送信をブロックしています
+                  </div>
+                )}
                 {composeChannel === "EMAIL" ? (
                   customer.email ? (
                     <>
@@ -632,10 +659,10 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
                         <span style={{ fontSize: 10, color: "#9ca3af" }}>{"\u9001\u4FE1\u5148"}: {customer.email}</span>
-                        <button onClick={handleSend} disabled={sending || !body.trim()} style={{
+                        <button onClick={handleSend} disabled={sending || !body.trim() || lockInfo.locked} style={{
                           padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
-                          cursor: sending || !body.trim() ? "not-allowed" : "pointer",
-                          background: sending || !body.trim() ? "#d1d5db" : "#d4a017", color: "#fff",
+                          cursor: sending || !body.trim() || lockInfo.locked ? "not-allowed" : "pointer",
+                          background: sending || !body.trim() || lockInfo.locked ? "#d1d5db" : "#d4a017", color: "#fff",
                         }}>{sending ? "\u9001\u4FE1\u4E2D..." : "\u9001\u4FE1"}</button>
                       </div>
                     </>
@@ -668,10 +695,10 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
                         <span style={{ fontSize: 10, color: "#06C755" }}>LINE: {customer.lineDisplayName || "\u9023\u643A\u6E08"}</span>
-                        <button onClick={handleSend} disabled={sending || !body.trim()} style={{
+                        <button onClick={handleSend} disabled={sending || !body.trim() || lockInfo.locked} style={{
                           padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
-                          cursor: sending || !body.trim() ? "not-allowed" : "pointer",
-                          background: sending || !body.trim() ? "#d1d5db" : "#06C755", color: "#fff",
+                          cursor: sending || !body.trim() || lockInfo.locked ? "not-allowed" : "pointer",
+                          background: sending || !body.trim() || lockInfo.locked ? "#d1d5db" : "#06C755", color: "#fff",
                         }}>{sending ? "\u9001\u4FE1\u4E2D..." : "LINE\u9001\u4FE1"}</button>
                       </div>
                     </>
@@ -685,10 +712,10 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
                         <span style={{ fontSize: 10, color: "#9ca3af" }}>{"\u9001\u4FE1\u5148"}: {customer.phone}{"\uFF08"}{body.length}{"\u6587\u5B57\uFF09"}</span>
-                        <button onClick={handleSend} disabled={sending || !body.trim()} style={{
+                        <button onClick={handleSend} disabled={sending || !body.trim() || lockInfo.locked} style={{
                           padding: "5px 16px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
-                          cursor: sending || !body.trim() ? "not-allowed" : "pointer",
-                          background: sending || !body.trim() ? "#d1d5db" : "#2563eb", color: "#fff",
+                          cursor: sending || !body.trim() || lockInfo.locked ? "not-allowed" : "pointer",
+                          background: sending || !body.trim() || lockInfo.locked ? "#d1d5db" : "#2563eb", color: "#fff",
                         }}>{sending ? "\u9001\u4FE1\u4E2D..." : "SMS\u9001\u4FE1"}</button>
                       </div>
                     </>

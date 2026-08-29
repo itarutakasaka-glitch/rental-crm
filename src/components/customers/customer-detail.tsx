@@ -88,9 +88,30 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
   const [lineCode, setLineCode] = useState(""); const [linkMsg, setLinkMsg] = useState("");
   const [wfs, setWfs] = useState<any[]>([]); const [wfMsg, setWfMsg] = useState(""); const [activeRun, setActiveRun] = useState<any>(null);
   const [tpls, setTpls] = useState<Tpl[]>([]); const [showTpl, setShowTpl] = useState(false); const [org, setOrg] = useState<any>(null);
+  const [lockInfo, setLockInfo] = useState<{ locked: boolean; lockedBy: string | null }>({ locked: false, lockedBy: null });
   const st = statuses.find((s: any) => s.id === c.statusId);
 
   useEffect(() => { fetch("/api/templates").then(r => r.json()).then(d => setTpls(d.templates || [])); fetch("/api/organization").then(r => r.json()).then(d => setOrg(d)); fetch("/api/workflows").then(r => r.json()).then(d => setWfs(d.workflows || [])); fetch(`/api/workflow-run?customerId=${c.id}`).then(r => r.json()).then(d => setActiveRun(d.run || null)); }, []);
+
+  // 二重対応防止ロック(architecture-v2.md §9): 画面を開いている間30秒おきにハートビートを送り、
+  // 他オペが90秒以内に取得済みならバナー表示+送信ブロック。離脱時は自分のロックを解放する。
+  useEffect(() => {
+    let cancelled = false;
+    const acquire = async () => {
+      try {
+        const res = await fetch(`/api/customers/${c.id}/lock`, { method: "POST" });
+        const data = await res.json();
+        if (!cancelled) setLockInfo({ locked: res.status === 409, lockedBy: data.lockedBy || null });
+      } catch {}
+    };
+    acquire();
+    const interval = setInterval(acquire, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      fetch(`/api/customers/${c.id}/lock`, { method: "DELETE", keepalive: true }).catch(() => {});
+    };
+  }, [c.id]);
 
   const send = () => { if (!body.trim()) return;
     start(async () => {
@@ -189,9 +210,14 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
               \u26A0\uFE0F \u300C{ngPhrases[0]}\u300D\u306F\u6210\u7D04\u7387\u304C\u4E0B\u304C\u308A\u3084\u3059\u3044\u8868\u73FE\u3067\u3059\u3002\u5177\u4F53\u7684\u306A\u63D0\u6848\u306B\u7F6E\u304D\u63DB\u3048\u308B\u3053\u3068\u3092\u691C\u8A0E\u3057\u3066\u304F\u3060\u3055\u3044
             </div>
           )}
+          {lockInfo.locked && (ch === "EMAIL" || ch === "LINE" || ch === "SMS") && (
+            <div className="mb-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg text-[11px] text-red-700">
+              \u26A0\uFE0F {lockInfo.lockedBy || "\u4ED6\u306E\u30AA\u30DA\u30EC\u30FC\u30BF\u30FC"}\u304C\u5BFE\u5FDC\u4E2D\u3067\u3059\u3002\u4E8C\u91CD\u9001\u4FE1\u3092\u9632\u3050\u305F\u3081\u9001\u4FE1\u3092\u30D6\u30ED\u30C3\u30AF\u3057\u3066\u3044\u307E\u3059\u3002\u5FC5\u8981\u306A\u3089\u30DA\u30FC\u30B8\u3092\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044
+            </div>
+          )}
           <div className="flex gap-2">
             <textarea value={body} onChange={e => setBody(e.target.value)} placeholder={"\u30E1\u30C3\u30BB\u30FC\u30B8..."} rows={3} className="flex-1 px-3 py-2 border rounded-lg text-sm resize-none" />
-            <button onClick={send} disabled={!body.trim() || isPending} className="self-end px-5 py-2 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-40">{isPending ? "..." : "\u9001\u4FE1"}</button>
+            <button onClick={send} disabled={!body.trim() || isPending || (lockInfo.locked && (ch === "EMAIL" || ch === "LINE" || ch === "SMS"))} className="self-end px-5 py-2 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-40">{isPending ? "..." : "\u9001\u4FE1"}</button>
           </div>
           {ch === "SMS" && body.length > 0 && (
             <div className={`mt-1 text-[11px] ${segments.count > 1 ? "text-amber-600" : "text-gray-400"}`}>

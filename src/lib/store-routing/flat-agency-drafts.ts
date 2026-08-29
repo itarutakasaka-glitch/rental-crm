@@ -4,28 +4,20 @@
 // 「下書き」を生成する。送信は人間が確認のうえ実施する(Phase1=下書き承認方式)。
 import { recommendStore, type RouterInput, type RouterResult } from "./flat-agency-router";
 
-// 外国籍向け一般文面(定型文DBから取得して差し込む想定。未取得時はnull=下書きを付けない)
-let _foreignGeneralText = "";
-export function setForeignSections(secs: { general?: string } | null) {
-  _foreignGeneralText = secs?.general || "";
-}
+// architecture-v2.md §8 Step4: 下記のmailEN/mailZHはDBにテンプレ(AgentTemplate)が
+// 無い組織向けのフォールバック文面。呼び出し側(API route)がAgentTemplateから
+// tpl_mail_en/tpl_mail_zh/tpl_foreign_generalを取得しtemplatesとして渡した場合はそちらを優先する。
+// (旧実装はsetForeignSections()というモジュール変数でDB文面を差し込む設計だったが、
+//  複数組織のリクエストが同一Nodeプロセスで並行処理されると他組織の文面が混ざる恐れがあるため、
+//  純粋関数の引数として渡す方式に変更した)
+export type DraftTemplates = {
+  tpl_mail_en?: string;
+  tpl_mail_zh?: string;
+  tpl_foreign_general?: string;
+};
 
-function mailJP(name: string) {
-  return `${name}様
-
-お問い合わせいただき、誠にありがとうございます。
-株式会社フラットエージェンシーでございます。
-
-お部屋探しのお手伝いをさせていただきたく存じます。
-つきましては、ご希望の条件についてもう少し詳しくお聞かせいただけますでしょうか。
-
-・ご希望のエリア（沿線・駅・学校名など）
-・ご予算（家賃の上限）
-・間取り／広さ
-・ご入居希望時期
-
-上記をご返信いただけますと、最適なお部屋をご提案できるかと存じます。
-何卒よろしくお願いいたします。`;
+function fillCustomerName(body: string, name: string) {
+  return body.replace(/\{\{customer_name\}\}/g, name);
 }
 
 function mailEN(name: string) {
@@ -66,11 +58,12 @@ function mailZH(name: string) {
 Flat Agency`;
 }
 
-function pickMail(lang: string | undefined, name: string): { 言語: string; 本文: string } | null {
-  if (lang === "英語") return { 言語: "EN", 本文: mailEN(name) };
-  if (lang === "中国語") return { 言語: "ZH（要レビュー）", 本文: mailZH(name) };
-  if ((lang === "韓国語" || lang === "外国語") && _foreignGeneralText) {
-    return { 言語: "外国籍確認（要人間確認）", 本文: `${name}様\n\n${_foreignGeneralText}` };
+function pickMail(lang: string | undefined, name: string, templates: DraftTemplates): { 言語: string; 本文: string } | null {
+  if (lang === "英語") return { 言語: "EN", 本文: templates.tpl_mail_en ? fillCustomerName(templates.tpl_mail_en, name) : mailEN(name) };
+  if (lang === "中国語") return { 言語: "ZH（要レビュー）", 本文: templates.tpl_mail_zh ? fillCustomerName(templates.tpl_mail_zh, name) : mailZH(name) };
+  if (lang === "韓国語" || lang === "外国語") {
+    if (!templates.tpl_foreign_general) return null;
+    return { 言語: "外国籍確認（要人間確認）", 本文: `${name}様\n\n${templates.tpl_foreign_general}` };
   }
   if (!lang || lang === "日本語") return null;
   return null;
@@ -115,9 +108,10 @@ export type GenerateDraftsResult = {
 };
 
 /** 反響情報＋顧客情報＋日付から、推奨と下書き一式を生成する。 */
-export function generateDrafts(params: { 反響?: RouterInput; customer?: DraftCustomer; dateStr: string }): GenerateDraftsResult {
+export function generateDrafts(params: { 反響?: RouterInput; customer?: DraftCustomer; dateStr: string; templates?: DraftTemplates }): GenerateDraftsResult {
   const r = params.反響 || {};
   const c = params.customer || { name: "" };
+  const templates = params.templates || {};
   const rec = recommendStore(r, params.dateStr);
 
   if (rec.action === "対応不要") {
@@ -133,7 +127,7 @@ export function generateDrafts(params: { 反響?: RouterInput; customer?: DraftC
   const drafts: GenerateDraftsResult["drafts"] = { comment: commentNormal(params.dateStr, rec) };
   const ops = [`店舗タグ付与（${rec.store}）`, "通常対応"];
   if (rec.route === "言語" && r.対応言語 && ["英語", "中国語", "韓国語", "外国語"].includes(r.対応言語)) {
-    const mail = pickMail(r.対応言語, c.name);
+    const mail = pickMail(r.対応言語, c.name, templates);
     if (mail) {
       drafts.mail = mail;
       ops.unshift("初回メール送付");

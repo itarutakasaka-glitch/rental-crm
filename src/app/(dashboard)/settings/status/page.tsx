@@ -10,15 +10,27 @@ const COLORS = [
   { value: "#10B981", label: "緑" }, { value: "#06B6D4", label: "シアン" },
 ];
 
+// architecture-v2.md §9: 会社ごとに自由なステータス名を、全社ダッシュボードで横断集計
+// できるようにする共通カテゴリ。
+const SYSTEM_CATEGORIES = [
+  { value: "", label: "(未設定)" },
+  { value: "NEW", label: "新規・未対応" },
+  { value: "IN_PROGRESS", label: "対応中" },
+  { value: "DONE", label: "完了・成約" },
+  { value: "CLOSED", label: "クローズ・失注" },
+];
+
 export default function StatusSettingsPage() {
   const [statuses, setStatuses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("#3B82F6");
+  const [editCategory, setEditCategory] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("#3B82F6");
+  const [newCategory, setNewCategory] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fetchStatuses = useCallback(async () => {
@@ -38,9 +50,9 @@ export default function StatusSettingsPage() {
       const res = await fetch("/api/statuses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName, color: newColor, order: statuses.length }),
+        body: JSON.stringify({ name: newName, color: newColor, order: statuses.length, systemCategory: newCategory || null }),
       });
-      if (res.ok) { setNewName(""); setNewColor("#3B82F6"); setShowAdd(false); fetchStatuses(); }
+      if (res.ok) { setNewName(""); setNewColor("#3B82F6"); setNewCategory(""); setShowAdd(false); fetchStatuses(); }
     } catch (e) { console.error(e); }
     finally { setSaving(false); }
   };
@@ -52,7 +64,7 @@ export default function StatusSettingsPage() {
       const res = await fetch("/api/statuses", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, name: editName, color: editColor }),
+        body: JSON.stringify({ id, name: editName, color: editColor, systemCategory: editCategory || null }),
       });
       if (res.ok) { setEditingId(null); fetchStatuses(); }
     } catch (e) { console.error(e); }
@@ -131,6 +143,14 @@ export default function StatusSettingsPage() {
                 ))}
               </div>
             </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>横断集計カテゴリ</div>
+              <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
+                title="全社ダッシュボードでの横断集計カテゴリ"
+                style={{ padding: "8px 10px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 6, outline: "none" }}>
+                {SYSTEM_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={handleAdd} disabled={saving || !newName.trim()} style={{
@@ -174,6 +194,11 @@ export default function StatusSettingsPage() {
                     }} />
                   ))}
                 </div>
+                <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}
+                  title="全社ダッシュボードでの横断集計カテゴリ"
+                  style={{ padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, outline: "none" }}>
+                  {SYSTEM_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
                 <button onClick={() => handleEdit(status.id)} disabled={saving} style={{
                   padding: "4px 12px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4,
                   background: "#d4a017", color: "#fff", cursor: "pointer",
@@ -185,9 +210,15 @@ export default function StatusSettingsPage() {
             ) : (
               <>
                 <span style={{ fontSize: 14, fontWeight: 500, color: "#111827", flex: 1 }}>{status.name}</span>
+                {status.systemCategory && (
+                  <span style={{
+                    fontSize: 11, color: "#6b7280", background: "#f3f4f6", padding: "2px 8px",
+                    borderRadius: 999, marginRight: 12,
+                  }}>{SYSTEM_CATEGORIES.find((c) => c.value === status.systemCategory)?.label || status.systemCategory}</span>
+                )}
                 {status.isDefault && <span style={{ fontSize: 11, color: "#d4a017", fontWeight: 600, marginRight: 12 }}>デフォルト</span>}
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => { setEditingId(status.id); setEditName(status.name); setEditColor(status.color || "#6B7280"); }}
+                  <button onClick={() => { setEditingId(status.id); setEditName(status.name); setEditColor(status.color || "#6B7280"); setEditCategory(status.systemCategory || ""); }}
                     style={{ padding: "4px 12px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#374151" }}>
                     編集
                   </button>

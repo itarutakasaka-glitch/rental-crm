@@ -13,6 +13,15 @@ export async function sendMessage(data: { customerId: string; senderId?: string;
   const customer = await prisma.customer.findUnique({ where: { id: data.customerId }, include: { organization: true } });
   if (!customer) throw new Error("Customer not found");
   if (!canAccessOrg(user, customer.organizationId)) throw new Error("Forbidden");
+  // architecture-v2.md §9(穴#16): 二重対応防止。/api/customers/[id]/lock のハートビートで
+  // 保持されたロックが自分以外・かつ新しい(90秒以内)場合は顧客向け送信を止める。
+  // UIの表示漏れ・タイミングずれで別オペが同時に画面を開いていても、実際の送信はここで必ず1人に絞る。
+  // CALL(架電記録)・NOTE(社内メモ)は顧客に届かない内部記録なので対象外(複数オペの同時記録を妨げない)。
+  const isCustomerFacing = data.channel === "EMAIL" || data.channel === "LINE" || data.channel === "SMS";
+  if (isCustomerFacing && customer.lockedByUserId && customer.lockedByUserId !== user.id && customer.lockedAt) {
+    const isStale = Date.now() - customer.lockedAt.getTime() > 90_000;
+    if (!isStale) throw new Error("他のオペレーターが対応中です。ページを再読み込みしてから対応してください。");
+  }
   const message = await prisma.message.create({ data: { customerId: data.customerId, senderId: user.id, direction: "OUTBOUND", channel: data.channel, subject: data.subject, body: data.body, status: "PENDING" } });
   try {
     if (data.channel === "EMAIL" && customer.email && process.env.RESEND_API_KEY) {

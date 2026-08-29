@@ -142,6 +142,14 @@ export async function POST(request: NextRequest) {
       where: { id: customerId },
       include: { assignee: true, properties: true },
     });
+    // architecture-v2.md §9(穴#16): 二重対応防止。customer-detail.tsx/customer-detail-panel.tsx
+    // どちらの送信経路も通るよう、ここでロックを判定する(actions/send-message.tsのsendMessageとは別実装のため個別に必要)。
+    // CALL(架電記録)・NOTE(社内メモ)は顧客に届かない内部記録なので対象外。
+    const isCustomerFacingChannel = channel === "EMAIL" || channel === "LINE" || channel === "SMS";
+    if (isCustomerFacingChannel && customer?.lockedByUserId && customer.lockedByUserId !== dbUser.id && customer.lockedAt) {
+      const isStale = Date.now() - customer.lockedAt.getTime() > 90_000;
+      if (!isStale) return NextResponse.json({ error: "他のオペレーターが対応中です。ページを再読み込みしてから対応してください。" }, { status: 409 });
+    }
     const org = await prisma.organization.findFirst({ where: { id: dbUser.organizationId! } });
 
     let finalBody = resolveVars(body, customer || {}, org, dbUser.name || "");
