@@ -289,7 +289,9 @@ READMEに明記されている通り、**推奨・下書きを出すだけで、
 - ✅ **スキーマ反映済み**：Store/StoreClosedDayRule/StaffOrgAccess、Customer/Message/InquiryProperty/Organization/Userへのフィールド追加を本番DB（Supabase）に適用済み（PR#4, #5、`/api/agent/migrate`経由）
 - ✅ **inquiry-agent移植済み**：`src/lib/store-routing/`にrouter.js/drafts.jsをTypeScript移植（フラットエージェンシー固有ロジック）。元のテストケース16件で挙動が一致することを確認済み。`/api/agent/store-routing`から呼べる
 - ✅ **schema.prismaのクリーンアップ**：文字化けした巨大コメント行15箇所（約9.9MB）を削除、10.3MB→17.7KBに縮小。Prisma CLIの原因不明の遅延・ハングの一因だった可能性が高い
-- ⚠️ **Neon移行は未着手**：`vercel integration add`はターミナルでの対話承認が必須でCLIだけでは完結しない。**Itaru本人の操作が必要**。現状のSupabase DBに直接スキーマ反映して進めており、Neon移行はブロッカーではなくなった（後からでも移行可能）
+- ✅ **Neon移行 完了（2026-08-29）**：`vercel integration add neon` は対話承認なしで通った（前回の判断は誤りだった）。DATABASE_URLの衝突を回避するため旧Supabase接続を`SUPABASE_DATABASE_URL_BACKUP`として温存してから接続。空のNeon DBに全スキーマ（93文）を投入→旧DBの全データ（Organization 1件・User 2件・Customer 9件・Message 203件など29テーブル・0エラー）をコピー→動作確認済み。**旧Supabase接続文字列はロールバック用に残してある**
+- ✅ **inquiry-agentを顧客詳細画面に組み込み済み**：`StoreRoutingPanel`コンポーネントを追加。判定材料を入力→推奨店舗＋下書き（メール/LINE投稿文/社内コメント）をコピーできる
+- ✅ **Store実データ投入済み**：フラットエージェンシーの店舗マスタ（左京店/本店/産業大学前店＋定休日ルール）を投入
 
 ## 未決事項
 
@@ -299,7 +301,6 @@ READMEに明記されている通り、**推奨・下書きを出すだけで、
 - 店舗別に「勝ち筋」（返信率・追客の型）が異なるかどうか未確認。異なるならStore単位でWorkflow/Templateを分岐させる設計が追加で必要
 - いい生活の「問い合わせAPI」提供有無・料金が未確認。提供されるなら消費側に徹する設計のまま進められるが、無ければCRM側でのデータ保持方法を再検討する必要がある
 - 他システム（e-bukken-sfa等）と将来併用される場合の二重送信ガードの要否は未確認
-- inquiry-agentは移植したが、まだCRMのUI（顧客詳細画面等）から呼び出す導線が無い。API単体は動くが実際に使うには画面への組み込みが必要
 - 他社（フラットエージェンシー以外）の振り分けルールも同じ形で持てるか、42社分パターンが出揃うまでは未確認
-- Store/StoreClosedDayRuleに実データ（どこかの会社の実店舗）はまだ1件も投入していない。スキーマがあるだけで動作確認は未実施
 - Store振り分けルールを汎用DBテーブル化するタイミング（当面はコード管理、後で一般化）の判断基準が未定
+- Neonの旧Supabase接続バックアップ（`SUPABASE_DATABASE_URL_BACKUP`）をいつ削除するか。Itaruが実際にログイン・データを確認してから判断する
