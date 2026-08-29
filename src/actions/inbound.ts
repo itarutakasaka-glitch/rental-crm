@@ -1,4 +1,6 @@
-﻿"use server";
+﻿// NOTE: 意図的に"use server"を付けない。server actionにするとビルド後に
+// 無認証POSTエンドポイントとして露出し、外部から偽の反響を注入できてしまう。
+// webhook route(サーバー側)から普通のモジュールとしてimportして使う。
 import { prisma } from "@/lib/db/prisma";
 import { parseInquiryEmail } from "@/lib/parsers/inquiry-email-parser";
 import { revalidatePath } from "next/cache";
@@ -10,7 +12,7 @@ export async function processInboundEmail(organizationId: string, data: { from: 
   });
   if (existing) {
     await prisma.message.create({ data: { customerId: existing.id, direction: "INBOUND", channel: "EMAIL", subject: data.subject, body: data.body, status: "SENT" } });
-    await prisma.customer.update({ where: { id: existing.id }, data: { lastActiveAt: new Date(), isNeedAction: true } });
+    await prisma.customer.update({ where: { id: existing.id }, data: { lastActiveAt: new Date(), isNeedAction: true, hasCustomerReplied: true } });
     revalidatePath("/customers");
     return { action: "updated", customerId: existing.id };
   }

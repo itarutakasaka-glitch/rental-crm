@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
         const linked = await prisma.customer.findFirst({ where: { lineUserId } });
         if (linked) {
           await prisma.message.create({ data: { customerId: linked.id, direction: "INBOUND", channel: "LINE", body: text, status: "SENT" } });
-          await prisma.customer.update({ where: { id: linked.id }, data: { lastActiveAt: new Date(), isNeedAction: true } });
+          await prisma.customer.update({ where: { id: linked.id }, data: { lastActiveAt: new Date(), isNeedAction: true, hasCustomerReplied: true } });
           // Stop running workflows on LINE reply
           await prisma.workflowRun.updateMany({
             where: { customerId: linked.id, status: "RUNNING" },

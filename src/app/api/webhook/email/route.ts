@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
       await prisma.message.create({
         data: { customerId: existingCustomer.id, direction: "INBOUND", channel: "EMAIL", subject: subject || null, body, status: "DELIVERED" },
       });
-      await prisma.customer.update({ where: { id: existingCustomer.id }, data: { isNeedAction: true, updatedAt: new Date() } });
+      await prisma.customer.update({ where: { id: existingCustomer.id }, data: { isNeedAction: true, updatedAt: new Date(), hasCustomerReplied: true } });
       await prisma.workflowRun.updateMany({ where: { customerId: existingCustomer.id, status: "RUNNING" }, data: { status: "STOPPED_BY_REPLY" } });
       
       // Mark for AI agent processing

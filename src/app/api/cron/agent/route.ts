@@ -473,6 +473,7 @@ export async function GET(req: NextRequest) {
   }
 
   let processed = 0;
+  let skippedByMode = 0;
   const orgCache = new Map<string, any>();
   async function getOrg(organizationId: string) {
     if (!orgCache.has(organizationId)) {
@@ -480,12 +481,18 @@ export async function GET(req: NextRequest) {
     }
     return orgCache.get(organizationId);
   }
+  // Phase1決定(2026-08-26): 自動送信はautoReplyEnabled=true かつ autoReplyMode="AUTO_SEND"の
+  // 組織のみ。既定はDRAFT_ONLY=このcronは何も送らない(下書き生成パイプラインはPhase Bで実装。
+  // architecture-v2.md §3参照)。
+  function canAutoSend(org: any): boolean {
+    return !!org && org.autoReplyEnabled === true && org.autoReplyMode === "AUTO_SEND";
+  }
 
   const pending = await prisma.customer.findMany({ where: { memo: { contains: "[AGENT_PENDING]" } }, take: 5, orderBy: { createdAt: "asc" } });
   for (const c of pending) {
     if (!c.email) continue;
     const org = await getOrg(c.organizationId);
-    if (!org) continue;
+    if (!canAutoSend(org)) { skippedByMode++; continue; }
     try { await processNewInquiry(c, org); processed++; } catch (e: any) { console.error(`[Agent] Error 1st mail ${c.name}:`, e.message); }
   }
 
@@ -493,7 +500,7 @@ export async function GET(req: NextRequest) {
   for (const c of classifyPending) {
     if (!c.email && !c.lineUserId) continue;
     const org = await getOrg(c.organizationId);
-    if (!org) continue;
+    if (!canAutoSend(org)) { skippedByMode++; continue; }
     const lastMsg = await prisma.message.findFirst({ where: { customerId: c.id, direction: "INBOUND" }, orderBy: { createdAt: "desc" } });
     if (!lastMsg?.body) continue;
     try { await classifyReply(c, org, lastMsg.body); processed++; } catch (e: any) { console.error(`[Agent] Error classify ${c.name}:`, e.message); }
@@ -503,11 +510,11 @@ export async function GET(req: NextRequest) {
   for (const c of confirmPending) {
     if (!c.email && !c.lineUserId) continue;
     const org = await getOrg(c.organizationId);
-    if (!org) continue;
+    if (!canAutoSend(org)) { skippedByMode++; continue; }
     const lastMsg = await prisma.message.findFirst({ where: { customerId: c.id, direction: "INBOUND" }, orderBy: { createdAt: "desc" } });
     if (!lastMsg?.body) continue;
     try { await confirmAppointment(c, org, lastMsg.body); processed++; } catch (e: any) { console.error(`[Agent] Error confirm ${c.name}:`, e.message); }
   }
 
-  return NextResponse.json({ success: true, processed, pending: pending.length, classify: classifyPending.length, confirm: confirmPending.length });
+  return NextResponse.json({ success: true, processed, skippedByMode, pending: pending.length, classify: classifyPending.length, confirm: confirmPending.length });
 }
