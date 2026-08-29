@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUserForAction } from "@/lib/auth";
 import snippetsData from "@/data/text_blaze_all_snippets.json";
 
 // GET: Return all snippets merged with DB overrides
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUserForAction();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const org = await prisma.organization.findFirst();
-  const orgId = org?.id || "org_default";
-  
   // Get DB overrides
   let overrides: Record<string, string> = {};
   try {
     const rows = await prisma.$queryRawUnsafe(
-      `SELECT "key", "body" FROM "AgentTemplate" WHERE "organizationId" = $1 AND "key" LIKE 'snippet_%'`, orgId
+      `SELECT "key", "body" FROM "AgentTemplate" WHERE "organizationId" = $1 AND "key" LIKE 'snippet_%'`, user.organizationId
     ) as any[];
     rows.forEach((r: any) => { overrides[r.key] = r.body; });
   } catch {}
@@ -41,22 +37,19 @@ export async function GET() {
 // PUT: Save snippet override
 export async function PUT(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUserForAction();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { key, text } = await req.json();
     if (!key || !text) return NextResponse.json({ error: "key, text required" }, { status: 400 });
-    const org = await prisma.organization.findFirst();
-    const orgId = org?.id || "org_default";
-    
+
     await prisma.$executeRawUnsafe(`
       INSERT INTO "AgentTemplate" ("id","organizationId","key","title","body","updatedAt")
       VALUES (gen_random_uuid()::text,$1,$2,$3,$4,NOW())
       ON CONFLICT ("organizationId","key")
       DO UPDATE SET "body"=$4, "updatedAt"=NOW()
-    `, orgId, key, key, text);
-    
+    `, user.organizationId, key, key, text);
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

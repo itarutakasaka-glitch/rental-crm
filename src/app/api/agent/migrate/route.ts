@@ -103,6 +103,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Set initial values for our org
+    // (一回限りの管理スクリプト。ハードコードされた住所等は特定の1社向けの初期値設定であり、
+    //  複数組織対応は意図していない)
     const org = await prisma.organization.findFirst();
     if (org) {
       await prisma.$executeRawUnsafe(`UPDATE "Organization" SET 

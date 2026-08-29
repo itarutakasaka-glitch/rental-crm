@@ -9,6 +9,9 @@ export async function POST(req: NextRequest) {
   if (secret !== process.env.CRON_SECRET) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    // 一回限りのデモ用管理スクリプト(ライブトラフィックの一部ではない)。
+    // 対象組織が1社しか無い前提で書かれている。2社目以降を追加したら明示的に
+    // 対象組織を指定できるよう拡張が必要。
     const org = await prisma.organization.findFirst();
     if (!org) return NextResponse.json({ error: "No organization" }, { status: 400 });
 
