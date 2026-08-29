@@ -10,7 +10,30 @@ export type AuthUser = {
   role: "ADMIN" | "MEMBER";
   organizationId: string;
   organizationName: string;
+  isStaff: boolean;
+  staffOrgs: { id: string; name: string }[]; // isStaff=trueの場合、横断アクセスできる組織一覧
 };
+
+async function toAuthUser(dbUser: any): Promise<AuthUser> {
+  let staffOrgs: { id: string; name: string }[] = [];
+  if (dbUser.isStaff) {
+    const accesses = await prisma.staffOrgAccess.findMany({
+      where: { userId: dbUser.id },
+      include: { organization: { select: { id: true, name: true } } },
+    });
+    staffOrgs = accesses.map((a) => a.organization);
+  }
+  return {
+    id: dbUser.id,
+    email: dbUser.email,
+    name: dbUser.name,
+    role: dbUser.role as "ADMIN" | "MEMBER",
+    organizationId: dbUser.organizationId,
+    organizationName: dbUser.organization.name,
+    isStaff: dbUser.isStaff,
+    staffOrgs,
+  };
+}
 
 export async function getCurrentUser(): Promise<AuthUser> {
   const supabase = await createClient();
@@ -41,14 +64,7 @@ export async function getCurrentUser(): Promise<AuthUser> {
     });
   }
 
-  return {
-    id: dbUser.id,
-    email: dbUser.email,
-    name: dbUser.name,
-    role: dbUser.role as "ADMIN" | "MEMBER",
-    organizationId: dbUser.organizationId,
-    organizationName: dbUser.organization.name,
-  };
+  return toAuthUser(dbUser);
 }
 
 export async function requireAdmin(): Promise<AuthUser> {
@@ -67,10 +83,6 @@ export async function getAuthUserForAction(): Promise<AuthUser | null> {
       include: { organization: true },
     });
     if (!dbUser) return null;
-    return {
-      id: dbUser.id, email: dbUser.email, name: dbUser.name,
-      role: dbUser.role as "ADMIN" | "MEMBER",
-      organizationId: dbUser.organizationId, organizationName: dbUser.organization.name,
-    };
+    return toAuthUser(dbUser);
   } catch (e) { return null; }
 }
