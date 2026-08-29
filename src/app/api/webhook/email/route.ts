@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { resolveSingleOrgOrNull } from "@/lib/resolve-single-org";
+import { notifySlackError } from "@/lib/notify-slack";
 
 // SUUMO parser
 function parseSuumo(text: string) {
@@ -233,6 +234,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, type: "unknown" });
   } catch (error: any) {
     console.error("[Email Webhook] Error:", error?.message || error);
+    await notifySlackError({ title: "反響メールwebhook処理失敗", detail: error?.message || String(error), source: "api/webhook/email" });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -24,6 +24,47 @@ function findNgPhrases(text: string): string[] {
   return NG_PHRASES.filter((p) => text.includes(p));
 }
 
+// Phase1(下書き承認方式): cron/agentがDRAFT_ONLY組織向けに作った下書き(status=PENDING)を
+// 人間が確認・編集して承認送信 or 却下する。
+function DraftApprovalBubble({ m, chInfo, onDone }: { m: any; chInfo: { label: string; color: string }; onDone: () => void }) {
+  const [editBody, setEditBody] = useState(m.body);
+  const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
+  const [err, setErr] = useState("");
+
+  const approve = async () => {
+    setBusy("approve"); setErr("");
+    try {
+      const res = await fetch(`/api/messages/${m.id}/approve`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: editBody }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "送信に失敗しました");
+      onDone();
+    } catch (e: any) { setErr(e.message); } finally { setBusy(null); }
+  };
+  const reject = async () => {
+    setBusy("reject"); setErr("");
+    try {
+      const res = await fetch(`/api/messages/${m.id}/approve`, { method: "DELETE" });
+      if (!res.ok) throw new Error("却下に失敗しました");
+      onDone();
+    } catch (e: any) { setErr(e.message); } finally { setBusy(null); }
+  };
+
+  return (
+    <div className="max-w-[85%] w-full p-3 rounded-xl border-2 border-amber-300 bg-amber-50">
+      <div className="text-[10px] font-bold text-amber-700 mb-1.5 flex items-center gap-1.5">
+        <span className="inline-block px-1.5 py-0.5 rounded font-semibold text-white" style={{ background: chInfo.color }}>{chInfo.label}</span>
+        承認待ちの下書き{m.subject && <span className="text-gray-500 font-normal">・{m.subject}</span>}
+      </div>
+      <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={5} className="w-full px-2 py-1.5 border rounded-lg text-sm resize-none bg-white" />
+      {err && <div className="text-[11px] text-red-500 mt-1">{err}</div>}
+      <div className="flex gap-2 mt-2">
+        <button onClick={approve} disabled={!!busy} className="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold disabled:opacity-40">{busy === "approve" ? "送信中..." : "承認して送信"}</button>
+        <button onClick={reject} disabled={!!busy} className="px-3 py-1.5 bg-white border text-gray-500 rounded-lg text-xs font-semibold disabled:opacity-40">{busy === "reject" ? "..." : "却下"}</button>
+      </div>
+    </div>
+  );
+}
+
 function resolveVars(text: string, c: any, user: AuthUser, org: any) {
   return text
     .replace(/\{\{customer_name\}\}/g, c.name || "")
@@ -98,6 +139,13 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
         <div className="flex-1 overflow-auto p-4 bg-slate-50/50 space-y-3">
           {c.messages.map((m: any) => {
             const chInfo = CH[m.channel as keyof typeof CH] || CH.NOTE;
+            if (m.direction === "OUTBOUND" && m.status === "PENDING") {
+              return (
+                <div key={m.id} className="flex justify-end">
+                  <DraftApprovalBubble m={m} chInfo={chInfo} onDone={() => router.refresh()} />
+                </div>
+              );
+            }
             return (
               <div key={m.id} className={`flex ${m.direction === "OUTBOUND" ? "justify-end" : "justify-start"}`}>
                 <div className="max-w-[70%]">
@@ -217,7 +265,7 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
         {c.tags?.length > 0 && (
           <div className="flex gap-1 flex-wrap mt-3">{c.tags.map((t: any) => <span key={t.id} className="px-2 py-0.5 bg-indigo-50 text-primary rounded-full text-[10px] font-semibold">{t.name}</span>)}</div>
         )}
-        <StoreRoutingPanel customerName={c.name} />
+        <StoreRoutingPanel customerId={c.id} customerName={c.name} />
       </div>
     </div>
   );

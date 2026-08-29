@@ -33,8 +33,10 @@ function CopyField({ label, text }: { label: string; text: string }) {
   );
 }
 
-export function StoreRoutingPanel({ customerName }: { customerName: string }) {
+export function StoreRoutingPanel({ customerId, customerName }: { customerId: string; customerName: string }) {
   const [open, setOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState(false);
   const [input, setInput] = useState({
     対応不要物件: false,
     短期: false,
@@ -74,10 +76,30 @@ export function StoreRoutingPanel({ customerName }: { customerName: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "判定に失敗しました");
       setResult(data);
+      setApplied(false);
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const apply = async () => {
+    if (!result?.recommendation.store) return;
+    setApplying(true);
+    try {
+      const res = await fetch("/api/agent/store-routing/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId, storeName: result.recommendation.store }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "反映に失敗しました");
+      setApplied(true);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setApplying(false);
     }
   };
 
@@ -144,9 +166,20 @@ export function StoreRoutingPanel({ customerName }: { customerName: string }) {
 
           {result && (
             <div className="mt-2 pt-2 border-t">
-              <div className="font-semibold mb-1">
-                推奨: {result.recommendation.store || "（店舗指定なし）"}
-                <span className="ml-1 text-gray-400 font-normal">({result.recommendation.route})</span>
+              <div className="font-semibold mb-1 flex items-center justify-between">
+                <span>
+                  推奨: {result.recommendation.store || "（店舗指定なし）"}
+                  <span className="ml-1 text-gray-400 font-normal">({result.recommendation.route})</span>
+                </span>
+                {result.recommendation.store && (
+                  <button
+                    onClick={apply}
+                    disabled={applying || applied}
+                    className={`text-[10px] px-2 py-1 rounded font-semibold ${applied ? "bg-green-100 text-green-700" : "bg-primary text-white disabled:opacity-40"}`}
+                  >
+                    {applied ? "反映済み" : applying ? "反映中..." : "この店舗で反映する"}
+                  </button>
+                )}
               </div>
               <div className="text-gray-500 mb-2">{result.recommendation.理由}</div>
               <div className="text-gray-500 mb-2">

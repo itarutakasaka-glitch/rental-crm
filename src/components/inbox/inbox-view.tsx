@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { AuthUser } from "@/lib/auth";
 
 type Status = { id: string; name: string; color: string; order: number };
-type Message = { id: string; direction: string; channel: string; subject: string | null; body: string; createdAt: string };
+type Message = { id: string; direction: string; channel: string; subject: string | null; body: string; createdAt: string; status?: string };
 type Customer = {
   id: string; name: string; nameKana: string | null; email: string | null; phone: string | null;
   sourcePortal: string | null; isNeedAction: boolean; createdAt: string; updatedAt: string;
@@ -132,6 +132,9 @@ export function InboxView({
                         {c.email && <span>{c.email}</span>}
                       </div>
                       {lastMsg && <div className="text-xs text-gray-400 mt-1 truncate">{lastMsg.direction === "OUTBOUND" ? "↗ " : "↙ "}{lastMsg.subject || lastMsg.body?.slice(0, 60)}</div>}
+                      {lastMsg && lastMsg.direction === "OUTBOUND" && lastMsg.status === "PENDING" && (
+                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-bold">下書き承認待ち</span>
+                      )}
                     </div>
                     {c.assignee && <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600">{c.assignee.name[0]}</span>}
                   </div>

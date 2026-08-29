@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { sendLineMessage } from "@/lib/channels/line";
+import { notifySlackError } from "@/lib/notify-slack";
 
 function calcNextRunAt(startedAt: Date, daysAfter: number, timeOfDay: string) {
   const jstOffset = 9 * 60 * 60 * 1000;
@@ -28,7 +29,7 @@ function textToHtml(text: string): string {
 }
 
 async function resolveAndSend(step: any, template: any, customer: any, org: any) {
-  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || "org_default"}?c=${customer.id}`;
+  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || customer.organizationId}?c=${customer.id}`;
   let body = template.body
     .replace(/\{\{customer_name\}\}/g, customer.name || "")
     .replace(/\{\{customer_email\}\}/g, customer.email || "")
@@ -89,15 +90,23 @@ export async function GET(req: NextRequest) {
       customer: { include: { assignee: true, properties: true } },
     },
   });
-  const org = await prisma.organization.findUnique({ where: { id: "org_default" } });
+  // ★2026-08-30発見・修正: 以前はid:"org_default"という実在しないIDでlookupしており、
+  // orgは常にnullだった(=全ての自動配信メッセージで{{company_name}}等の変数が空欄のまま
+  // 送信されていた)。顧客ごとの実際の所属組織を使うよう修正。
   let processed = 0;
+  const orgCache = new Map<string, any>();
+  const errors: string[] = [];
   for (const run of runs) {
     const step = run.workflow.steps[run.currentStepIndex];
     if (!step) {
       await prisma.workflowRun.update({ where: { id: run.id }, data: { status: "COMPLETED", stoppedAt: now } });
       continue;
     }
-    try { await resolveAndSend(step, step.template, run.customer, org); processed++; } catch (e) { console.error("Workflow step error:", e); }
+    if (!orgCache.has(run.customer.organizationId)) {
+      orgCache.set(run.customer.organizationId, await prisma.organization.findUnique({ where: { id: run.customer.organizationId } }));
+    }
+    const org = orgCache.get(run.customer.organizationId);
+    try { await resolveAndSend(step, step.template, run.customer, org); processed++; } catch (e: any) { console.error("Workflow step error:", e); errors.push(`${run.customer.name}(${run.id}): ${e.message}`); }
     const nextIndex = run.currentStepIndex + 1;
     if (nextIndex >= run.workflow.steps.length) {
       await prisma.workflowRun.update({ where: { id: run.id }, data: { status: "COMPLETED", stoppedAt: now, currentStepIndex: nextIndex } });
@@ -107,5 +116,12 @@ export async function GET(req: NextRequest) {
       await prisma.workflowRun.update({ where: { id: run.id }, data: { currentStepIndex: nextIndex, nextRunAt } });
     }
   }
-  return NextResponse.json({ ok: true, processed, total: runs.length });
+  if (errors.length > 0) {
+    await notifySlackError({
+      title: `cron/workflow で${errors.length}件失敗`,
+      detail: errors.slice(0, 10).join("\n") + (errors.length > 10 ? `\n...他${errors.length - 10}件` : ""),
+      source: "api/cron/workflow",
+    });
+  }
+  return NextResponse.json({ ok: true, processed, errorCount: errors.length, total: runs.length });
 }
