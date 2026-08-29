@@ -63,6 +63,7 @@ model User {
   createdAt         DateTime         @default(now())
   isStaff           Boolean          @default(false) // true=ヘヤクレス社内オペレーター(複数クライアント横断アクセス可)
   assignedCustomers Customer[]       @relation("AssignedCustomers")
+  lockedCustomers   Customer[]       @relation("CustomerLock")
   messages          Message[]        @relation("SentMessages")
   auditLogs         AuditLog[]
   schedules         Schedule[]
@@ -129,6 +130,8 @@ model Status {
   order          Int
   isDefault      Boolean         @default(false)
   isSystem       Boolean         @default(false)
+  systemCategory String? // architecture-v2.md §9: 会社ごとに自由なStatus名を、横断集計用の
+                          // 共通カテゴリにマップする。値: "NEW"|"IN_PROGRESS"|"DONE"|"CLOSED"
   customers      Customer[]
   historyFrom    StatusHistory[] @relation("StatusFrom")
   historyTo      StatusHistory[] @relation("StatusTo")
@@ -163,6 +166,9 @@ model Customer {
   hasCustomerReplied     Boolean             @default(false) // 顧客からの返信が一度でもあったか
   desireSignalDetectedAt DateTime? // 意欲シグナル(来店/内見の質問等)を検出した日時
   isBookingConfirmed     Boolean             @default(false) // アポ確定 vs 予約未確定を明示区別
+  lockedByUserId         String? // architecture-v2.md §9: 二重対応防止。詳細画面を開いた人がロック保持者になる
+  lockedByUser           User?               @relation("CustomerLock", fields: [lockedByUserId], references: [id])
+  lockedAt               DateTime? // 一定時間(90秒)ハートビートが無ければ期限切れとみなし、他オペが取得可
   lineUserId             String?
   lineDisplayName        String?
   lineLinkedAt           DateTime?
