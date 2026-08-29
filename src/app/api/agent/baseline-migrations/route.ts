@@ -32,11 +32,20 @@ export async function POST(req: NextRequest) {
     `);
 
     const existing: any[] = await prisma.$queryRawUnsafe(
-      `SELECT id FROM "_prisma_migrations" WHERE migration_name = $1`,
+      `SELECT id, checksum FROM "_prisma_migrations" WHERE migration_name = $1`,
       "20260830000000_baseline"
     );
     if (existing.length > 0) {
-      return NextResponse.json({ success: true, message: "already baselined", skipped: true });
+      if (existing[0].checksum === checksum) {
+        return NextResponse.json({ success: true, message: "already baselined with matching checksum", skipped: true });
+      }
+      // チェックサム不一致(前回の登録が実際のgitコミット内容とズレていた)を修正
+      await prisma.$executeRawUnsafe(
+        `UPDATE "_prisma_migrations" SET checksum = $1 WHERE migration_name = $2`,
+        checksum,
+        "20260830000000_baseline"
+      );
+      return NextResponse.json({ success: true, message: "checksum updated", previousChecksum: existing[0].checksum, newChecksum: checksum });
     }
 
     await prisma.$executeRawUnsafe(
