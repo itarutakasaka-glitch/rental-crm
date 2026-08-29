@@ -67,6 +67,14 @@ export async function getCurrentUser(): Promise<AuthUser> {
   return toAuthUser(dbUser);
 }
 
+// アクセス境界の判定を1箇所に集約(architecture-v2.md §2)。
+// ページ・API route・server actionすべてこれを通す。
+export function canAccessOrg(user: AuthUser, organizationId: string): boolean {
+  if (user.organizationId === organizationId) return true;
+  if (user.isStaff && user.staffOrgs.some((o) => o.id === organizationId)) return true;
+  return false;
+}
+
 export async function requireAdmin(): Promise<AuthUser> {
   const user = await getCurrentUser();
   if (user.role !== "ADMIN") redirect("/customers");
