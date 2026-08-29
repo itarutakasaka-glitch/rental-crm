@@ -143,7 +143,8 @@ User
 - [x] prisma migrate正規化（ベースライン化＋build commandに`prisma migrate deploy`組込）2026-08-30完了。
       途中でチェックサム不一致・Preview環境のDIRECT_URL欠落を発見して修正。本番デプロイで動作確認済み
 - [x] StoreRoutingPanelの結果保存（storeId書き込み＋タグ付与）2026-08-30完了
-- [ ] テンプレート3重構造の整理
+- [ ] テンプレート3重構造の整理（実装は見送り、計画のみ§8に記載。理由：今日すでにcron/agentの
+      下書き生成ロジックに大きく手を入れており、同じ箇所をさらに触るリスクを避けた）
 
 ### Phase C：2社目を入れる（真の多テナント化）
 - [ ] Organization.slug＋宛先ルーティング（§4）
@@ -155,3 +156,25 @@ User
 - [ ] 42社の段階移行（1社ずつ並行稼働→検証→切替）
 - [ ] タグ体系・追客ワークフロー高度化（TEL×LINE 14〜15ステップ）
 - [ ] 一斉送信の横断対応・intentCategory自動分類の本稼働
+
+## 8. テンプレート3重構造の整理（実装計画・未着手）
+
+現状3箇所に分かれている：
+
+1. **`Template`**：カテゴリ付き・UI（顧客詳細の「定型文」ボタン）から選べる、ユーザーが編集できる正規のテンプレート
+2. **`AgentTemplate`**：`key`（`tpl_1st`, `tpl_tent_a`〜`d`, `tpl_confirm`, `snippet_*`等）で引く、cron/agentの下書き生成が使うテンプレート。無ければコード内`FALLBACK_TEMPLATES`定数を使う
+3. **`inquiry-agent`(店舗振り分け)のdrafts.tsハードコード文字列**：`mailJP`/`mailEN`/`mailZH`等、TypeScriptの関数として直書き
+
+### 統合方針（提案）
+
+`AgentTemplate`を正本にし、`Template`と`drafts.ts`側を寄せる：
+
+- **なぜAgentTemplateを正本にするか**：`key`という安定識別子を既に持っており、cron/agentのロジック（`dbTpls["tpl_1st"]`等）がこれに依存している。UIの`Template`は`name`文字列マッチ（`t.name.includes("初回")`）という脆い参照をしており、こちらを直す方が安全
+- **Step 1**：`Template`に`agentKey String?`（nullable、`AgentTemplate.key`と対応）を追加。UIの「定型文」編集画面から`AgentTemplate`の内容も見えるようにする（読み取り専用でよい、まず可視化）
+- **Step 2**：`FALLBACK_TEMPLATES`定数と`drafts.ts`のハードコード文字列を、初回セットアップ時に`AgentTemplate`へ流し込むseedスクリプトを書く（各会社ごとに`key`が違う可能性があるため、店舗振り分け(`flat-agency-router`)分は組織ごとの`key`プレフィックスを検討）
+- **Step 3**：cron/agentの`t.name.includes("初回")`のような名前マッチを`agentKey`ベースの検索に置き換える
+- **Step 4**：`drafts.ts`のメール生成関数を、ハードコード文字列ではなく`AgentTemplate`から`key`で取得する形に書き換える（`setForeignSections`と同じパターンで、DB取得結果を注入する）
+
+### 着手のタイミング
+
+cron/agentの下書き生成ロジック（今回のPhase Bで大きく変更済み）が本番で1〜2週間安定稼働してから着手するのが安全。同時に触ると問題の切り分けが困難になる。
