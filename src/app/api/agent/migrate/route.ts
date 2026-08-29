@@ -24,49 +24,10 @@ export async function POST(req: NextRequest) {
     await prisma.$executeRawUnsafe(`ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "storeWebsite" TEXT`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "storeClosedDays" TEXT`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "storeParking" TEXT`);
-    
-    // Set initial values for our org
-    const org = await prisma.organization.findFirst();
-    if (org) {
-      await prisma.$executeRawUnsafe(`UPDATE "Organization" SET 
-        "storeAccess" = COALESCE("storeAccess", $1),
-        "storeWebsite" = COALESCE("storeWebsite", $2),
-        "storeClosedDays" = COALESCE("storeClosedDays", $3),
-        "storeParking" = COALESCE("storeParking", $4),
-        "storeHours" = COALESCE("storeHours", $5)
-        WHERE "id" = $6`,
-        '京王電鉄相模原線京王多摩センター駅 徒歩4分',
-        'https://www.apamanshop.com/shop/13032804/',
-        '火曜日、水曜日（1,2,3月は水曜日、第1第3火曜日定休日）',
-        '駐車場のご用意がございますので事前にご連絡下さい',
-        '09:30～18:30',
-        org.id
-      );
-    }
-
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "InitialCostRule" (
-        "id" TEXT NOT NULL DEFAULT gen_random_uuid()::text,
-        "organizationId" TEXT NOT NULL,
-        "name" TEXT NOT NULL,
-        "isDefault" BOOLEAN NOT NULL DEFAULT false,
-        "deposit" TEXT,
-        "keyMoney" TEXT,
-        "brokerageFee" TEXT,
-        "insuranceFee" TEXT,
-        "lockChangeFee" TEXT,
-        "guaranteeFee" TEXT,
-        "cleaningFee" TEXT,
-        "otherFees" TEXT,
-        "advanceRent" TEXT,
-        "notes" TEXT,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "InitialCostRule_pkey" PRIMARY KEY ("id")
-      );
-    `);
 
     // 2026-08-29: Store階層+全社ダッシュボード+意図分類 (store-hierarchy-design.md)
+    // ★ prisma.organization.findFirst() 等のPrisma Client呼び出しより前に置くこと
+    //   (生成済みClientは新カラム前提でSELECTするため、無いと即エラーになる)
     await prisma.$executeRawUnsafe(`ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "autoReplyMode" TEXT NOT NULL DEFAULT 'DRAFT_ONLY'`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "isStaff" BOOLEAN NOT NULL DEFAULT false`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "desireSignalDetectedAt" TIMESTAMP(3)`);
@@ -125,7 +86,7 @@ export async function POST(req: NextRequest) {
       );
     `);
 
-    // FK制約はIF NOT EXISTSが無いのでDO $$ ... EXCEPTIONで冪等化
+    // FK制約はIF NOT EXISTSが無いのでtry/catchで冪等化
     const fks: [string, string][] = [
       ["Store", `ALTER TABLE "Store" ADD CONSTRAINT "Store_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE`],
       ["StoreClosedDayRule", `ALTER TABLE "StoreClosedDayRule" ADD CONSTRAINT "StoreClosedDayRule_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE`],
@@ -140,6 +101,47 @@ export async function POST(req: NextRequest) {
         if (!String(e.message).includes("already exists")) throw e;
       }
     }
+
+    // Set initial values for our org
+    const org = await prisma.organization.findFirst();
+    if (org) {
+      await prisma.$executeRawUnsafe(`UPDATE "Organization" SET 
+        "storeAccess" = COALESCE("storeAccess", $1),
+        "storeWebsite" = COALESCE("storeWebsite", $2),
+        "storeClosedDays" = COALESCE("storeClosedDays", $3),
+        "storeParking" = COALESCE("storeParking", $4),
+        "storeHours" = COALESCE("storeHours", $5)
+        WHERE "id" = $6`,
+        '京王電鉄相模原線京王多摩センター駅 徒歩4分',
+        'https://www.apamanshop.com/shop/13032804/',
+        '火曜日、水曜日（1,2,3月は水曜日、第1第3火曜日定休日）',
+        '駐車場のご用意がございますので事前にご連絡下さい',
+        '09:30～18:30',
+        org.id
+      );
+    }
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "InitialCostRule" (
+        "id" TEXT NOT NULL DEFAULT gen_random_uuid()::text,
+        "organizationId" TEXT NOT NULL,
+        "name" TEXT NOT NULL,
+        "isDefault" BOOLEAN NOT NULL DEFAULT false,
+        "deposit" TEXT,
+        "keyMoney" TEXT,
+        "brokerageFee" TEXT,
+        "insuranceFee" TEXT,
+        "lockChangeFee" TEXT,
+        "guaranteeFee" TEXT,
+        "cleaningFee" TEXT,
+        "otherFees" TEXT,
+        "advanceRent" TEXT,
+        "notes" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "InitialCostRule_pkey" PRIMARY KEY ("id")
+      );
+    `);
 
     return NextResponse.json({ success: true, message: "Tables created" });
   } catch (error: any) {
