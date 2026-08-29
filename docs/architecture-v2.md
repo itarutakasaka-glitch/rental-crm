@@ -137,10 +137,12 @@ User
 - [ ] P2-10: npm audit fix
 
 ### Phase B：1社で回す（下書きパイプライン）
-- [ ] DRAFT_ONLY時の下書き生成（Message status=PENDING → /inboxに「承認待ち」表示 → 人が確認して送信）
-- [ ] エラーSlack通知
-- [ ] prisma migrate正規化
-- [ ] StoreRoutingPanelの結果保存（storeId書き込み＋タグ付与）
+- [x] DRAFT_ONLY時の下書き生成（Message status=PENDING → /inboxに「承認待ち」表示 → 人が確認して送信）2026-08-30完了
+- [x] エラーSlack通知（#900_dev_monitoring、cron/agent・cron/workflow・webhook email/inbound）2026-08-30完了。
+      ついでにcron/workflowの`org_default`という実在しないID参照バグを発見・修正（全自動配信の変数が常に空欄だった）
+- [x] prisma migrate正規化（ベースライン化＋build commandに`prisma migrate deploy`組込）2026-08-30完了。
+      途中でチェックサム不一致・Preview環境のDIRECT_URL欠落を発見して修正。本番デプロイで動作確認済み
+- [x] StoreRoutingPanelの結果保存（storeId書き込み＋タグ付与）2026-08-30完了
 - [ ] テンプレート3重構造の整理
 
 ### Phase C：2社目を入れる（真の多テナント化）
