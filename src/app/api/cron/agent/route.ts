@@ -220,8 +220,11 @@ async function processNewInquiry(customer: any, org: any, mode: "DRAFT" | "SEND"
   const templates = await prisma.template.findMany({ where: { organizationId: org.id } });
   const dbTpls = await getAgentTemplates(org.id);
 
+  // architecture-v2.md §8: agentKey一致を優先し、無ければ従来の名前マッチにフォールバック
+  // (name.includes("初回")は同名テンプレが複数あると誤爆する脆い実装だった)
+  const crmTplByKey = templates.find((t: any) => t.agentKey === "tpl_1st");
+  const crmTmpl = crmTplByKey || templates.find((t: any) => t.name.includes("初回"));
   const agentTpl1st = dbTpls["tpl_1st"];
-  const crmTmpl = templates.find((t: any) => t.name.includes("初回"));
   const tmplBody = agentTpl1st || crmTmpl?.body || "";
   const tmplSubject = crmTmpl?.subject || "お問い合わせありがとうございます";
   if (!tmplBody) { console.log("[Agent] No initial template found"); return; }

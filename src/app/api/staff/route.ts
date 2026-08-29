@@ -11,7 +11,7 @@ export async function GET() {
     if (!dbUser) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const staff = await prisma.user.findMany({
       where: { organizationId: dbUser.organizationId! },
-      select: { id: true, name: true, email: true, role: true, avatarUrl: true, createdAt: true },
+      select: { id: true, name: true, email: true, role: true, avatarUrl: true, createdAt: true, isStaff: true },
       orderBy: { createdAt: "asc" },
     });
     return NextResponse.json(staff);
@@ -58,7 +58,7 @@ export async function PATCH(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { organizationId: true, role: true } });
     if (!dbUser || dbUser.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    const { id, name, email, role, avatarUrl } = await request.json();
+    const { id, name, email, role, avatarUrl, isStaff } = await request.json();
     if (!id) return NextResponse.json({ error: "IDは必須です" }, { status: 400 });
     const updated = await prisma.user.update({
       where: { id },
@@ -67,8 +67,23 @@ export async function PATCH(request: NextRequest) {
         ...(email !== undefined && { email }),
         ...(role !== undefined && { role }),
         ...(avatarUrl !== undefined && { avatarUrl }),
+        ...(isStaff !== undefined && { isStaff }),
       },
     });
+    // isStaff=trueにする時、現時点で存在する全組織へのアクセスを付与する
+    // (全社ダッシュボード。architecture-v2.md §2)
+    if (isStaff === true) {
+      const orgs = await prisma.organization.findMany({ select: { id: true } });
+      for (const org of orgs) {
+        await prisma.staffOrgAccess.upsert({
+          where: { userId_organizationId: { userId: id, organizationId: org.id } },
+          update: {},
+          create: { userId: id, organizationId: org.id },
+        });
+      }
+    } else if (isStaff === false) {
+      await prisma.staffOrgAccess.deleteMany({ where: { userId: id } });
+    }
     return NextResponse.json(updated);
   } catch (e: any) {
     console.error("[PATCH /api/staff]", e);
