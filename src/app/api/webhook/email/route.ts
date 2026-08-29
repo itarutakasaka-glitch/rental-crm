@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { resolveSingleOrgOrNull } from "@/lib/resolve-single-org";
 
 // SUUMO parser
 function parseSuumo(text: string) {
@@ -109,8 +110,9 @@ export async function POST(request: NextRequest) {
 
     console.log("[Email Webhook] From:", fromAddress, "Subject:", subject);
 
-    const org = await prisma.organization.findFirst();
-    if (!org) return NextResponse.json({ error: "No organization" }, { status: 400 });
+    // TODO: Store.slugベースの宛先ルーティング未実装のため、組織が1社の間だけ動く暫定実装
+    const org = await resolveSingleOrgOrNull();
+    if (!org) return NextResponse.json({ error: "組織を一意に特定できません(複数組織対応は未実装)" }, { status: 400 });
 
     const defaultStatus = await prisma.status.findFirst({
       where: { organizationId: org.id, isDefault: true },

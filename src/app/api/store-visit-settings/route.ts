@@ -1,31 +1,30 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { getAuthUserForAction } from "@/lib/auth";
 
-// GET: \u6765\u5e97\u4e88\u7d04\u8a2d\u5b9a\u3092\u53d6\u5f97
+// GET: 来店予約設定を取得
 export async function GET() {
   try {
-    const org = await prisma.organization.findFirst();
-    if (!org) {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-    }
+    const user = await getAuthUserForAction();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     let setting = await prisma.storeVisitSetting.findUnique({
-      where: { organizationId: org.id },
+      where: { organizationId: user.organizationId },
     });
 
     if (!setting) {
-      // \u521d\u56de\u30a2\u30af\u30bb\u30b9\u6642\u306b\u30c7\u30d5\u30a9\u30eb\u30c8\u4f5c\u6210
+      // 初回アクセス時にデフォルト作成
       setting = await prisma.storeVisitSetting.create({
         data: {
-          organizationId: org.id,
+          organizationId: user.organizationId,
           enabled: false,
-          closedDays: "\u706b\u66dc\u65e5\u3001\u6c34\u66dc\u65e5",
+          closedDays: "火曜日、水曜日",
           availableTimeStart: "09:30",
           availableTimeEnd: "17:00",
-          visitMethods: "\u5e97\u8217\u3078\u6765\u5e97,\u30d3\u30c7\u30aa\u901a\u8a71\u3067\u306e\u76f8\u8ac7,\u5185\u898b,\u305d\u306e\u4ed6",
+          visitMethods: "店舗へ来店,ビデオ通話での相談,内見,その他",
           storeNotice: "",
-          autoReplySubject: "{{customer_name}}\u69d8\uff5c\u6765\u5e97\u30fb\u5185\u898b\u306e\u3054\u4e88\u7d04\u3042\u308a\u304c\u3068\u3046\u3054\u3056\u3044\u307e\u3059\uff01\uff5c{{store_name}}",
-          autoReplyBody: "\u3054\u6765\u5e97\u306e\u3054\u4e88\u7d04\u627f\u308a\u307e\u3057\u305f\u3002\n\u78ba\u8a8d\u5f8c\u518d\u5ea6\u3054\u9023\u7d61\u3044\u305f\u3057\u307e\u3059\u3002\n\u5f15\u304d\u7d9a\u304d\u3069\u3046\u305e\u3088\u308d\u3057\u304f\u304a\u9858\u3044\u3044\u305f\u3057\u307e\u3059\u3002\n\n--------------------------------------------------\n{{store_name}}\n{{store_address}}\nTEL {{store_phone}}\nMail \u3053\u3061\u3089\u306e\u30e1\u30fc\u30eb\u306b\u305d\u306e\u307e\u307e\u3054\u8fd4\u4fe1\u304f\u3060\u3055\u3044\n--------------------------------------------------",
+          autoReplySubject: "{{customer_name}}様｜来店・内見のご予約ありがとうございます！｜{{store_name}}",
+          autoReplyBody: "ご来店のご予約承りました。\n確認後再度ご連絡いたします。\n引き続きどうぞよろしくお願いいたします。\n\n--------------------------------------------------\n{{store_name}}\n{{store_address}}\nTEL {{store_phone}}\nMail こちらのメールにそのままご返信ください\n--------------------------------------------------",
         },
       });
     }
@@ -37,17 +36,15 @@ export async function GET() {
   }
 }
 
-// PUT: \u6765\u5e97\u4e88\u7d04\u8a2d\u5b9a\u3092\u66f4\u65b0
+// PUT: 来店予約設定を更新
 export async function PUT(request: Request) {
   try {
+    const user = await getAuthUserForAction();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await request.json();
-    const org = await prisma.organization.findFirst();
-    if (!org) {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-    }
 
     const setting = await prisma.storeVisitSetting.upsert({
-      where: { organizationId: org.id },
+      where: { organizationId: user.organizationId },
       update: {
         enabled: body.enabled,
         closedDays: body.closedDays ?? "",
@@ -60,7 +57,7 @@ export async function PUT(request: Request) {
         updatedAt: new Date(),
       },
       create: {
-        organizationId: org.id,
+        organizationId: user.organizationId,
         enabled: body.enabled ?? false,
         closedDays: body.closedDays ?? "",
         availableTimeStart: body.availableTimeStart ?? "09:30",

@@ -1,11 +1,12 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { getAuthUserForAction } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const org = await prisma.organization.findFirst();
-    if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-    const reminders = await prisma.visitReminder.findMany({ where: { organizationId: org.id }, orderBy: { order: "asc" } });
+    const user = await getAuthUserForAction();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const reminders = await prisma.visitReminder.findMany({ where: { organizationId: user.organizationId }, orderBy: { order: "asc" } });
     return NextResponse.json(reminders);
   } catch (error) {
     console.error("Failed to fetch reminders:", error);
@@ -15,13 +16,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const org = await prisma.organization.findFirst();
-    if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    const user = await getAuthUserForAction();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await request.json();
-    const maxOrder = await prisma.visitReminder.aggregate({ where: { organizationId: org.id }, _max: { order: true } });
+    const maxOrder = await prisma.visitReminder.aggregate({ where: { organizationId: user.organizationId }, _max: { order: true } });
     const reminder = await prisma.visitReminder.create({
       data: {
-        organizationId: org.id, channel: body.channel || "EMAIL", timing: body.timing || "1_day_before",
+        organizationId: user.organizationId, channel: body.channel || "EMAIL", timing: body.timing || "1_day_before",
         timingHour: body.timingHour || "10:00", subject: body.subject || null, body: body.body || "",
         skipLineNotAdded: body.skipLineNotAdded || false, order: (maxOrder._max.order ?? -1) + 1,
       },
@@ -35,11 +36,13 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const user = await getAuthUserForAction();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await request.json();
     const { id, ...data } = body;
     if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
-    const reminder = await prisma.visitReminder.update({
-      where: { id },
+    const reminder = await prisma.visitReminder.updateMany({
+      where: { id, organizationId: user.organizationId },
       data: {
         ...(data.channel !== undefined && { channel: data.channel }),
         ...(data.timing !== undefined && { timing: data.timing }),
@@ -59,10 +62,12 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const user = await getAuthUserForAction();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
-    await prisma.visitReminder.delete({ where: { id } });
+    await prisma.visitReminder.deleteMany({ where: { id, organizationId: user.organizationId } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete reminder:", error);

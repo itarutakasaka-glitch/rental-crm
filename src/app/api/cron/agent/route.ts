@@ -463,25 +463,37 @@ async function confirmAppointment(customer: any, org: any, replyBody: string) {
 }
 
 // ====== Main Cron Handler ======
+// 全組織を横断して処理する。各顧客は自分の所属組織(c.organizationId)の設定・テンプレートで
+// 処理する(以前は"最初の組織"を全顧客に一律適用しており、2社目を追加すると他社の顧客に
+// 誤った組織のテンプレートが使われるバグがあった)。
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const org = await prisma.organization.findFirst();
-  if (!org) return NextResponse.json({ error: "No org" }, { status: 400 });
 
   let processed = 0;
+  const orgCache = new Map<string, any>();
+  async function getOrg(organizationId: string) {
+    if (!orgCache.has(organizationId)) {
+      orgCache.set(organizationId, await prisma.organization.findUnique({ where: { id: organizationId } }));
+    }
+    return orgCache.get(organizationId);
+  }
 
   const pending = await prisma.customer.findMany({ where: { memo: { contains: "[AGENT_PENDING]" } }, take: 5, orderBy: { createdAt: "asc" } });
   for (const c of pending) {
     if (!c.email) continue;
+    const org = await getOrg(c.organizationId);
+    if (!org) continue;
     try { await processNewInquiry(c, org); processed++; } catch (e: any) { console.error(`[Agent] Error 1st mail ${c.name}:`, e.message); }
   }
 
   const classifyPending = await prisma.customer.findMany({ where: { memo: { contains: "[CLASSIFY_PENDING]" } }, take: 5, orderBy: { updatedAt: "asc" } });
   for (const c of classifyPending) {
     if (!c.email && !c.lineUserId) continue;
+    const org = await getOrg(c.organizationId);
+    if (!org) continue;
     const lastMsg = await prisma.message.findFirst({ where: { customerId: c.id, direction: "INBOUND" }, orderBy: { createdAt: "desc" } });
     if (!lastMsg?.body) continue;
     try { await classifyReply(c, org, lastMsg.body); processed++; } catch (e: any) { console.error(`[Agent] Error classify ${c.name}:`, e.message); }
@@ -490,6 +502,8 @@ export async function GET(req: NextRequest) {
   const confirmPending = await prisma.customer.findMany({ where: { memo: { contains: "[CONFIRM_PENDING]" } }, take: 5, orderBy: { updatedAt: "asc" } });
   for (const c of confirmPending) {
     if (!c.email && !c.lineUserId) continue;
+    const org = await getOrg(c.organizationId);
+    if (!org) continue;
     const lastMsg = await prisma.message.findFirst({ where: { customerId: c.id, direction: "INBOUND" }, orderBy: { createdAt: "desc" } });
     if (!lastMsg?.body) continue;
     try { await confirmAppointment(c, org, lastMsg.body); processed++; } catch (e: any) { console.error(`[Agent] Error confirm ${c.name}:`, e.message); }

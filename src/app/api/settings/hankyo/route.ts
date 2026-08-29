@@ -1,9 +1,12 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { getAuthUserForAction } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const org = await prisma.organization.findFirst();
+    const user = await getAuthUserForAction();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const org = await prisma.organization.findUnique({ where: { id: user.organizationId } });
     if (!org) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({
       autoReplyEnabled: org.autoReplyEnabled,
@@ -18,11 +21,11 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const org = await prisma.organization.findFirst();
-    if (!org) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const user = await getAuthUserForAction();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await request.json();
     const updated = await prisma.organization.update({
-      where: { id: org.id },
+      where: { id: user.organizationId },
       data: {
         ...(body.autoReplyEnabled !== undefined && { autoReplyEnabled: body.autoReplyEnabled }),
         ...(body.autoReplySubject !== undefined && { autoReplySubject: body.autoReplySubject }),
