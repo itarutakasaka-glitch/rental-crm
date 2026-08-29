@@ -3,6 +3,7 @@ import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { sendMessage } from "@/actions/send-message";
 import type { AuthUser } from "@/lib/auth";
+import { StoreRoutingPanel } from "./store-routing-panel";
 
 const CH: Record<string, { label: string; color: string }> = { EMAIL: { label: "Email", color: "#3b82f6" }, LINE: { label: "LINE", color: "#06c755" }, SMS: { label: "SMS", color: "#d4a017" }, CALL: { label: "Tel", color: "#8b5cf6" }, NOTE: { label: "Note", color: "#6b7280" } };
 type Tpl = { id: string; name: string; channel: string; subject: string | null; body: string; category: { name: string } };
@@ -188,6 +189,7 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
         {c.tags?.length > 0 && (
           <div className="flex gap-1 flex-wrap mt-3">{c.tags.map((t: any) => <span key={t.id} className="px-2 py-0.5 bg-indigo-50 text-primary rounded-full text-[10px] font-semibold">{t.name}</span>)}</div>
         )}
+        <StoreRoutingPanel customerName={c.name} />
       </div>
     </div>
   );
