@@ -14,11 +14,13 @@ export async function POST(req: NextRequest) {
   try {
     const sqlPath = join(process.cwd(), "prisma", "neon-init.sql");
     const sql = readFileSync(sqlPath, "utf8");
-    const statements = sql
-      .split(/\n\s*\n/)
-      .map((block) => block.trim())
-      .filter((block) => block.length > 0 && !block.startsWith("--"))
-      .map((block) => block.replace(/^--.*\n/gm, "").trim())
+    // コメント行(-- ...)を除去してから、セミコロンで文単位に分割する
+    // (Prisma生成SQLはCREATE TABLE内、PRIMARY KEY制約の前に空行を挟むため
+    //  空行区切りでは1文が分断される)
+    const withoutComments = sql.replace(/^--.*$/gm, "");
+    const statements = withoutComments
+      .split(";")
+      .map((s) => s.trim())
       .filter(Boolean);
 
     let executed = 0;
