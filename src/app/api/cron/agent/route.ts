@@ -323,17 +323,35 @@ async function processNewInquiry(customer: any, org: any, mode: "DRAFT" | "SEND"
 }
 
 // ====== PHASE 3: ClassifyAgent equivalent ======
-async function classifyReply(customer: any, org: any, replyBody: string, mode: "DRAFT" | "SEND") {
+async function classifyReply(customer: any, org: any, replyBody: string, mode: "DRAFT" | "SEND", messageId?: string) {
+  // architecture-v2.md §9(穴#4): intentCategoryは分類コストを増やさず、既存のA/B/C層判定と
+  // 同じ1回のLLM呼び出しで一緒に取得する。
   const systemPrompt = `あなたは不動産賃貸仲介の顧客分類AIです。顧客の返信を分析してA/B/C層に分類してください。
 A層: 来店・見学意欲が高い（「見学したい」「内見したい」「行きたい」等）
 B層: 興味あるが迷い中（質問、検討、費用確認等）
 C層: 反応薄い（「了解」のみ、消極的な返答等）
 迷ったらBにすること。
-JSONで回答: {"classification":"A","reason":"理由"}`;
+
+あわせて、返信の意図カテゴリを次から1つ選んでください:
+VIEWING_REQUEST(内見・来店希望) / VIEWING_RESCHEDULE(内見日程の変更) / SIMILAR_PROPERTY_REQUEST(類似物件の紹介希望) /
+CONDITION_CHANGE(希望条件の変更) / PRICE_OR_FEE_INQUIRY(賃料・費用の質問) / PROPERTY_QUESTION(物件についての質問) /
+DECLINE(お断り・見送り) / BROUGHT_IN_URL_INQUIRY(持込物件URLについての問い合わせ)
+
+JSONで回答: {"classification":"A","reason":"理由","intentCategory":"VIEWING_REQUEST"}`;
 
   const aiResponse = await callOpenAI(systemPrompt, `顧客名: ${customer.name}\n返信: ${replyBody}`);
-  let classification = "B", reason = "";
-  try { const parsed = JSON.parse(aiResponse.replace(/```json|```/g, "").trim()); classification = parsed.classification || "B"; reason = parsed.reason || ""; } catch { classification = "B"; }
+  let classification = "B", reason = "", intentCategory: string | null = null;
+  const VALID_INTENTS = new Set(["VIEWING_REQUEST", "VIEWING_RESCHEDULE", "SIMILAR_PROPERTY_REQUEST", "CONDITION_CHANGE", "PRICE_OR_FEE_INQUIRY", "PROPERTY_QUESTION", "DECLINE", "BROUGHT_IN_URL_INQUIRY"]);
+  try {
+    const parsed = JSON.parse(aiResponse.replace(/```json|```/g, "").trim());
+    classification = parsed.classification || "B";
+    reason = parsed.reason || "";
+    if (VALID_INTENTS.has(parsed.intentCategory)) intentCategory = parsed.intentCategory;
+  } catch { classification = "B"; }
+
+  if (messageId && intentCategory) {
+    await prisma.message.update({ where: { id: messageId }, data: { intentCategory } }).catch(() => {});
+  }
 
   const assignee = customer.assigneeId ? await prisma.user.findUnique({ where: { id: customer.assigneeId } }) : null;
   const staffName = assignee?.name || "本田みなみ";
@@ -383,6 +401,14 @@ JSONで回答: {"classification":"A","reason":"理由"}`;
     else if (lastBody.includes("建築中")) vacancyPattern = "D";
     else if (lastBody.includes("募集終了") || lastBody.includes("募集が終了")) vacancyPattern = "F";
 
+    // architecture-v2.md §9(穴#4): 直近の案内文面から読み取ったvacancyPatternを、テンプレ選択に
+    // 使うだけで捨てずにInquiryProperty.vacancyStatusへ残す(満室時の代替提案トリガーに使える)。
+    const VACANCY_STATUS_MAP: Record<string, string> = { A: "AVAILABLE", B: "FULL", D: "UNDER_CONSTRUCTION", F: "FULL", E: "UNKNOWN" };
+    const targetProperty = await prisma.inquiryProperty.findFirst({ where: { customerId: customer.id }, orderBy: { createdAt: "desc" } });
+    if (targetProperty) {
+      await prisma.inquiryProperty.update({ where: { id: targetProperty.id }, data: { vacancyStatus: VACANCY_STATUS_MAP[vacancyPattern] || "UNKNOWN" } }).catch(() => {});
+    }
+
     let tentKey = "tpl_tent_c";
     if (["F","G"].includes(vacancyPattern)) tentKey = "tpl_tent_b";
     else if (["B","E"].includes(vacancyPattern)) tentKey = "tpl_tent_a";
@@ -411,7 +437,12 @@ JSONで回答: {"classification":"A","reason":"理由"}`;
 
   await prisma.customer.update({
     where: { id: customer.id },
-    data: { memo: (customer.memo || "").replace("[CLASSIFY_PENDING]", `[AI分類:${classification}層] ${reason}`) },
+    data: {
+      memo: (customer.memo || "").replace("[CLASSIFY_PENDING]", `[AI分類:${classification}層] ${reason}`),
+      // architecture-v2.md §9(穴#4): A層(来店・見学意欲が高い)判定を「意欲シグナル検出」の実データとして記録。
+      // 初回検出時刻を残す(検出のたびに上書きすると「最初に意欲を示したのはいつか」が失われるため)。
+      ...(classification === "A" && !customer.desireSignalDetectedAt ? { desireSignalDetectedAt: new Date() } : {}),
+    },
   });
 }
 
@@ -482,7 +513,13 @@ async function confirmAppointment(customer: any, org: any, replyBody: string, mo
   // ならないよう区別する)
   await prisma.customer.update({
     where: { id: customer.id },
-    data: { memo: (customer.memo || "").replace("[CONFIRM_PENDING]", mode === "SEND" ? `[アポ確定] ${datetime} ${phone}` : `[アポ確定・下書き] ${datetime} ${phone}`), isNeedAction: true },
+    data: {
+      memo: (customer.memo || "").replace("[CONFIRM_PENDING]", mode === "SEND" ? `[アポ確定] ${datetime} ${phone}` : `[アポ確定・下書き] ${datetime} ${phone}`),
+      isNeedAction: true,
+      // architecture-v2.md §9(穴#4): DRAFTモードではまだ人間が承認・送信していないため、
+      // isBookingConfirmedは実送信(SEND)時にのみtrueにする(下書き段階でアポ確定扱いにしない)。
+      ...(mode === "SEND" ? { isBookingConfirmed: true } : {}),
+    },
   });
   console.log(`[Agent] CONFIRM ${mode === "SEND" ? "sent" : "drafted"}: ${customer.name} datetime=${datetime} phone=${phone} via ${useLineChannel ? "LINE" : "EMAIL"}`);
 }
@@ -531,7 +568,7 @@ export async function GET(req: NextRequest) {
     const mode = modeFor(org);
     const lastMsg = await prisma.message.findFirst({ where: { customerId: c.id, direction: "INBOUND" }, orderBy: { createdAt: "desc" } });
     if (!lastMsg?.body) continue;
-    try { await classifyReply(c, org, lastMsg.body, mode); mode === "SEND" ? processed++ : drafted++; } catch (e: any) { console.error(`[Agent] Error classify ${c.name}:`, e.message); errors.push(`classify ${c.name}(${c.id}): ${e.message}`); }
+    try { await classifyReply(c, org, lastMsg.body, mode, lastMsg.id); mode === "SEND" ? processed++ : drafted++; } catch (e: any) { console.error(`[Agent] Error classify ${c.name}:`, e.message); errors.push(`classify ${c.name}(${c.id}): ${e.message}`); }
   }
 
   const confirmPending = await prisma.customer.findMany({ where: { memo: { contains: "[CONFIRM_PENDING]" } }, take: 5, orderBy: { updatedAt: "asc" } });

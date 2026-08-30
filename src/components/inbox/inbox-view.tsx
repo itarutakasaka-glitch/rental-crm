@@ -15,10 +15,11 @@ type Customer = {
 };
 
 export function InboxView({
-  customers, statuses, currentUser, crossOrg, staffOrgs, selectedOrgId,
+  customers, statuses, currentUser, crossOrg, staffOrgs, selectedOrgId, page, pageSize, totalCount,
 }: {
   customers: Customer[]; statuses: Status[]; currentUser: AuthUser;
   crossOrg?: boolean; staffOrgs?: { id: string; name: string }[]; selectedOrgId?: string;
+  page?: number; pageSize?: number; totalCount?: number;
 }) {
   const router = useRouter();
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -43,6 +44,18 @@ export function InboxView({
   const changeOrg = (orgId: string) => {
     const params = new URLSearchParams();
     if (orgId) params.set("org", orgId);
+    router.push(`/inbox${params.toString() ? `?${params.toString()}` : ""}`);
+  };
+
+  // architecture-v2.md §9(穴#15): 42社規模で1画面に収まらない件数になるためページング。
+  const curPage = page || 1;
+  const size = pageSize || 200;
+  const total = totalCount ?? customers.length;
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  const changePage = (p: number) => {
+    const params = new URLSearchParams();
+    if (selectedOrgId) params.set("org", selectedOrgId);
+    if (p > 1) params.set("page", String(p));
     router.push(`/inbox${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
@@ -141,6 +154,15 @@ export function InboxView({
                 </Link>
               );
             })}
+          </div>
+        )}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 py-4 text-xs text-gray-500">
+            <button onClick={() => changePage(curPage - 1)} disabled={curPage <= 1}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50">前へ</button>
+            <span>{curPage} / {totalPages}（全{total}件）</span>
+            <button onClick={() => changePage(curPage + 1)} disabled={curPage >= totalPages}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50">次へ</button>
           </div>
         )}
       </div>

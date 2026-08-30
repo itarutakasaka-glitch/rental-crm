@@ -216,7 +216,7 @@ model InquiryProperty {
   layout        String?
   propertyId    String?
   inquiryId     String?
-  vacancyStatus String? // "AVAILABLE" | "FULL" | "UNKNOWN" 等。満室時の代替提案トリガーに使う
+  vacancyStatus String? // "AVAILABLE" | "FULL" | "UNDER_CONSTRUCTION" | "UNKNOWN"。満室時の代替提案トリガーに使う
   createdAt     DateTime @default(now())
 }
 
