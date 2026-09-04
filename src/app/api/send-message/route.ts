@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 import { sendSms } from "@/lib/channels/sms";
+import { getAuthUserForAction, canAccessOrg, type AuthUser } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -13,7 +15,7 @@ const CALL_RESULT_LABELS: Record<string, string> = {
 };
 
 function resolveVars(text: string, customer: any, org: any, staffName: string) {
-  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || "org_default"}?c=${customer.id || ""}`;
+  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || customer.organizationId || ""}?c=${customer.id || ""}`;
   return text
     .replace(/\{\{customer_name\}\}/g, customer.name || "")
     .replace(/\{\{customer_email\}\}/g, customer.email || "")
@@ -130,18 +132,30 @@ export async function POST(request: NextRequest) {
         dbUser = await prisma.user.findFirst({ where: { organizationId: agentCustomer?.organizationId || undefined } });
       }
       if (!dbUser) return NextResponse.json({ error: "No staff found for agent" }, { status: 404 });
-    } else {
-      dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { id: true, name: true, organizationId: true } });
-      if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    let authUser: AuthUser | null = null;
+    if (!isAgent) {
+      authUser = await getAuthUserForAction();
+      if (!authUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+      dbUser = { id: authUser.id, name: authUser.name, organizationId: authUser.organizationId };
     }
 
-    const { customerId, channel, subject, body, to, lineUserId, phone, callResult } = await request.json();
+    // architecture-v2.md §10 A-6: 宛先(to/phone/lineUserId)をリクエスト本文から受けると、
+    // 会社名義で任意のアドレスへ送れてしまう(乗っ取り・退職者アカウント経由のスパム/フィッシング)。
+    // 宛先は必ず顧客レコードから導出する。
+    const { customerId, channel, subject, body, callResult } = await request.json();
     if (!customerId || !body) return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
 
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
       include: { assignee: true, properties: true },
     });
+    if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+    // architecture-v2.md §10 S-1: 人間の送信は所属組織(または staff の横断アクセス)を必ず確認する
+    if (authUser && !canAccessOrg(authUser, customer.organizationId)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const to = customer.email;
+    const lineUserId = customer.lineUserId;
+    const phone = customer.phone;
     // architecture-v2.md §9(穴#16): 二重対応防止。customer-detail.tsx/customer-detail-panel.tsx
     // どちらの送信経路も通るよう、ここでロックを判定する(actions/send-message.tsのsendMessageとは別実装のため個別に必要)。
     // CALL(架電記録)・NOTE(社内メモ)は顧客に届かない内部記録なので対象外。
@@ -150,7 +164,8 @@ export async function POST(request: NextRequest) {
       const isStale = Date.now() - customer.lockedAt.getTime() > 90_000;
       if (!isStale) return NextResponse.json({ error: "他のオペレーターが対応中です。ページを再読み込みしてから対応してください。" }, { status: 409 });
     }
-    const org = await prisma.organization.findFirst({ where: { id: dbUser.organizationId! } });
+    // 文面の会社名・店舗情報は「送信者の所属」ではなく「顧客の所属会社」のもの(staffが他社顧客へ送る場合に混線しない)
+    const org = await prisma.organization.findUnique({ where: { id: customer.organizationId } });
 
     let finalBody = resolveVars(body, customer || {}, org, dbUser.name || "");
     let finalSubject = subject ? resolveVars(subject, customer || {}, org, dbUser.name || "") : null;
@@ -167,7 +182,7 @@ export async function POST(request: NextRequest) {
         data: { customerId, senderId: dbUser.id, direction: "OUTBOUND", channel: "EMAIL", subject: finalSubject, body: finalBody, status: "PENDING" as any },
       });
       const baseHtml = textToHtml(finalBody) + makeVisitFooter(
-        `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || "org_default"}?c=${customerId}`,
+        `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || customer.organizationId}?c=${customerId}`,
         org?.storeName || org?.name || "",
         org?.storePhone || org?.phone || "",
         org?.storeAddress || org?.address || ""
@@ -188,6 +203,7 @@ export async function POST(request: NextRequest) {
       }
       // Update customer and return (skip generic message creation below)
       await prisma.customer.update({ where: { id: customerId }, data: { isNeedAction: false, lastContactAt: new Date() } });
+      await logAudit({ customerId, userId: isAgent ? undefined : dbUser.id, action: "message.send", field: "EMAIL", newValue: finalSubject || "" });
       return NextResponse.json(preMsg, { status: 201 });
     } else if (channel === "LINE") {
       if (!lineUserId) return NextResponse.json({ error: "Missing lineUserId" }, { status: 400 });
@@ -241,6 +257,7 @@ export async function POST(request: NextRequest) {
       await prisma.customer.update({ where: { id: customerId }, data: { isNeedAction: false, lastContactAt: new Date() } });
     }
 
+    await logAudit({ customerId, userId: isAgent ? undefined : dbUser.id, action: "message.send", field: channel, newValue: finalSubject || finalBody.slice(0, 80) });
     return NextResponse.json(message, { status: 201 });
   } catch (e) {
     console.error("[POST /api/send-message]", e);

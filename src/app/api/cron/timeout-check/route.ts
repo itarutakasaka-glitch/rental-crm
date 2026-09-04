@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifySharedSecret } from "@/lib/shared-secret";
 import { prisma } from "@/lib/db/prisma";
 import { processAutoStatusChange } from "@/lib/status-rules";
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("authorization")?.replace("Bearer ", "") || req.nextUrl.searchParams.get("secret");
-  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // architecture-v2.md §10 A-5: fail-closed。Vercel Cron は Authorization ヘッダで呼ぶのでクエリは受けない。
+  const denied = verifySharedSecret(req);
+  if (denied) return denied;
   const threshold = new Date(Date.now() - 48 * 60 * 60 * 1000);
   const stale = await prisma.customer.findMany({
     where: { isNeedAction: false, lastActiveAt: { lt: threshold }, status: { name: { in: ["初期対応済", "追客中"] } } },

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db/prisma";
 import { redirect } from "next/navigation";
+import { NextResponse } from "next/server";
 import { resolveSingleOrgOrNull } from "@/lib/resolve-single-org";
 
 export type AuthUser = {
@@ -93,4 +94,33 @@ export async function getAuthUserForAction(): Promise<AuthUser | null> {
     if (!dbUser) return null;
     return toAuthUser(dbUser);
   } catch (e) { return null; }
+}
+
+// architecture-v2.md §10 S-1: API routeの「所属チェック忘れ＝他社データ漏えい」を構造的に防ぐ。
+// 顧客IDを受け取るrouteは必ず requireCustomerAccess() を通し、返ってきた error をそのまま返す。
+// (ログイン確認だけのmiddlewareでは「どの会社の顧客か」は判定できない)
+export type Denied = { error: NextResponse };
+
+export async function requireUser(): Promise<{ user: AuthUser } | Denied> {
+  const user = await getAuthUserForAction();
+  if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  return { user };
+}
+
+export async function requireAdminUser(): Promise<{ user: AuthUser } | Denied> {
+  const r = await requireUser();
+  if ("error" in r) return r;
+  if (r.user.role !== "ADMIN") return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  return r;
+}
+
+export async function requireCustomerAccess(
+  customerId: string
+): Promise<{ user: AuthUser; customer: { id: string; organizationId: string } } | Denied> {
+  const r = await requireUser();
+  if ("error" in r) return r;
+  const customer = await prisma.customer.findUnique({ where: { id: customerId }, select: { id: true, organizationId: true } });
+  if (!customer) return { error: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+  if (!canAccessOrg(r.user, customer.organizationId)) return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  return { user: r.user, customer };
 }

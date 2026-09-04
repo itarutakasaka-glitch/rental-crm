@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { requireCustomerAccess } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
+// architecture-v2.md §10 S-1: 所属チェック追加(以前は無認証・他社顧客の対応記録を読み書きできた)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const r = await requireCustomerAccess(id);
+    if ("error" in r) return r.error;
     const records = await prisma.customerRecord.findMany({
       where: { customerId: id },
       orderBy: { createdAt: "desc" },
@@ -18,6 +23,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const r = await requireCustomerAccess(id);
+    if ("error" in r) return r.error;
     const body = await req.json();
     const { type, callResult, title, body: recordBody, visitDate } = body;
 
@@ -42,6 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         data: { isNeedAction: false, lastActiveAt: new Date() },
       });
     }
+    await logAudit({ customerId: id, userId: r.user.id, action: "customer.record.create", field: type, newValue: title || recordBody || callResult });
 
     return NextResponse.json(record, { status: 201 });
   } catch (e) {

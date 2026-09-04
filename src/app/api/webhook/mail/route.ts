@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifySharedSecret } from "@/lib/shared-secret";
 import { prisma } from "@/lib/db/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const secret = req.headers.get("authorization")?.replace("Bearer ", "") || req.nextUrl.searchParams.get("secret");
-    if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // architecture-v2.md §10 A-5: fail-closed(env未設定でも拒否)。外部webhookのためクエリ秘密鍵は暫定許可。
+    const denied = verifySharedSecret(req, { allowQuery: true });
+    if (denied) return denied;
 
     const payload = await req.json();
     const { type, data } = payload;
