@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
+import { verifySharedSecret } from "@/lib/shared-secret";
 import { prisma } from "@/lib/db/prisma";
 import { resolveSingleOrgOrNull, resolveOrgByRecipient } from "@/lib/resolve-single-org";
 import { notifySlackError } from "@/lib/notify-slack";
@@ -84,10 +85,9 @@ function parsePortalEmail(subject: string, body: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const secret = request.headers.get("authorization")?.replace("Bearer ", "") || request.nextUrl.searchParams.get("secret");
-    if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // architecture-v2.md §10 A-5: fail-closed(env未設定でも拒否)。Resend webhookはヘッダを付けられないためクエリ秘密鍵は暫定許可。
+    const denied = verifySharedSecret(request, { allowQuery: true });
+    if (denied) return denied;
 
     const payload = await request.json();
 

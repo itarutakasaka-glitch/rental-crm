@@ -217,9 +217,18 @@ cron/agentの下書き生成ロジック（今回のPhase Bで大きく変更済
 - B-3 個人情報の**削除/保持期間の仕組みなし**(`merge` のみ)。削除依頼に応えられない
 - B-4 依存の CVE 4件は「このアプリでは踏めない」ことを確認済み(§9 参照)。A-1 で同時解消
 
+### 実施状況（2026-09-05 セキュリティ PR）
+
+- **S-1 実装**: `requireUser` / `requireAdminUser` / `requireCustomerAccess` を `lib/auth.ts` に追加し、`customers/[id]`(GET/PATCH)・`preference`・`records`・`schedules`(全メソッド)・`line-link`・`workflow-run`・`workflows`・`templates`・`organization`・`send-message` に適用。担当者・ステータス・カテゴリ・ワークフローは「顧客の所属組織のもの」だけ受け付ける
+- **S-2 実装**: `organization` に加え、点検で追加発見した `workflows`・`templates`(同型5・6件目＝定型文/追客設定画面も無音で壊れていた)を修正。再発防止として `src/lib/no-org-default.test.ts`(API route と server action に `"org_default"` リテラルがあれば失敗)を追加
+- **S-4 実装**: `lib/audit.ts` を失敗しても本処理を止めない形にし、顧客閲覧・更新(項目ごと)・対応記録・希望条件・予定・LINE連携・送信・組織設定・定型文・ワークフローで記録開始
+- **A-5 実装**: `lib/shared-secret.ts`(fail-closed・timingSafeEqual・ヘッダ優先)。cron はヘッダのみ、外部 webhook 3本は Resend がヘッダを付けられないためクエリ秘密鍵を**暫定許可**(次の手＝Resend の svix 署名検証。`RESEND_WEBHOOK_SECRET` の登録が要る)。一回限りの管理用 5本(`migrate`/`migrate-neon-init`/`migrate-neon-data`/`baseline-migrations`/`test-scrape`)を本番から削除
+- **A-6 実装**: `send-message` の宛先を顧客レコードから導出(本文の `to`/`phone`/`lineUserId` は無視)。人間の送信に所属チェックを追加。文面の会社情報は送信者ではなく顧客の所属会社のものを使う
+- **S-3 未**: Neon の PITR は Itaru がダッシュボードで確認
+
 ### 推奨順序
 
-1. **S-1 → S-2 → S-4 → A-5 → A-6 を1本のセキュリティ PR で**(半日)。全部「今の1社でも起きうる」
+1. **S-1 → S-2 → S-4 → A-5 → A-6 を1本のセキュリティ PR で**(半日)。全部「今の1社でも起きうる」 → **2026-09-05 実施**
 2. S-3 は Itaru が Neon ダッシュボードで確認
 3. A-2 → A-4 → A-3 の順(A-3 はテーブル設計だけ先行でも可)
 4. **A-1 メジャーアップは最後**(1〜3 でテストと監査ログが揃ってから検証ブランチで)

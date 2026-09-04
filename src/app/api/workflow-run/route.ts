@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { Resend } from "resend";
+import { requireCustomerAccess, requireUser, canAccessOrg } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -70,9 +72,12 @@ async function executeImmediateStep(run: any, step: any, customer: any, org: any
   }
 }
 
+// architecture-v2.md §10 S-1: 所属チェック追加(以前は無認証)。
 export async function GET(req: NextRequest) {
   const customerId = req.nextUrl.searchParams.get("customerId");
   if (!customerId) return NextResponse.json([]);
+  const r = await requireCustomerAccess(customerId);
+  if ("error" in r) return r.error;
   const runs = await prisma.workflowRun.findMany({
     where: { customerId },
     include: { workflow: { include: { steps: { orderBy: { order: "asc" } } } } },
@@ -83,13 +88,25 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const { runId } = await req.json();
+  const u = await requireUser();
+  if ("error" in u) return u.error;
+  const run = await prisma.workflowRun.findUnique({ where: { id: runId }, select: { id: true, customer: { select: { id: true, organizationId: true } } } });
+  if (!run) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!canAccessOrg(u.user, run.customer.organizationId)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await prisma.workflowRun.update({ where: { id: runId }, data: { status: "STOPPED_BY_REPLY", stoppedAt: new Date(), stopReason: "Manual stop" } });
+  await logAudit({ customerId: run.customer.id, userId: u.user.id, action: "workflow.run.stop", field: runId });
   return NextResponse.json({ ok: true });
 }
 
 export async function POST(req: NextRequest) {
   const { customerId, workflowId } = await req.json();
   if (!customerId || !workflowId) return NextResponse.json({ error: "Missing params" }, { status: 400 });
+  const r = await requireCustomerAccess(customerId);
+  if ("error" in r) return r.error;
+  // ワークフローは顧客の所属組織のものに限る
+  const owned = await prisma.workflow.findFirst({ where: { id: workflowId, organizationId: r.customer.organizationId }, select: { id: true } });
+  if (!owned) return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
+  await logAudit({ customerId, userId: r.user.id, action: "workflow.run.start", field: workflowId });
 
   const existing = await prisma.workflowRun.findFirst({ where: { customerId, status: "RUNNING" } });
   if (existing) {
@@ -109,7 +126,7 @@ export async function POST(req: NextRequest) {
       where: { id: customerId },
       include: { assignee: true, properties: true },
     });
-    const org = await prisma.organization.findFirst({ where: { id: customer?.organizationId || "org_default" } });
+    const org = customer ? await prisma.organization.findUnique({ where: { id: customer.organizationId } }) : null;
 
     // Determine next step info
     const hasNextStep = workflow.steps.length > 1;
