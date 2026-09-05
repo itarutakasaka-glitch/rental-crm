@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { getAuthUserForAction, canAccessOrg } from "@/lib/auth";
 import { sendLineMessage } from "@/lib/channels/line";
 import { sendSms } from "@/lib/channels/sms";
+import { logAudit } from "@/lib/audit";
 
 // Phase1(下書き承認方式)の要: cron/agentがstatus="PENDING"で作った下書きを、
 // 人間がここで確認・編集(bodyを上書き可)してから実際に送信する。
@@ -46,7 +47,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       where: { id },
       data: { body: finalBody, status: "SENT", senderId: user.id },
     });
-    await prisma.customer.update({ where: { id: customer.id }, data: { lastContactAt: new Date(), lastActiveAt: new Date() } });
+    // implementation-spec-v1.md §2.2: 人の承認送信で下書き状態を進める。
+    // FIRST_MAIL_DRAFTED→WAITING_REPLY、BOOKING_DRAFTED→BOOKED(この時だけ isBookingConfirmed=true)。
+    const nextAgentState =
+      customer.agentState === "FIRST_MAIL_DRAFTED" ? "WAITING_REPLY"
+      : customer.agentState === "BOOKING_DRAFTED" ? "BOOKED"
+      : customer.agentState;
+    await prisma.customer.update({
+      where: { id: customer.id },
+      data: {
+        lastContactAt: new Date(), lastActiveAt: new Date(), isNeedAction: false,
+        agentState: nextAgentState,
+        ...(nextAgentState === "BOOKED" ? { isBookingConfirmed: true } : {}),
+      },
+    });
+    await logAudit({ customerId: customer.id, userId: user.id, organizationId: customer.organizationId, action: "message.approve", field: message.channel, oldValue: message.body === finalBody ? undefined : message.body, newValue: message.subject || finalBody.slice(0, 80) });
 
     return NextResponse.json({ success: true, message: updated });
   } catch (error: any) {
@@ -66,5 +81,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (message.status !== "PENDING") return NextResponse.json({ error: "この下書きは既に処理済みです" }, { status: 400 });
 
   await prisma.message.update({ where: { id }, data: { status: "FAILED" } });
+  await logAudit({ customerId: message.customer.id, userId: user.id, organizationId: message.customer.organizationId, action: "message.reject", field: message.channel, oldValue: message.subject || message.body.slice(0, 80) });
   return NextResponse.json({ success: true });
 }

@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { Resend } from "resend";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
   try {
+    // implementation-spec-v1.md §3: 公開route(P)。IPあたり10回/分に制限
+    const rl = rateLimit(`visit-booking:${clientIp(request)}`, 10, 60_000);
+    if (!rl.ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
     const body = await request.json();
     const { organizationId, customerId, name, email, phone, visitDate, visitTime, visitMethod, numGuests, memo } = body;
 
@@ -32,15 +37,14 @@ export async function POST(request: Request) {
 
     // If customerId provided, use existing customer
     if (customerId) {
-      customer = await prisma.customer.findUnique({ where: { id: customerId } });
+      // 公開ページからの顧客IDは推測されうるため、会社が一致する顧客だけを対象にし、
+      // 顧客レコードの電話番号は書き換えない(implementation-spec-v1.md §3)。予約側の phone には残す。
+      customer = await prisma.customer.findFirst({ where: { id: customerId, organizationId } });
       if (customer) {
         customerName = customer.name || customerName;
         customerEmail = customer.email || customerEmail;
         customerPhone = phone || customer.phone || customerPhone;
-        await prisma.customer.update({
-          where: { id: customer.id },
-          data: { isNeedAction: true, phone: customerPhone || customer.phone },
-        });
+        await prisma.customer.update({ where: { id: customer.id }, data: { isNeedAction: true } });
       }
     }
 

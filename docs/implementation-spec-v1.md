@@ -1,4 +1,4 @@
-# heyacules cloud 実装仕様書 v1.0
+# heyacules cloud 実装仕様書 v1.1
 
 2026-09-05 作成。**「ちゃんとしたサービスにする」前提で、Phase D（カナリー置換）に入る前に確定させる仕様**。
 `architecture-v2.md` が「なぜ・全体像」、この文書が「何を・どう作るか」。両方とも正本。矛盾したらこの文書を直す（実装はこの文書に従う）。
@@ -391,6 +391,12 @@ OrganizationChannel
 
 ---
 
+## 実施状況
+
+- **2026-09-05 D-0 第1弾（PR #30）**: M-1（`Customer.agentState` 追加・cron/agent と webhook を状態列に切替・memo マーカー廃止・変換用 `/api/agent/migrate-agent-state`）、M-2（`LinePending.organizationId` の既定値廃止）、M-4（`AuditLog.organizationId`＋索引）、M-5（横断 inbox の索引）。§3 の ⚠ のうち `customers/preference`・`customers/[id]/duplicates` の所属チェック統一、`merge`・`staff`・`approve/reject` の監査ログ、`staff` の管理者限定、`agent/queue`・`cron/agent` の秘密鍵検証統一、公開予約ページのレート制限と phone 上書き廃止。承認送信で `FIRST_MAIL_DRAFTED→WAITING_REPLY`、`BOOKING_DRAFTED→BOOKED` に進める配線を追加。
+- 残り（D-0）: `statuses`・`hankyo`・`store-visit-settings`・`reminders`・`agent/*` 設定の監査ログ、`agent/context|send|notify`・`cron/workflow` の秘密鍵検証統一、変数置換の1本化、権限総当たりテスト、復旧手順書、Resend svix 署名検証。
+
 ## 変更履歴
 
 - v1.0 2026-09-05: 初版。architecture-v2.md §10 のセキュリティ PR（#28）反映後の状態を「現状」として記載。
+- v1.1 2026-09-05: D-0 第1弾の実施状況を追記。§2.4 の「Manual stop が STOPPED_BY_REPLY」は未修正。

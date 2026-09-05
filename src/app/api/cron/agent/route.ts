@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifySharedSecret } from "@/lib/shared-secret";
 import { prisma } from "@/lib/db/prisma";
 import { notifySlackError } from "@/lib/notify-slack";
 
@@ -309,12 +310,12 @@ async function processNewInquiry(customer: any, org: any, mode: "DRAFT" | "SEND"
     data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject, body, status: mode === "SEND" ? "SENT" : "PENDING", senderId: assignee?.id || null },
   });
 
-  // Phase1(下書き承認方式): DRAFTモードでは[AGENT_PENDING]を[AGENT_DRAFT_READY]に置き換えて
-  // cronの再処理対象から外しつつ、人間の確認待ちであることを示す。isNeedActionは常にtrue。
+  // Phase1(下書き承認方式): DRAFTモードは FIRST_MAIL_DRAFTED(人の確認待ち)、SENDは WAITING_REPLY。
+  // implementation-spec-v1.md §2.2(memo マーカー廃止)。isNeedActionはDRAFTでは常にtrue。
   await prisma.customer.update({
     where: { id: customer.id },
     data: {
-      memo: (customer.memo || "").replace("[AGENT_PENDING]", mode === "SEND" ? "[AGENT_DONE]" : "[AGENT_DRAFT_READY]"),
+      agentState: mode === "SEND" ? "WAITING_REPLY" : "FIRST_MAIL_DRAFTED",
       isNeedAction: mode === "SEND" ? qaResult.needsEscalation : true,
     },
   });
@@ -438,7 +439,9 @@ JSONで回答: {"classification":"A","reason":"理由","intentCategory":"VIEWING
   await prisma.customer.update({
     where: { id: customer.id },
     data: {
-      memo: (customer.memo || "").replace("[CLASSIFY_PENDING]", `[AI分類:${classification}層] ${reason}`),
+      // implementation-spec-v1.md §2.2: 状態は agentState、AIの理由は人向けの平文として memo に残す(マーカーは付けない)
+      agentState: classification === "A" ? "CLASSIFIED_A" : classification === "C" ? "CLASSIFIED_C" : "CLASSIFIED_B",
+      memo: [(customer.memo || "").trim(), `AI分類 ${classification}層: ${reason}`].filter(Boolean).join("\n"),
       // architecture-v2.md §9(穴#4): A層(来店・見学意欲が高い)判定を「意欲シグナル検出」の実データとして記録。
       // 初回検出時刻を残す(検出のたびに上書きすると「最初に意欲を示したのはいつか」が失われるため)。
       ...(classification === "A" && !customer.desireSignalDetectedAt ? { desireSignalDetectedAt: new Date() } : {}),
@@ -477,7 +480,7 @@ async function confirmAppointment(customer: any, org: any, replyBody: string, mo
 
   if (!accepted) {
     console.log(`[Agent] Confirm: ${customer.name} did not accept, keeping A-layer`);
-    await prisma.customer.update({ where: { id: customer.id }, data: { memo: (customer.memo || "").replace("[CONFIRM_PENDING]", "[AI分類:A層]") } });
+    await prisma.customer.update({ where: { id: customer.id }, data: { agentState: "CLASSIFIED_A" } });
     return;
   }
 
@@ -508,13 +511,13 @@ async function confirmAppointment(customer: any, org: any, replyBody: string, mo
     await prisma.message.create({ data: { customerId: customer.id, direction: "OUTBOUND", channel: "EMAIL", subject: `【ご予約確定】${customer.name}様`, body: confirmBody, status: confirmStatus } });
   }
 
-  // DRAFTモードでは[CONFIRM_PENDING]のまま(アポ確定は人間の送信操作で完結させる)扱いにせず、
-  // [アポ確定]マーカーは付けるがドラフト明示のprefixを付ける(承認待ちの下書きが確定扱いに
-  // ならないよう区別する)
+  // DRAFTモードでは BOOKING_DRAFTED(承認待ち)。人が承認して送信した時に approve API が BOOKED にする。
   await prisma.customer.update({
     where: { id: customer.id },
     data: {
-      memo: (customer.memo || "").replace("[CONFIRM_PENDING]", mode === "SEND" ? `[アポ確定] ${datetime} ${phone}` : `[アポ確定・下書き] ${datetime} ${phone}`),
+      // implementation-spec-v1.md §2.2: SEND=BOOKED、DRAFT=BOOKING_DRAFTED。日時・電話は人向けの平文で memo に残す
+      agentState: mode === "SEND" ? "BOOKED" : "BOOKING_DRAFTED",
+      memo: [(customer.memo || "").trim(), `${mode === "SEND" ? "アポ確定" : "アポ確定(下書き)"} ${datetime} ${phone}`.trim()].filter(Boolean).join("\n"),
       isNeedAction: true,
       // architecture-v2.md §9(穴#4): DRAFTモードではまだ人間が承認・送信していないため、
       // isBookingConfirmedは実送信(SEND)時にのみtrueにする(下書き段階でアポ確定扱いにしない)。
@@ -529,10 +532,9 @@ async function confirmAppointment(customer: any, org: any, replyBody: string, mo
 // 処理する(以前は"最初の組織"を全顧客に一律適用しており、2社目を追加すると他社の顧客に
 // 誤った組織のテンプレートが使われるバグがあった)。
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // implementation-spec-v1.md §3: 共有秘密鍵の検証は lib/shared-secret.ts に統一(fail-closed)
+  const denied = verifySharedSecret(req);
+  if (denied) return denied;
 
   let processed = 0;
   let drafted = 0;
@@ -551,7 +553,8 @@ export async function GET(req: NextRequest) {
     return org && org.autoReplyEnabled === true && org.autoReplyMode === "AUTO_SEND" ? "SEND" : "DRAFT";
   }
 
-  const pending = await prisma.customer.findMany({ where: { memo: { contains: "[AGENT_PENDING]" } }, take: 5, orderBy: { createdAt: "asc" } });
+  // implementation-spec-v1.md §2.2: 拾い上げは agentState(インデックスあり)。memo の contains 検索は廃止
+  const pending = await prisma.customer.findMany({ where: { agentState: "FIRST_MAIL_PENDING" }, take: 5, orderBy: { createdAt: "asc" } });
   for (const c of pending) {
     if (!c.email) continue;
     const org = await getOrg(c.organizationId);
@@ -560,7 +563,7 @@ export async function GET(req: NextRequest) {
     try { await processNewInquiry(c, org, mode); mode === "SEND" ? processed++ : drafted++; } catch (e: any) { console.error(`[Agent] Error 1st mail ${c.name}:`, e.message); errors.push(`1st mail ${c.name}(${c.id}): ${e.message}`); }
   }
 
-  const classifyPending = await prisma.customer.findMany({ where: { memo: { contains: "[CLASSIFY_PENDING]" } }, take: 5, orderBy: { updatedAt: "asc" } });
+  const classifyPending = await prisma.customer.findMany({ where: { agentState: "CLASSIFY_PENDING" }, take: 5, orderBy: { updatedAt: "asc" } });
   for (const c of classifyPending) {
     if (!c.email && !c.lineUserId) continue;
     const org = await getOrg(c.organizationId);
@@ -571,7 +574,7 @@ export async function GET(req: NextRequest) {
     try { await classifyReply(c, org, lastMsg.body, mode, lastMsg.id); mode === "SEND" ? processed++ : drafted++; } catch (e: any) { console.error(`[Agent] Error classify ${c.name}:`, e.message); errors.push(`classify ${c.name}(${c.id}): ${e.message}`); }
   }
 
-  const confirmPending = await prisma.customer.findMany({ where: { memo: { contains: "[CONFIRM_PENDING]" } }, take: 5, orderBy: { updatedAt: "asc" } });
+  const confirmPending = await prisma.customer.findMany({ where: { agentState: "CONFIRM_PENDING" }, take: 5, orderBy: { updatedAt: "asc" } });
   for (const c of confirmPending) {
     if (!c.email && !c.lineUserId) continue;
     const org = await getOrg(c.organizationId);

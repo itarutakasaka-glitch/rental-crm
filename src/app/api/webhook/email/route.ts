@@ -3,6 +3,7 @@ import { verifySharedSecret } from "@/lib/shared-secret";
 import { prisma } from "@/lib/db/prisma";
 import { resolveSingleOrgOrNull, resolveOrgByRecipient } from "@/lib/resolve-single-org";
 import { notifySlackError } from "@/lib/notify-slack";
+import { nextStateOnInbound } from "@/lib/agent-state";
 
 // SUUMO parser
 function parseSuumo(text: string) {
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
             inquiryContent: parsed.inquiryContent || null,
             isNeedAction: true,
             organizationId: org.id,
-            memo: '[AGENT_PENDING]',
+            agentState: "FIRST_MAIL_PENDING", // implementation-spec-v1.md §2.2(memo マーカー廃止)
           },
         });
         if (parsed.propertyName) {
@@ -216,21 +217,12 @@ export async function POST(request: NextRequest) {
       await prisma.message.create({
         data: { customerId: existingCustomer.id, direction: "INBOUND", channel: "EMAIL", subject: subject || null, body, status: "DELIVERED" },
       });
-      await prisma.customer.update({ where: { id: existingCustomer.id }, data: { isNeedAction: true, updatedAt: new Date(), hasCustomerReplied: true } });
+      // implementation-spec-v1.md §2.2: 受信時の遷移は lib/agent-state.ts の1箇所で決める
+      const nextState = nextStateOnInbound(existingCustomer.agentState);
+      await prisma.customer.update({ where: { id: existingCustomer.id }, data: { isNeedAction: true, updatedAt: new Date(), hasCustomerReplied: true, agentState: nextState } });
       await prisma.workflowRun.updateMany({ where: { customerId: existingCustomer.id, status: "RUNNING" }, data: { status: "STOPPED_BY_REPLY" } });
-      
-      // Mark for AI agent processing
-      const currentMemo = existingCustomer.memo || "";
-      if (currentMemo.includes("[AI") || currentMemo.includes("[AGENT")) {
-        const nextTag = currentMemo.includes("[AI分類:A層]") ? "[CONFIRM_PENDING]" : "[CLASSIFY_PENDING]";
-        const cleanMemo = currentMemo.replace(/\[AGENT_DONE\]/, "").replace(/\[CLASSIFY_PENDING\]/, "").replace(/\[CONFIRM_PENDING\]/, "").trim();
-        await prisma.customer.update({
-          where: { id: existingCustomer.id },
-          data: { memo: cleanMemo + " " + nextTag },
-        });
-        console.log("[Email Webhook] Marked", nextTag, ":", existingCustomer.name);
-      }
-      
+      if (nextState !== existingCustomer.agentState) console.log("[Email Webhook] agentState", existingCustomer.agentState, "->", nextState, ":", existingCustomer.name);
+
       return NextResponse.json({ success: true, type: "reply", customerId: existingCustomer.id });
     }
 

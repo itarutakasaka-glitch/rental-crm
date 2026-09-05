@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyLineSignature, getLineProfile, sendLineMessage, type LineWebhookEvent } from "@/lib/channels/line";
 import { prisma } from "@/lib/db/prisma";
+import { nextStateOnInbound } from "@/lib/agent-state";
+import { resolveSingleOrgOrNull } from "@/lib/resolve-single-org";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,10 +32,12 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
+        // M-2: 会社別LINE(§6)までは、LINE公式が1つ=組織が1社の間だけ解決できる。解決できなければ null。
+        const pendingOrg = await resolveSingleOrgOrNull();
         await prisma.linePending.upsert({
           where: { lineUserId },
           update: { displayName: profile?.displayName, pictureUrl: profile?.pictureUrl },
-          create: { lineUserId, code: "PENDING", displayName: profile?.displayName, pictureUrl: profile?.pictureUrl },
+          create: { lineUserId, code: "PENDING", displayName: profile?.displayName, pictureUrl: profile?.pictureUrl, organizationId: pendingOrg?.id ?? null },
         });
 
         await sendLineMessage(lineUserId, "\u304A\u554F\u3044\u5408\u308F\u305B\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3059\u3002\u305F\u307E\u4E0D\u52D5\u7523\u3067\u3059\u3002\n\n\u304A\u624B\u6570\u3067\u3059\u304C\u3001\u30E1\u30FC\u30EB\u306B\u8A18\u8F09\u306E4\u6841\u306E\u8A8D\u8A3C\u30B3\u30FC\u30C9\u3092\u3053\u306E\u30C1\u30E3\u30C3\u30C8\u306B\u9001\u4FE1\u3057\u3066\u304F\u3060\u3055\u3044\u3002");
@@ -50,24 +54,15 @@ export async function POST(req: NextRequest) {
         const linked = await prisma.customer.findFirst({ where: { lineUserId } });
         if (linked) {
           await prisma.message.create({ data: { customerId: linked.id, direction: "INBOUND", channel: "LINE", body: text, status: "SENT" } });
-          await prisma.customer.update({ where: { id: linked.id }, data: { lastActiveAt: new Date(), isNeedAction: true, hasCustomerReplied: true } });
+          // implementation-spec-v1.md §2.2: 受信時の遷移は lib/agent-state.ts の1箇所で決める
+          const nextState = nextStateOnInbound(linked.agentState);
+          await prisma.customer.update({ where: { id: linked.id }, data: { lastActiveAt: new Date(), isNeedAction: true, hasCustomerReplied: true, agentState: nextState } });
           // Stop running workflows on LINE reply
           await prisma.workflowRun.updateMany({
             where: { customerId: linked.id, status: "RUNNING" },
             data: { status: "STOPPED_BY_REPLY" },
           });
-          // Mark for AI agent processing
-          const currentMemo = linked.memo || "";
-          if (currentMemo.includes("[AI") || currentMemo.includes("[AGENT")) {
-            // A層済み → 確定フローへ、それ以外 → 分類フローへ
-            const nextTag = currentMemo.includes("[AI分類:A層]") ? "[CONFIRM_PENDING]" : "[CLASSIFY_PENDING]";
-            const cleanMemo = currentMemo.replace(/\[AGENT_DONE\]/, "").replace(/\[CLASSIFY_PENDING\]/, "").replace(/\[CONFIRM_PENDING\]/, "").trim();
-            await prisma.customer.update({
-              where: { id: linked.id },
-              data: { memo: cleanMemo + " " + nextTag },
-            });
-            console.log("[LINE Webhook] Marked", nextTag, ":", linked.name, "msg:", text.slice(0, 60));
-          }
+          if (nextState !== linked.agentState) console.log("[LINE Webhook] agentState", linked.agentState, "->", nextState, ":", linked.name);
           continue;
         }
 

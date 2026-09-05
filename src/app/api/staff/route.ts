@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser, requireAdminUser } from "@/lib/auth";
+import { logAudit, logFieldChanges } from "@/lib/audit";
 
+// implementation-spec-v1.md §3: ユーザー管理は管理者のみ。staff 付与(全社横断アクセス)は最重要操作なので
+// 必ず監査ログに残す。更新対象は自組織のユーザーに限る。
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { organizationId: true } });
-    if (!dbUser) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const r = await requireUser();
+    if ("error" in r) return r.error;
     const staff = await prisma.user.findMany({
-      where: { organizationId: dbUser.organizationId! },
+      where: { organizationId: r.user.organizationId },
       select: { id: true, name: true, email: true, role: true, avatarUrl: true, createdAt: true, isStaff: true },
       orderBy: { createdAt: "asc" },
     });
@@ -23,27 +23,18 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { organizationId: true, role: true } });
-    if (!dbUser || dbUser.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const r = await requireAdminUser();
+    if ("error" in r) return r.error;
     const { name, email, role, avatarUrl } = await request.json();
     if (!name || !email) return NextResponse.json({ error: "名前とメールは必須です" }, { status: 400 });
 
-    // Check if email already exists
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) return NextResponse.json({ error: "このメールアドレスは既に登録されています" }, { status: 409 });
 
     const staff = await prisma.user.create({
-      data: {
-        name,
-        email,
-        role: role || "MEMBER",
-        avatarUrl: avatarUrl || null,
-        organizationId: dbUser.organizationId!,
-      },
+      data: { name, email, role: role || "MEMBER", avatarUrl: avatarUrl || null, organizationId: r.user.organizationId },
     });
+    await logAudit({ userId: r.user.id, organizationId: r.user.organizationId, action: "staff.create", field: staff.id, newValue: `${name} <${email}> ${role || "MEMBER"}` });
     return NextResponse.json(staff, { status: 201 });
   } catch (e: any) {
     console.error("[POST /api/staff]", e);
@@ -53,25 +44,24 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { organizationId: true, role: true } });
-    if (!dbUser || dbUser.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const r = await requireAdminUser();
+    if ("error" in r) return r.error;
     const { id, name, email, role, avatarUrl, isStaff } = await request.json();
     if (!id) return NextResponse.json({ error: "IDは必須です" }, { status: 400 });
-    const updated = await prisma.user.update({
-      where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(email !== undefined && { email }),
-        ...(role !== undefined && { role }),
-        ...(avatarUrl !== undefined && { avatarUrl }),
-        ...(isStaff !== undefined && { isStaff }),
-      },
-    });
-    // isStaff=trueにする時、現時点で存在する全組織へのアクセスを付与する
-    // (全社ダッシュボード。architecture-v2.md §2)
+
+    const before = await prisma.user.findFirst({ where: { id, organizationId: r.user.organizationId }, select: { id: true, name: true, email: true, role: true, avatarUrl: true, isStaff: true } });
+    if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const patch = {
+      ...(name !== undefined && { name }),
+      ...(email !== undefined && { email }),
+      ...(role !== undefined && { role }),
+      ...(avatarUrl !== undefined && { avatarUrl }),
+      ...(isStaff !== undefined && { isStaff }),
+    };
+    const updated = await prisma.user.update({ where: { id }, data: patch });
+
+    // isStaff=trueにする時、現時点で存在する全組織へのアクセスを付与する(全社ダッシュボード。architecture-v2.md §2)
     if (isStaff === true) {
       const orgs = await prisma.organization.findMany({ select: { id: true } });
       for (const org of orgs) {
@@ -84,6 +74,7 @@ export async function PATCH(request: NextRequest) {
     } else if (isStaff === false) {
       await prisma.staffOrgAccess.deleteMany({ where: { userId: id } });
     }
+    await logFieldChanges({ userId: r.user.id, organizationId: r.user.organizationId, action: "staff.update" }, before as any, { ...patch, targetUserId: id });
     return NextResponse.json(updated);
   } catch (e: any) {
     console.error("[PATCH /api/staff]", e);
