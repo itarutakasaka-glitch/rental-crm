@@ -1,4 +1,4 @@
-# heyacules cloud 実装仕様書 v1.2
+# heyacules cloud 実装仕様書 v1.3
 
 2026-09-05 作成。**「ちゃんとしたサービスにする」前提で、Phase D（カナリー置換）に入る前に確定させる仕様**。
 `architecture-v2.md` が「なぜ・全体像」、この文書が「何を・どう作るか」。両方とも正本。矛盾したらこの文書を直す（実装はこの文書に従う）。
@@ -97,7 +97,8 @@
 | M-3 | `OrganizationChannel`（会社ごとの LINE / SMS / メール送信元と秘密情報、暗号化）を追加 | 全社共通アカウントでは各社の LINE 公式に対応できない（§6） | D-1 |
 | M-4 | `AuditLog` に `organizationId` と `ip` を追加し `@@index([organizationId, createdAt])` | 会社ごとの監査抽出と保持期間の適用に必要 | D-0 |
 | M-5 | `Customer` に `@@index([organizationId, isNeedAction, updatedAt])` | 横断 inbox のソート・ページングをインデックスで支える | D-0 |
-| M-6 | `StoreVisitBooking.status` を enum 化（PENDING / APPROVED / REJECTED / CANCELLED） | セルフ予約は承認制（S-FIT の設計を採用） | D-1 |
+| M-6 | `StoreVisitBooking.status` を enum 化（PENDING / CONFIRMED / REJECTED / CANCELLED）＋ `confirmedBy`（SCHEDULE_LINK / STAFF_CONTACT）＋ `confirmedAt` ＋ `confirmedByUserId` | セルフ予約は「連動あり＝即時確定／連動なし＝担当者の連絡で確定」（§2.5、2026-09-05 決定） | D-1 |
+| M-10 | `StoreScheduleLink`（店舗ごとの外部カレンダー連動設定: provider・カレンダーID・認証情報(暗号化)・営業時間枠・1枠の長さ） | F-21 店舗スケジュール連動。連動先は要決定（§9 Q-7） | D-1 |
 | M-7 | `Organization.store*` の平坦項目を Store（isDefault）へ寄せて削除 | 二重管理の解消 | D-2 |
 | M-8 | `Customer` に `anonymizedAt` を追加 | 保持期間経過後の匿名化（§7.3） | D-1 |
 | M-9 | `Customer` に `importedFrom`（"canary" 等）と `importedAt` を追加 | 移行元の追跡（§5.2）。memo に書かない | D-1 |
@@ -163,9 +164,18 @@
 | RUNNING → STOPPED_BY_VISIT / STOPPED_BY_CALL | 来店予約承認・架電成功（**現状未実装＝D-1 で配線**） |
 | StepRun: PENDING → SENT / FAILED / CANCELLED / SKIPPED | cron/workflow |
 
-### 2.5 セルフ予約（StoreVisitBooking・M-6）
+### 2.5 セルフ予約（StoreVisitBooking・M-6）— 2026-09-05 Itaru 決定
 
-PENDING（顧客がリクエスト）→ APPROVED（店舗が承認・目安30分）/ REJECTED / CANCELLED。承認時に `Schedule(type=VISIT)` を作り、`WorkflowRun` を STOPPED_BY_VISIT にする。自動確定はしない。
+**予約を入れた時点では確定しない**（店舗のスケジュールと連動していない限り、空いているか分からないため）。確定の仕方は店舗の状態で2つに分かれる。
+
+| 店舗の状態 | 予約リクエスト時 | 確定の条件 |
+|---|---|---|
+| **店舗スケジュール連動あり**（F-21） | 連動先の空き状況を照会し、**空いていれば即時確定**（CONFIRMED / confirmedBy=SCHEDULE_LINK）。埋まっていれば別候補を返す | 連動先に予定を書き込めた時 |
+| **連動なし** | **未確定（PENDING）**として受け付け、顧客には「店舗から確認の連絡をします」と即時返信 | **担当者が顧客に連絡した事実をもって確定**（CONFIRMED / confirmedBy=STAFF_CONTACT）。担当者が詳細画面で「連絡済み・確定」を押す＝架電記録（CustomerRecord type=CALL）か送信と同時に確定できる |
+
+状態: PENDING → CONFIRMED / REJECTED（店舗都合で不可・別候補を案内）/ CANCELLED（顧客都合）。
+CONFIRMED 時に `Schedule(type=VISIT)` を作り（連動ありは連動先にも書き込み）、`WorkflowRun` を STOPPED_BY_VISIT、`Customer.isBookingConfirmed=true` にする。
+未確定のまま放置される予約は横断 inbox で「未確定予約」として上位に出す（isNeedAction=true）。承認期限（旧 Q-5）は設けない。
 
 ### 2.6 二重対応防止ロック
 
@@ -246,7 +256,8 @@ PENDING（顧客がリクエスト）→ APPROVED（店舗が承認・目安30�
 | F-12 | 店舗振り分け（定休日ルール） | MUST（フラットエージェンシー） | あり（1社固有） | 会社ごとのルール定義を YAML/設定画面に |
 | F-13 | 名寄せ（重複顧客の統合） | SHOULD | あり | 監査ログ |
 | F-14 | 一斉送信 | SHOULD | 自組織のみ | staff の横断 |
-| F-15 | 来店セルフ予約（承認制） | SHOULD | 自動確定 | 承認制へ（M-6） |
+| F-15 | 来店セルフ予約（連動なしは未確定→担当者の連絡で確定） | SHOULD | 自動確定（誤り） | §2.5 の2方式へ（M-6）。詳細画面に「連絡済み・確定」操作 |
+| F-21 | 店舗スケジュール連動（空き照会・予定書き込み・即時確定） | SHOULD（連動する店舗のみ MUST） | なし | M-10。連動先の決定（Q-7）→ 空き照会 API → 予約時の即時確定 |
 | F-16 | レポート（反響数・初回返信までの時間・アポ率・会社別） | SHOULD | `/analytics` 骨組み | 定義（§4.1）に合わせて再実装 |
 | F-17 | 検索（氏名・電話・メール・物件名） | MUST | 一覧の絞り込みのみ | 横断検索 |
 | F-18 | 会社ごとの LINE 公式・送信ドメイン | MUST（2社目以降） | 全社共通 | §6 |
@@ -386,7 +397,8 @@ OrganizationChannel
 | Q-2 | 会社ごとの LINE 公式 | A: 各社が自社の LINE 公式を持ち込む / B: ヘヤクレス名義の LINE を会社別に作る | **決定: A**（各社持ち込み。契約者は各社、接続情報の登録・管理はヘヤクレス） |
 | Q-3 | Organization.slug の値 | 会社の英字コード（例 flat-agency） | **決定: マニュアルBの会社コードと同じ値**（`heyacules-manual-b` の `data/<code>.yaml` の code） |
 | Q-4 | staff 付与の権限 | A: 管理者のみ / B: 管理者＋ Itaru の承認 | **決定: A**（監査ログで追う） |
-| Q-5 | セルフ予約の承認 SLA | 30分（S-FIT）/ 60分 | Itaru に説明中（2026-09-05）。決まるまで 30分 で実装 |
+| Q-5 | セルフ予約の確定方法 | （旧: 承認 SLA 30分/60分） | **決定（2026-09-05 Itaru）: 承認期限は設けない。店舗スケジュール連動あり＝空いていれば即時確定、連動なし＝未確定で受け付け、担当者の連絡をもって確定**（§2.5） |
+| Q-7 | 店舗スケジュール連動の連動先 | A: Google カレンダー（店舗ごとのカレンダー） / B: 自前の店舗カレンダー（CRM 内で枠を管理） / C: 両方（自前を基本、Google は同期） | 推奨 C。まず自前の枠管理で即時確定を実現し、Google 連携は店舗の希望があるところだけ |
 | Q-6 | staging 環境 | A: Neon ブランチ＋Vercel Preview / B: 作らない | **決定: B（作らない）**。検証は本番で行い、失敗したら revert。権限総当たりテストは本番に「テスト専用 Organization 2社」を seed して API を叩く（個人情報は入れない） |
 
 ---
@@ -401,3 +413,4 @@ OrganizationChannel
 - v1.0 2026-09-05: 初版。architecture-v2.md §10 のセキュリティ PR（#28）反映後の状態を「現状」として記載。
 - v1.1 2026-09-05: D-0 第1弾の実施状況を追記。§2.4 の「Manual stop が STOPPED_BY_REPLY」は未修正。
 - v1.2 2026-09-05: §9 の決定を反映（Q-1 5年、Q-2 A、Q-3 マニュアルB会社コード、Q-4 A、Q-6 B＝staging なし・本番のテスト専用組織で検証）。Q-5 は説明中。
+- v1.3 2026-09-05: Q-5 決定を反映。セルフ予約は「連動あり＝即時確定／連動なし＝担当者の連絡で確定」（§2.5・M-6）。店舗スケジュール連動 F-21・M-10 を追加。連動先は Q-7 として新設。
