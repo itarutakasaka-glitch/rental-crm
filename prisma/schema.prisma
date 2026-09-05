@@ -175,6 +175,7 @@ model Customer {
   lineBlockedAt          DateTime?
   lineCode               String?
   autoFollowActive       Boolean             @default(true)
+  agentState             AgentState          @default(NONE) // implementation-spec-v1.md §2.2。memo の文字列マーカーを廃止
   memo                   String?
   lastActiveAt           DateTime?
   lastContactAt          DateTime?
@@ -191,6 +192,25 @@ model Customer {
   preference             CustomerPreference?
   statusHistory          StatusHistory[]
   auditLogs              AuditLog[]
+
+  @@index([organizationId, isNeedAction, updatedAt]) // 横断inboxのソート・ページング(M-5)
+  @@index([agentState]) // cron/agent の拾い上げ(M-1)
+}
+
+// implementation-spec-v1.md §2.2 エージェント処理状態。遷移はこの表以外に作らない。
+enum AgentState {
+  NONE
+  FIRST_MAIL_PENDING
+  FIRST_MAIL_DRAFTED
+  WAITING_REPLY
+  CLASSIFY_PENDING
+  CLASSIFIED_A
+  CLASSIFIED_B
+  CLASSIFIED_C
+  CONFIRM_PENDING
+  BOOKING_DRAFTED
+  BOOKED
+  MANUAL
 }
 
 model CustomerTag {
@@ -445,16 +465,20 @@ model StatusHistory {
 }
 
 model AuditLog {
-  id         String    @id @default(cuid())
-  customerId String?
-  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  userId     String?
-  user       User?     @relation(fields: [userId], references: [id])
-  action     String
-  field      String?
-  oldValue   String?
-  newValue   String?
-  createdAt  DateTime  @default(now())
+  id             String    @id @default(cuid())
+  organizationId String? // M-4: 会社ごとの監査抽出・保持期間の適用に使う(顧客から導出して保存)
+  customerId     String?
+  customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?     @relation(fields: [userId], references: [id])
+  action         String
+  field          String?
+  oldValue       String?
+  newValue       String?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([customerId, createdAt])
 }
 
 model LinePending {
@@ -463,7 +487,7 @@ model LinePending {
   displayName    String?
   pictureUrl     String?
   code           String
-  organizationId String   @default("org_default")
+  organizationId String? // M-2: 実在しない既定値 "org_default" を廃止。会社別LINE(§6)までは単一組織を解決して入れる
   createdAt      DateTime @default(now())
 }
 
