@@ -73,6 +73,89 @@ function resolveVars(text: string, c: any, user: AuthUser, org: any) {
   return resolveTemplateVars(text, { customer: c, org, staffName: user.name, useLegacyLineFallback: true });
 }
 
+// implementation-spec-v1.md §4.3 タグ（F-4）。候補は会社の tagPresets ＋ 実際に使われているタグ。
+// 候補に無い自由入力も許す（現場が先に使い始めたタグを後から候補に足せる）。
+function TagEditor({ customerId, initial }: { customerId: string; initial: string[] }) {
+  const [tags, setTags] = useState<string[]>(initial);
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [choices, setChoices] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const openPicker = async () => {
+    setOpen(true); setErr("");
+    try {
+      const res = await fetch("/api/tags");
+      if (res.ok) {
+        const d = await res.json();
+        setChoices(Array.from(new Set([...(d.presets || []), ...(d.inUse || [])])));
+      }
+    } catch {}
+  };
+
+  const add = async (name: string) => {
+    const n = name.trim();
+    if (!n || tags.includes(n) || busy) return;
+    setBusy(true); setErr("");
+    try {
+      const res = await fetch(`/api/customers/${customerId}/tags`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: n }),
+      });
+      if (res.ok) { setTags([...tags, n].sort()); setInput(""); }
+      else setErr((await res.json().catch(() => ({})))?.error || "追加できませんでした");
+    } catch { setErr("追加できませんでした"); }
+    finally { setBusy(false); }
+  };
+
+  const remove = async (name: string) => {
+    if (busy) return;
+    setBusy(true); setErr("");
+    try {
+      const res = await fetch(`/api/customers/${customerId}/tags`, {
+        method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }),
+      });
+      if (res.ok) setTags(tags.filter((t) => t !== name));
+      else setErr("削除できませんでした");
+    } catch { setErr("削除できませんでした"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="flex items-center gap-1 mt-1 flex-wrap">
+      {tags.map((t) => (
+        <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] border border-amber-100">
+          {t}
+          <button onClick={() => remove(t)} disabled={busy} className="text-amber-400 hover:text-amber-700 disabled:opacity-40" title="タグを外す">×</button>
+        </span>
+      ))}
+      <div className="relative">
+        <button onClick={() => (open ? setOpen(false) : openPicker())}
+          className="px-2 py-0.5 rounded-full border border-dashed border-gray-300 text-[10px] text-gray-500 hover:bg-gray-50">＋タグ</button>
+        {open && (
+          <div className="absolute top-6 left-0 w-56 bg-white border rounded-xl shadow-xl z-50 p-2">
+            <form onSubmit={(e) => { e.preventDefault(); add(input); }} className="flex gap-1 mb-2">
+              <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="タグ名"
+                className="flex-1 px-2 py-1 border rounded text-xs" autoFocus />
+              <button type="submit" disabled={busy || !input.trim()} className="px-2 py-1 bg-primary text-white rounded text-[10px] font-semibold disabled:opacity-40">追加</button>
+            </form>
+            {err && <div className="text-[10px] text-red-600 mb-1">{err}</div>}
+            <div className="max-h-40 overflow-auto">
+              {choices.filter((t) => !tags.includes(t)).map((t) => (
+                <button key={t} onClick={() => add(t)} className="w-full text-left px-2 py-1 text-xs hover:bg-gray-50 rounded">{t}</button>
+              ))}
+              {choices.filter((t) => !tags.includes(t)).length === 0 && (
+                <div className="text-[10px] text-gray-400 px-2 py-1">候補なし。上の欄に入力して追加できます</div>
+              )}
+            </div>
+            <button onClick={() => setOpen(false)} className="w-full mt-1 text-[10px] text-gray-400 hover:text-gray-600">閉じる</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function CustomerDetail({ customer: c, statuses, templates: _t, currentUser }: { customer: any; statuses: any[]; templates: any[]; currentUser: AuthUser }) {
   const [body, setBody] = useState(""); const [subj, setSubj] = useState(""); const [ch, setCh] = useState("EMAIL");
   const [isPending, start] = useTransition(); const router = useRouter();
@@ -144,6 +227,7 @@ export function CustomerDetail({ customer: c, statuses, templates: _t, currentUs
                 {c.lineUserId && <span className="w-5 h-5 rounded-full bg-[#06c755] flex items-center justify-center text-white text-[10px] font-bold ml-1">L</span>}
               </div>
               <div className="text-xs text-gray-400">{c.email} {"\u00B7"} {c.phone}</div>
+              <TagEditor customerId={c.id} initial={(c.tags || []).map((t: any) => t.name)} />
             </div>
           </div>
           <span className="px-3 py-1 rounded-md text-xs font-semibold border-2" style={{ borderColor: st?.color, color: st?.color, background: st?.color + "10" }}>{st?.name}</span>
