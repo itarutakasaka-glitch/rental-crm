@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { verifySharedSecret } from "@/lib/shared-secret";
 
 // 2026-08-29: inquiry-agent(フラットエージェンシー店舗振り分け)のデモ用実データ投入。
 // 既存の店舗マスタ(flat-agency-router.ts のSTORES定数)をStore/StoreClosedDayRuleに変換。
 // 冪等: 既にStore.slugが存在する組織には何もしない。
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-agent-secret");
-  if (secret !== process.env.CRON_SECRET) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = verifySharedSecret(req);
+  if (denied) return denied;
 
   try {
     // 一回限りのデモ用管理スクリプト(ライブトラフィックの一部ではない)。

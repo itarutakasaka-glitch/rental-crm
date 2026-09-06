@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
 import { Resend } from "resend";
+import { logAudit } from "@/lib/audit";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -23,11 +24,10 @@ function textToHtml(text: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { id: true, name: true, organizationId: true } });
-    if (!dbUser?.organizationId) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    // implementation-spec-v1.md §3: 認証は lib/auth.ts のヘルパーに統一
+    const r = await requireUser();
+    if ("error" in r) return r.error;
+    const dbUser = r.user;
 
     const { customerIds, channel, subject, body } = await request.json();
     if (!customerIds?.length || !body) return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -64,6 +64,11 @@ export async function POST(request: NextRequest) {
       }
     }
     const successCount = results.filter(r => r.success).length;
+    // implementation-spec-v1.md §3: 一斉送信は影響範囲が大きいので、件数と対象を監査ログに残す
+    await logAudit({
+      userId: dbUser.id, organizationId: dbUser.organizationId, action: "message.broadcast",
+      field: channel, newValue: `sent=${successCount} failed=${results.length - successCount} subject=${subject || ""}`,
+    });
     return NextResponse.json({ sent: successCount, failed: results.length - successCount, results });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getAuthUserForAction } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 // ★2026-08-30発見・修正: 全ハンドラが実在しない"org_default"という文字列IDで
 // organizationIdを検索/書き込みしていた。GET は常に空配列を返し、POSTは
@@ -37,6 +38,8 @@ export async function POST(request: NextRequest) {
         ...(systemCategory !== undefined && { systemCategory }),
       },
     });
+    // implementation-spec-v1.md §3: ステータス体系は横断集計の土台なので変更を監査ログに残す
+    await logAudit({ userId: user.id, organizationId: user.organizationId, action: "status.create", field: status.id, newValue: `${name} ${systemCategory || ""}`.trim() });
     return NextResponse.json(status, { status: 201 });
   } catch (e: any) {
     console.error("[POST /api/statuses]", e);
@@ -58,6 +61,8 @@ export async function PATCH(request: NextRequest) {
         ...(systemCategory !== undefined && { systemCategory }),
       },
     });
+    if (updated.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    await logAudit({ userId: user.id, organizationId: user.organizationId, action: "status.update", field: id, newValue: `${name ?? ""} ${color ?? ""} ${systemCategory ?? ""}`.trim() });
     return NextResponse.json(updated);
   } catch (e: any) {
     console.error("[PATCH /api/statuses]", e);
@@ -76,6 +81,7 @@ export async function PUT(request: NextRequest) {
         prisma.status.updateMany({ where: { id: item.id, organizationId: user.organizationId }, data: { order: item.order } })
       )
     );
+    await logAudit({ userId: user.id, organizationId: user.organizationId, action: "status.reorder", newValue: orders.map((o: any) => o.id).join(",") });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error("[PUT /api/statuses]", e);
@@ -93,6 +99,7 @@ export async function DELETE(request: NextRequest) {
     if (!status) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (status.isDefault) return NextResponse.json({ error: "デフォルトステータスは削除できません" }, { status: 400 });
     await prisma.status.delete({ where: { id } });
+    await logAudit({ userId: user.id, organizationId: user.organizationId, action: "status.delete", field: id, oldValue: status.name });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error("[DELETE /api/statuses]", e);

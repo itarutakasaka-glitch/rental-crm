@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getAuthUserForAction } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import snippetsData from "@/data/text_blaze_all_snippets.json";
 
 // GET: Return all snippets merged with DB overrides
@@ -50,6 +51,8 @@ export async function PUT(req: NextRequest) {
       DO UPDATE SET "body"=$4, "updatedAt"=NOW()
     `, user.organizationId, key, key, text);
 
+    // implementation-spec-v1.md §3: 定型文の変更は顧客に届く文面を変えるので監査ログに残す
+    await logAudit({ userId: user.id, organizationId: user.organizationId, action: "snippet.update", field: key, newValue: text });
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { Resend } from 'resend';
+import { verifySharedSecret } from '@/lib/shared-secret';
+import { logAudit } from '@/lib/audit';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
   try {
-    const secret = req.headers.get('x-agent-secret');
-    if (secret !== process.env.CRON_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // implementation-spec-v1.md §3: 秘密鍵の検証は verifySharedSecret に統一（fail-closed）
+    const denied = verifySharedSecret(req);
+    if (denied) return denied;
     const { customerId, subject, body, channel } = await req.json();
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
       data: { customerId, direction: 'OUTBOUND', channel: channel || 'EMAIL', subject, body, status: 'SENT', externalId: data?.id || null },
     });
     await prisma.customer.update({ where: { id: customerId }, data: { isNeedAction: false } });
+    await logAudit({ customerId, organizationId: customer.organizationId, action: 'message.send', field: channel || 'EMAIL', newValue: subject });
 
     return NextResponse.json({ success: true, messageId: data?.id });
   } catch (error: any) {

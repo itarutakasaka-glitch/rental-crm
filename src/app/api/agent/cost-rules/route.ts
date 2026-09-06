@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getAuthUserForAction } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export async function GET() {
   try {
@@ -35,6 +36,8 @@ export async function PUT(req: NextRequest) {
         user.organizationId, name, isDefault||false, deposit||null, keyMoney||null, brokerageFee||null, insuranceFee||null, lockChangeFee||null, guaranteeFee||null, cleaningFee||null, otherFees||null, advanceRent||null, notes||null
       );
     }
+    // implementation-spec-v1.md §3: 初期費用ルールは顧客への見積に効くので変更を監査ログに残す
+    await logAudit({ userId: user.id, organizationId: user.organizationId, action: id ? "costRule.update" : "costRule.create", field: id || name, newValue: name });
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -48,6 +51,7 @@ export async function DELETE(req: NextRequest) {
     const { id } = await req.json();
     // organizationIdでスコープ(他社のレコードは削除不可)
     await prisma.$executeRawUnsafe(`DELETE FROM "InitialCostRule" WHERE "id"=$1 AND "organizationId"=$2`, id, user.organizationId);
+    await logAudit({ userId: user.id, organizationId: user.organizationId, action: "costRule.delete", field: id });
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const dbUser = await prisma.user.findUnique({
-      where: { email: user.email! },
-      select: { organizationId: true },
-    });
-    if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    // implementation-spec-v1.md §3: 認証は lib/auth.ts のヘルパーに統一
+    const r = await requireUser();
+    if ("error" in r) return r.error;
 
     const customers = await prisma.customer.findMany({
-      where: { organizationId: dbUser.organizationId! },
+      where: { organizationId: r.user.organizationId },
       include: {
         status: { select: { id: true, name: true, color: true, order: true } },
         assignee: { select: { id: true, name: true } },
@@ -43,15 +38,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const dbUser = await prisma.user.findUnique({
-      where: { email: user.email! },
-      select: { id: true, organizationId: true },
-    });
-    if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const r = await requireUser();
+    if ("error" in r) return r.error;
+    const dbUser = r.user;
 
     const body = await request.json();
     const { name, nameKana, email, phone, sourcePortal, inquiryContent, statusId, assigneeId } = body;
@@ -68,11 +57,13 @@ export async function POST(request: NextRequest) {
         inquiryContent: inquiryContent || null,
         statusId: statusId || null,
         assigneeId: assigneeId || dbUser.id,
-        organizationId: dbUser.organizationId!,
+        organizationId: dbUser.organizationId,
         isNeedAction: true,
       },
     });
 
+    // implementation-spec-v1.md §3: 個人情報レコードの新規作成を監査ログに残す
+    await logAudit({ customerId: customer.id, userId: dbUser.id, organizationId: dbUser.organizationId, action: "customer.create", newValue: name });
     return NextResponse.json(customer, { status: 201 });
   } catch (error) {
     console.error("[POST /api/customers] Error:", error);

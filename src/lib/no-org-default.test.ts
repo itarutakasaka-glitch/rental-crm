@@ -16,8 +16,9 @@ function walk(dir: string, out: string[] = []) {
   return out;
 }
 
-test('"org_default" literal must not appear in API routes or server actions', () => {
-  const roots = [join(process.cwd(), "src/app/api"), join(process.cwd(), "src/actions")];
+test('"org_default" literal must not appear in API routes, server actions or components', () => {
+  // 2026-09-06: components でも同じ文字列が URL に埋め込まれていたため対象を広げた
+  const roots = [join(process.cwd(), "src/app"), join(process.cwd(), "src/actions"), join(process.cwd(), "src/components")];
   const offenders: string[] = [];
   for (const root of roots) {
     for (const file of walk(root)) {

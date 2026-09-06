@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getAuthUserForAction } from "@/lib/auth";
+import { logFieldChanges } from "@/lib/audit";
 
 // GET: 来店予約設定を取得
 export async function GET() {
@@ -43,6 +44,9 @@ export async function PUT(request: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await request.json();
 
+    // implementation-spec-v1.md §3: 来店予約の受付可否・時間帯・自動返信文は顧客に見える設定なので監査ログに残す
+    const before = await prisma.storeVisitSetting.findUnique({ where: { organizationId: user.organizationId } });
+
     const setting = await prisma.storeVisitSetting.upsert({
       where: { organizationId: user.organizationId },
       update: {
@@ -69,6 +73,16 @@ export async function PUT(request: Request) {
       },
     });
 
+    await logFieldChanges(
+      { userId: user.id, organizationId: user.organizationId, action: "storeVisitSetting.update" },
+      (before || {}) as any,
+      {
+        enabled: setting.enabled, closedDays: setting.closedDays,
+        availableTimeStart: setting.availableTimeStart, availableTimeEnd: setting.availableTimeEnd,
+        visitMethods: setting.visitMethods, storeNotice: setting.storeNotice,
+        autoReplySubject: setting.autoReplySubject, autoReplyBody: setting.autoReplyBody,
+      }
+    );
     return NextResponse.json(setting);
   } catch (error) {
     console.error("PUT store-visit-settings error:", error);

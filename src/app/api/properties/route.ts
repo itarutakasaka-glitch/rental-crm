@@ -1,27 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser, requireCustomerAccess } from "@/lib/auth";
 
+// ★2026-09-06 発見・修正: customerId をクエリで受け取り、所属を確認せずに
+// CustomerPreference（希望条件＝予算・エリア・入居時期という個人情報）を返していた。
+// 物件側は組織で絞られていたが、希望条件は他社の顧客のものでも読めた（S-1 と同型のIDOR）。
+// 顧客IDを扱う route は必ず requireCustomerAccess を通す（route-auth-guard.test.ts が検査する）。
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authed = await requireUser();
+    if ("error" in authed) return authed.error;
 
     const { searchParams } = new URL(request.url);
     const customerId = searchParams.get("customerId");
 
-    const dbUser = await prisma.user.findUnique({
-      where: { email: user.email! },
-      select: { organizationId: true },
-    });
-    if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
-
     if (customerId) {
+      const r = await requireCustomerAccess(customerId);
+      if ("error" in r) return r.error;
       const pref = await prisma.customerPreference.findUnique({ where: { customerId } });
 
       const where: any = {
-        organizationId: dbUser.organizationId!,
+        // 提案する物件は顧客の所属会社のもの（操作者の所属ではない。staff の横断対応で混ざらないように）
+        organizationId: r.customer.organizationId,
         isAvailable: true,
       };
 
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     const properties = await prisma.property.findMany({
-      where: { organizationId: dbUser.organizationId! },
+      where: { organizationId: authed.user.organizationId },
       orderBy: { updatedAt: "desc" },
     });
     return NextResponse.json(properties);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { getAuthUserForAction, canAccessOrg } from "@/lib/auth";
+import { requireCustomerAccess } from "@/lib/auth";
 
 // architecture-v2.md §9(穴#16): 二重対応防止ロック。
 // 詳細画面を開いている間、フロント側が一定間隔でPOSTしてロックを保持(ハートビート)する。
@@ -10,15 +10,16 @@ const LOCK_STALE_MS = 90_000;
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const user = await getAuthUserForAction();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // implementation-spec-v1.md §3: 顧客IDを扱う route は requireCustomerAccess に統一
+    const r = await requireCustomerAccess(id);
+    if ("error" in r) return r.error;
+    const user = r.user;
 
     const customer = await prisma.customer.findUnique({
       where: { id },
-      select: { organizationId: true, lockedByUserId: true, lockedAt: true, lockedByUser: { select: { id: true, name: true } } },
+      select: { lockedByUserId: true, lockedAt: true, lockedByUser: { select: { id: true, name: true } } },
     });
     if (!customer) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (!canAccessOrg(user, customer.organizationId)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const isStale = !customer.lockedAt || Date.now() - customer.lockedAt.getTime() > LOCK_STALE_MS;
     const isOwnLock = customer.lockedByUserId === user.id;
@@ -46,11 +47,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const user = await getAuthUserForAction();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const r = await requireCustomerAccess(id);
+    if ("error" in r) return r.error;
     // 自分のロックしか解除できない(他人のロックを外側から奪えないように)。
     await prisma.customer.updateMany({
-      where: { id, lockedByUserId: user.id },
+      where: { id, lockedByUserId: r.user.id },
       data: { lockedByUserId: null, lockedAt: null },
     });
     return NextResponse.json({ ok: true });

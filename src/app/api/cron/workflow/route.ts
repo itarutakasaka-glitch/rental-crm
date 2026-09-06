@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { sendLineMessage } from "@/lib/channels/line";
 import { notifySlackError } from "@/lib/notify-slack";
+import { verifySharedSecret } from "@/lib/shared-secret";
+import { resolveTemplateVars, lineInviteUrl } from "@/lib/template-vars";
 
 function calcNextRunAt(startedAt: Date, daysAfter: number, timeOfDay: string) {
   const jstOffset = 9 * 60 * 60 * 1000;
@@ -29,34 +31,16 @@ function textToHtml(text: string): string {
 }
 
 async function resolveAndSend(step: any, template: any, customer: any, org: any) {
-  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || customer.organizationId}?c=${customer.id}`;
-  let body = template.body
-    .replace(/\{\{customer_name\}\}/g, customer.name || "")
-    .replace(/\{\{customer_email\}\}/g, customer.email || "")
-    .replace(/\{\{customer_phone\}\}/g, customer.phone || "")
-    .replace(/\{\{staff_name\}\}/g, customer.assignee?.name || "")
-    .replace(/\{\{property_name\}\}/g, customer.properties?.[0]?.name || "")
-    .replace(/\{\{property_url\}\}/g, customer.properties?.[0]?.url || "")
-    .replace(/\{\{company_name\}\}/g, org?.name || "")
-    .replace(/\{\{store_name\}\}/g, org?.storeName || org?.name || "")
-    .replace(/\{\{store_address\}\}/g, org?.storeAddress || org?.address || "")
-    .replace(/\{\{store_phone\}\}/g, org?.storePhone || org?.phone || "")
-    .replace(/\{\{store_hours\}\}/g, org?.storeHours || "")
-    .replace(/\{\{line_url\}\}/g, org?.lineUrl || "")
-    .replace(/\{\{license_number\}\}/g, org?.licenseNumber || "")
-    .replace(/\{\{visit_url\}\}/g, visitUrl);
-
-  let subject = template.subject
-    ? template.subject
-        .replace(/\{\{customer_name\}\}/g, customer.name || "")
-        .replace(/\{\{store_name\}\}/g, org?.storeName || org?.name || "")
-    : null;
+  // implementation-spec-v1.md §1.3: 変数置換は lib/template-vars.ts に集約
+  const varCtx = { customer, org };
+  let body = resolveTemplateVars(template.body, varCtx);
+  const subject = template.subject ? resolveTemplateVars(template.subject, varCtx) : null;
 
   if (step.channel === "EMAIL" && customer.email && process.env.RESEND_API_KEY) {
     if (!customer.lineUserId) {
       const code = String(Math.floor(1000 + Math.random() * 9000));
       await prisma.customer.update({ where: { id: customer.id }, data: { lineCode: code } });
-      body += `\n\n---\nLINE\u3067\u3082\u304A\u6C17\u8EFD\u306B\u3054\u9023\u7D61\u304F\u3060\u3055\u3044\u3002\n\u53CB\u3060\u3061\u8FFD\u52A0: ${org?.lineUrl || "https://line.me/R/ti/p/@331fxngy"}\n\u8FFD\u52A0\u5F8C\u3001\u8A8D\u8A3C\u30B3\u30FC\u30C9\u300C${code}\u300D\u3092LINE\u3067\u9001\u4FE1\u3057\u3066\u304F\u3060\u3055\u3044\u3002`;
+      body += `\n\n---\nLINE\u3067\u3082\u304A\u6C17\u8EFD\u306B\u3054\u9023\u7D61\u304F\u3060\u3055\u3044\u3002\n\u53CB\u3060\u3061\u8FFD\u52A0: ${lineInviteUrl(org)}\n\u8FFD\u52A0\u5F8C\u3001\u8A8D\u8A3C\u30B3\u30FC\u30C9\u300C${code}\u300D\u3092LINE\u3067\u9001\u4FE1\u3057\u3066\u304F\u3060\u3055\u3044\u3002`;
     }
     const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
     const fromName = org?.storeName || org?.name || "CRM";
@@ -78,13 +62,13 @@ async function resolveAndSend(step: any, template: any, customer: any, org: any)
 }
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // implementation-spec-v1.md §3: 秘密鍵の検証は verifySharedSecret に統一（fail-closed・ヘッダのみ）
+  const denied = verifySharedSecret(req);
+  if (denied) return denied;
   const now = new Date();
   const runs = await prisma.workflowRun.findMany({
-    where: { status: "RUNNING", nextRunAt: { lte: now } },
+    // M-13: テスト用組織の顧客は自動送信しない
+    where: { status: "RUNNING", nextRunAt: { lte: now }, customer: { organization: { isTest: false } } },
     include: {
       workflow: { include: { steps: { orderBy: { order: "asc" }, include: { template: true } } } },
       customer: { include: { assignee: true, properties: true } },

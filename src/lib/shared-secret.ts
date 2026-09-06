@@ -26,6 +26,20 @@ export function verifySharedSecret(req: NextRequest, opts: { allowQuery?: boolea
   return null;
 }
 
+/**
+ * 共有秘密鍵が正しいかを真偽値で返す（エージェント経路と人間のセッション経路が同居する route 用）。
+ * 「鍵が無い＝人間のログイン経路」と判断したい場合だけ使う。拒否のレスポンスは呼び出し側で作る。
+ */
+export function hasValidSharedSecret(req: NextRequest): boolean {
+  const expected = process.env.CRON_SECRET;
+  if (!expected) return false; // fail-closed: env が無ければエージェントとして扱わない
+  const given =
+    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ||
+    req.headers.get("x-agent-secret")?.trim() ||
+    "";
+  return !!given && safeEqual(given, expected);
+}
+
 function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
   const bb = Buffer.from(b);
