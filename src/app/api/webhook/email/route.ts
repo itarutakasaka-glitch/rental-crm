@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { verifySharedSecret } from "@/lib/shared-secret";
+import { verifySvixSignature, readSvixHeaders } from "@/lib/svix-verify";
 import { prisma } from "@/lib/db/prisma";
 import { resolveSingleOrgOrNull, resolveOrgByRecipient } from "@/lib/resolve-single-org";
 import { notifySlackError } from "@/lib/notify-slack";
@@ -86,11 +87,28 @@ function parsePortalEmail(subject: string, body: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    // architecture-v2.md §10 A-5: fail-closed(env未設定でも拒否)。Resend webhookはヘッダを付けられないためクエリ秘密鍵は暫定許可。
-    const denied = verifySharedSecret(request, { allowQuery: true });
-    if (denied) return denied;
+    // architecture-v2.md §10 A-5 / implementation-spec-v1.md §3:
+    // RESEND_WEBHOOK_SECRET が登録されていれば送信元固有の svix 署名で検証する（本命）。
+    // 未登録の間だけ従来の共有秘密鍵にフォールバックする（移行期間。登録した時点で自動的に切り替わる）。
+    const rawBody = await request.text();
+    const svixSecret = process.env.RESEND_WEBHOOK_SECRET;
+    if (svixSecret) {
+      const result = verifySvixSignature({ secret: svixSecret, headers: readSvixHeaders(request), rawBody });
+      if (!result.ok) {
+        console.error("[Email Webhook] svix verification failed:", result.reason);
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
+    } else {
+      const denied = verifySharedSecret(request, { allowQuery: true });
+      if (denied) return denied;
+    }
 
-    const payload = await request.json();
+    let payload: any;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
 
     // Support both Resend webhook format (nested in data) and direct format
     const emailData = payload.data || payload;

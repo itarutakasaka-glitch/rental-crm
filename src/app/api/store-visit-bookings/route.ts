@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { Resend } from "resend";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { resolveTemplateVars } from "@/lib/template-vars";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -151,28 +152,21 @@ export async function POST(request: Request) {
     if (setting.autoReplySubject && setting.autoReplyBody && customerEmail) {
       const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
       const fromName = org.storeName || org.name || "CRM";
-      const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${organizationId}?c=${customer.id}`;
-
-      const vars: Record<string, string> = {
-        "{{customer_name}}": customerName,
-        "{{store_name}}": org.storeName || org.name || "",
-        "{{store_address}}": org.storeAddress || org.address || "",
-        "{{store_phone}}": org.storePhone || org.phone || "",
-        "{{visit_date}}": visitDate,
-        "{{visit_time}}": visitTime,
-        "{{visit_method}}": visitMethod || "",
-        "{{num_guests}}": String(body.numGuests || 1),
-        "{{visit_memo}}": memo || "",
-        "{{visit_url}}": visitUrl,
-        "{{line_url}}": org.lineUrl || "",
+      // implementation-spec-v1.md §1.3: 変数置換は lib/template-vars.ts に集約。
+      // 来店予約固有の変数（visit_date 等）は extra で渡す。
+      const varCtx = {
+        customer: { ...customer, name: customerName },
+        org,
+        extra: {
+          visit_date: visitDate,
+          visit_time: visitTime,
+          visit_method: visitMethod || "",
+          num_guests: String(body.numGuests || 1),
+          visit_memo: memo || "",
+        },
       };
-
-      let subjectText = setting.autoReplySubject;
-      let bodyText = setting.autoReplyBody;
-      for (const [k, v] of Object.entries(vars)) {
-        subjectText = subjectText.replaceAll(k, v);
-        bodyText = bodyText.replaceAll(k, v);
-      }
+      const subjectText = resolveTemplateVars(setting.autoReplySubject, varCtx);
+      const bodyText = resolveTemplateVars(setting.autoReplyBody, varCtx);
 
       try {
         await resend.emails.send({

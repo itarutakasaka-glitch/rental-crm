@@ -14,10 +14,12 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   const crossOrg = user.isStaff && staffOrgIds.length > 0;
   const organizationId =
     crossOrg && orgFilter && staffOrgIds.includes(orgFilter) ? orgFilter : undefined;
+  // M-13: 権限テスト用の組織(isTest)は横断表示から除外する。
+  // 自組織を見ている場合は除外しない(テスト組織のユーザー自身は自分の組織を見られる)。
   const where = crossOrg
     ? organizationId
       ? { organizationId }
-      : { organizationId: { in: staffOrgIds } }
+      : { organizationId: { in: staffOrgIds }, organization: { isTest: false } }
     : { organizationId: user.organizationId };
 
   // architecture-v2.md §9(穴#15): take:200 + updatedAt降順のみだと、対応が古いまま放置された

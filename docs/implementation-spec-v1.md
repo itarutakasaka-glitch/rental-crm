@@ -1,4 +1,4 @@
-# heyacules cloud 実装仕様書 v1.5
+# heyacules cloud 実装仕様書 v1.6
 
 2026-09-05 作成。**「ちゃんとしたサービスにする」前提で、Phase D（カナリー置換）に入る前に確定させる仕様**。
 `architecture-v2.md` が「なぜ・全体像」、この文書が「何を・どう作るか」。両方とも正本。矛盾したらこの文書を直す（実装はこの文書に従う）。
@@ -511,7 +511,17 @@ OrganizationChannel
 ## 実施状況
 
 - **2026-09-05 D-0 第1弾（PR #30）**: M-1（`Customer.agentState` 追加・cron/agent と webhook を状態列に切替・memo マーカー廃止・変換用 `/api/agent/migrate-agent-state`）、M-2（`LinePending.organizationId` の既定値廃止）、M-4（`AuditLog.organizationId`＋索引）、M-5（横断 inbox の索引）。§3 の ⚠ のうち `customers/preference`・`customers/[id]/duplicates` の所属チェック統一、`merge`・`staff`・`approve/reject` の監査ログ、`staff` の管理者限定、`agent/queue`・`cron/agent` の秘密鍵検証統一、公開予約ページのレート制限と phone 上書き廃止。承認送信で `FIRST_MAIL_DRAFTED→WAITING_REPLY`、`BOOKING_DRAFTED→BOOKED` に進める配線を追加。
-- 残り（D-0）: `statuses`・`hankyo`・`store-visit-settings`・`reminders`・`agent/*` 設定の監査ログ、`agent/context|send|notify`・`cron/workflow` の秘密鍵検証統一、変数置換の1本化、権限総当たりテスト、復旧手順書、Resend svix 署名検証。
+- **2026-09-06 D-0 第2弾（PR #37）**: 残っていた §3 の ⚠ を全て解消。
+  - 監査ログ: `statuses`(create/update/reorder/delete)・`settings/hankyo`・`store-visit-settings`・`reminders`・`agent/cost-rules|snippets|templates`・`customers`(POST)・`broadcast`・`agent/send|notify|context`・`agent/grant-staff`
+  - 秘密鍵検証の統一（`verifySharedSecret`）: `cron/workflow`・`agent/context|send|notify|templates|grant-staff|seed-*`。独自比較はテスト（`route-auth-guard.test.ts`）で検出して落とす
+  - **変数置換の1本化**: `lib/template-vars.ts`。重複していた6箇所（customer-detail / customer-detail-panel ×2 / send-message / workflow-run / cron/workflow / store-visit-bookings）を集約。ドメインと LINE 既定値のハードコードも1箇所に。挙動は変えていない（`useLegacyLineFallback` で従来の差を明示）
+  - **Resend svix 署名検証**: `lib/svix-verify.ts`（自前実装・依存追加なし）。`RESEND_WEBHOOK_SECRET` を登録した時点で自動的に共有秘密鍵から切り替わる
+  - §2.4 修正: 人が止めた追客は `STOPPED_MANUAL`（返信による停止と区別が付くようになった）
+  - M-13 `Organization.isTest`: 横断inbox・cron/agent・cron/workflow・staff付与から除外。テスト組織の seed API（`/api/agent/seed-test-orgs`）
+  - テスト 20件 → **43件**（template-vars 9・svix 7・route 認証ガード 3・agentState 3・store-routing 16・org_default 1 ほか）
+  - 復旧手順書 `docs/runbook-restore.md`
+- 残り（D-0）: 権限総当たりテストの**後半**（A社・B社・staff の3ユーザーで実際にログインして 200/403 を確認する部分。Supabase のテストアカウント3つが要る＝Itaru の手作業）、Neon の PITR 確認（S-3）、`RESEND_WEBHOOK_SECRET` の登録。
+  前半（未ログイン・鍵なしで弾かれること）は `scripts/check-public-endpoints.mjs` で本番に対して実行できる。
 
 ## 変更履歴
 
@@ -521,3 +531,4 @@ OrganizationChannel
 - v1.3 2026-09-05: Q-5 決定を反映。セルフ予約は「連動あり＝即時確定／連動なし＝担当者の連絡で確定」（§2.5・M-6）。店舗スケジュール連動 F-21・M-10 を追加。連動先は Q-7 として新設。
 - v1.4 2026-09-05: Q-7 決定（連動先＝Google カレンダー・サイボウズ・TimeTree・カナリー内スケジュール）。§6.2 に連動先ごとの方式・可否・実装順を追加。
 - v1.5 2026-09-05: 引き継ぎ文書で「薄い」と挙げた箇所を埋めた。§4.1 レポート画面、§4.2 会社別振り分けルール（正本＝マニュアルB YAML）、§4.3 タグ、§5.2b 移行スクリプト設計、§6.1 外部連携の設定画面と移行、§8.1b 権限総当たりテスト設計、§10 画面仕様。M-11〜M-13 追加。
+- v1.6 2026-09-06: D-0 第2弾の実施状況を追記（監査ログ・秘密鍵統一・変数置換1本化・svix 署名検証・STOPPED_MANUAL・M-13・復旧手順書）。

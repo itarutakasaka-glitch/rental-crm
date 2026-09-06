@@ -2,28 +2,13 @@
 import PropertySuggestion from "./property-suggestion";
 import { CyberpunkSpinner } from "@/components/ui/cyberpunk-spinner";
 import { textToHtml } from "@/lib/text-to-html";
+import { resolveTemplateVars } from "@/lib/template-vars";
 
+// implementation-spec-v1.md §1.3: 変数置換は lib/template-vars.ts に集約
+// （以前はここにも同じ replace チェーンがあり、実在しない "org_default" を URL に埋めていた）
 function previewResolve(text: string, customer: any): string {
   if (!customer) return text;
-  const org = customer.organization || {};
-  const assignee = customer.assignee || {};
-  const prop = customer.properties?.[0] || {};
-  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org.id || "org_default"}?c=${customer.id || ""}`;
-  return text
-    .replace(/\{\{customer_name\}\}/g, customer.name || "")
-    .replace(/\{\{customer_email\}\}/g, customer.email || "")
-    .replace(/\{\{customer_phone\}\}/g, customer.phone || "")
-    .replace(/\{\{staff_name\}\}/g, assignee.name || "")
-    .replace(/\{\{property_name\}\}/g, prop.name || "")
-    .replace(/\{\{property_url\}\}/g, prop.portalUrl || prop.url || "")
-    .replace(/\{\{company_name\}\}/g, org.name || "")
-    .replace(/\{\{store_name\}\}/g, org.storeName || org.name || "")
-    .replace(/\{\{store_address\}\}/g, org.storeAddress || org.address || "")
-    .replace(/\{\{store_phone\}\}/g, org.storePhone || org.phone || "")
-    .replace(/\{\{store_hours\}\}/g, org.storeHours || "")
-    .replace(/\{\{line_url\}\}/g, org.lineUrl || "")
-    .replace(/\{\{license_number\}\}/g, org.licenseNumber || "")
-    .replace(/\{\{visit_url\}\}/g, visitUrl);
+  return resolveTemplateVars(text, { customer, org: customer.organization || {} });
 }
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -344,25 +329,8 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     finally { setInfoSaving(false); }
   };
 
-  const resolveVarsLocal = (text: string) => {
-    if (!text) return text;
-    const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || customer?.organizationId || "org_default"}?c=${customer?.id || ""}`;
-    return text
-      .replace(/\{\{customer_name\}\}/g, customer?.name || "")
-      .replace(/\{\{customer_email\}\}/g, customer?.email || "")
-      .replace(/\{\{customer_phone\}\}/g, customer?.phone || "")
-      .replace(/\{\{staff_name\}\}/g, customer?.assignee?.name || "")
-      .replace(/\{\{property_name\}\}/g, customer?.properties?.[0]?.name || "")
-      .replace(/\{\{property_url\}\}/g, customer?.properties?.[0]?.url || "")
-      .replace(/\{\{company_name\}\}/g, org?.name || "")
-      .replace(/\{\{store_name\}\}/g, org?.storeName || org?.name || "")
-      .replace(/\{\{store_address\}\}/g, org?.storeAddress || org?.address || "")
-      .replace(/\{\{store_phone\}\}/g, org?.storePhone || org?.phone || "")
-      .replace(/\{\{store_hours\}\}/g, org?.storeHours || "")
-      .replace(/\{\{line_url\}\}/g, org?.lineUrl || "")
-      .replace(/\{\{license_number\}\}/g, org?.licenseNumber || "")
-      .replace(/\{\{visit_url\}\}/g, visitUrl);
-  };
+  // implementation-spec-v1.md §1.3: 変数置換は lib/template-vars.ts に集約
+  const resolveVarsLocal = (text: string) => (text ? resolveTemplateVars(text, { customer, org }) : text);
 
   const applyTemplate = (t: any) => {
     setSubject(resolveVarsLocal(t.subject || ""));

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { verifySharedSecret } from "@/lib/shared-secret";
 
 // architecture-v2.md §8 Step2: cron/agent.ts内にハードコードされていたFALLBACK_TEMPLATES/
 // CONFIRM_FALLBACKをAgentTemplateへ複製する。これにより/agent/flow画面から編集可能になる。
@@ -35,8 +36,8 @@ const TITLES: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-agent-secret");
-  if (secret !== process.env.CRON_SECRET) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = verifySharedSecret(req);
+  if (denied) return denied;
 
   try {
     const org = await prisma.organization.findFirst();

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getAuthUserForAction } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export async function GET() {
   try {
@@ -27,6 +28,8 @@ export async function POST(request: Request) {
         skipLineNotAdded: body.skipLineNotAdded || false, order: (maxOrder._max.order ?? -1) + 1,
       },
     });
+    // implementation-spec-v1.md §3: リマインダーは顧客へ自動送信されるので作成・変更・削除を監査ログに残す
+    await logAudit({ userId: user.id, organizationId: user.organizationId, action: "reminder.create", field: reminder.id, newValue: `${reminder.channel} ${reminder.timing} ${reminder.timingHour}` });
     return NextResponse.json(reminder);
   } catch (error) {
     console.error("Failed to create reminder:", error);
@@ -53,6 +56,8 @@ export async function PUT(request: Request) {
         ...(data.order !== undefined && { order: data.order }),
       },
     });
+    if (reminder.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    await logAudit({ userId: user.id, organizationId: user.organizationId, action: "reminder.update", field: id, newValue: JSON.stringify(data).slice(0, 400) });
     return NextResponse.json(reminder);
   } catch (error) {
     console.error("Failed to update reminder:", error);
@@ -67,7 +72,9 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
-    await prisma.visitReminder.deleteMany({ where: { id, organizationId: user.organizationId } });
+    const removed = await prisma.visitReminder.deleteMany({ where: { id, organizationId: user.organizationId } });
+    if (removed.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    await logAudit({ userId: user.id, organizationId: user.organizationId, action: "reminder.delete", field: id });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete reminder:", error);

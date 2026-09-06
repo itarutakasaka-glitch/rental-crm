@@ -5,6 +5,8 @@ import { Resend } from "resend";
 import { sendSms } from "@/lib/channels/sms";
 import { getAuthUserForAction, canAccessOrg, type AuthUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { resolveTemplateVars, buildVisitUrl } from "@/lib/template-vars";
+import { hasValidSharedSecret } from "@/lib/shared-secret";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -14,23 +16,9 @@ const CALL_RESULT_LABELS: Record<string, string> = {
   busy: "\u8A71\u3057\u4E2D",
 };
 
+// implementation-spec-v1.md §1.3: 変数置換は lib/template-vars.ts に集約
 function resolveVars(text: string, customer: any, org: any, staffName: string) {
-  const visitUrl = `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || customer.organizationId || ""}?c=${customer.id || ""}`;
-  return text
-    .replace(/\{\{customer_name\}\}/g, customer.name || "")
-    .replace(/\{\{customer_email\}\}/g, customer.email || "")
-    .replace(/\{\{customer_phone\}\}/g, customer.phone || "")
-    .replace(/\{\{staff_name\}\}/g, staffName || "")
-    .replace(/\{\{property_name\}\}/g, customer.properties?.[0]?.name || "")
-    .replace(/\{\{property_url\}\}/g, customer.properties?.[0]?.portalUrl || customer.properties?.[0]?.url || "")
-    .replace(/\{\{company_name\}\}/g, org?.name || "")
-    .replace(/\{\{store_name\}\}/g, org?.storeName || org?.name || "")
-    .replace(/\{\{store_address\}\}/g, org?.storeAddress || org?.address || "")
-    .replace(/\{\{store_phone\}\}/g, org?.storePhone || org?.phone || "")
-    .replace(/\{\{store_hours\}\}/g, org?.storeHours || "")
-    .replace(/\{\{line_url\}\}/g, org?.lineUrl || "")
-    .replace(/\{\{license_number\}\}/g, org?.licenseNumber || "")
-    .replace(/\{\{visit_url\}\}/g, visitUrl);
+  return resolveTemplateVars(text, { customer, org, staffName });
 }
 
 function textToHtml(text: string): string {
@@ -104,10 +92,10 @@ function addTrackingPixel(html: string, msgId: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const agentSecret = request.headers.get("x-agent-secret");
+    // implementation-spec-v1.md §3: 秘密鍵の比較は lib/shared-secret.ts に統一（timingSafeEqual・fail-closed）
     let user: any = null;
     let isAgent = false;
-    if (agentSecret === process.env.CRON_SECRET) {
+    if (hasValidSharedSecret(request)) {
       user = { id: "agent", email: "agent@system" };
       isAgent = true;
     } else {
@@ -182,7 +170,7 @@ export async function POST(request: NextRequest) {
         data: { customerId, senderId: dbUser.id, direction: "OUTBOUND", channel: "EMAIL", subject: finalSubject, body: finalBody, status: "PENDING" as any },
       });
       const baseHtml = textToHtml(finalBody) + makeVisitFooter(
-        `https://tama-fudosan-crm-2026.vercel.app/visit/${org?.id || customer.organizationId}?c=${customerId}`,
+        buildVisitUrl(org?.id || customer.organizationId, customerId),
         org?.storeName || org?.name || "",
         org?.storePhone || org?.phone || "",
         org?.storeAddress || org?.address || ""

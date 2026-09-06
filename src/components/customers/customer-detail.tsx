@@ -3,6 +3,7 @@ import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { sendMessage } from "@/actions/send-message";
 import type { AuthUser } from "@/lib/auth";
+import { resolveTemplateVars } from "@/lib/template-vars";
 import { StoreRoutingPanel } from "./store-routing-panel";
 
 const CH: Record<string, { label: string; color: string }> = { EMAIL: { label: "Email", color: "#3b82f6" }, LINE: { label: "LINE", color: "#06c755" }, SMS: { label: "SMS", color: "#d4a017" }, CALL: { label: "Tel", color: "#8b5cf6" }, NOTE: { label: "Note", color: "#6b7280" } };
@@ -65,21 +66,11 @@ function DraftApprovalBubble({ m, chInfo, onDone }: { m: any; chInfo: { label: s
   );
 }
 
+// implementation-spec-v1.md §1.3: 変数置換は lib/template-vars.ts に集約。
+// この画面だけ従来 org.lineUrl 未設定時に既定の LINE URL を差し込んでいたため、
+// 挙動を変えないよう useLegacyLineFallback を明示する（D-1 の会社別 LINE 設定で解消）。
 function resolveVars(text: string, c: any, user: AuthUser, org: any) {
-  return text
-    .replace(/\{\{customer_name\}\}/g, c.name || "")
-    .replace(/\{\{customer_email\}\}/g, c.email || "")
-    .replace(/\{\{customer_phone\}\}/g, c.phone || "")
-    .replace(/\{\{staff_name\}\}/g, user.name || c.assignee?.name || "")
-    .replace(/\{\{property_name\}\}/g, c.properties?.[0]?.name || "")
-    .replace(/\{\{property_url\}\}/g, c.properties?.[0]?.url || "")
-    .replace(/\{\{company_name\}\}/g, org?.name || "")
-    .replace(/\{\{store_name\}\}/g, org?.storeName || org?.name || "")
-    .replace(/\{\{store_address\}\}/g, org?.storeAddress || org?.address || "")
-    .replace(/\{\{store_phone\}\}/g, org?.storePhone || org?.phone || "")
-    .replace(/\{\{store_hours\}\}/g, org?.storeHours || "")
-    .replace(/\{\{line_url\}\}/g, org?.lineUrl || "https://line.me/R/ti/p/@331fxngy")
-    .replace(/\{\{license_number\}\}/g, org?.licenseNumber || "");
+  return resolveTemplateVars(text, { customer: c, org, staffName: user.name, useLegacyLineFallback: true });
 }
 
 export function CustomerDetail({ customer: c, statuses, templates: _t, currentUser }: { customer: any; statuses: any[]; templates: any[]; currentUser: AuthUser }) {

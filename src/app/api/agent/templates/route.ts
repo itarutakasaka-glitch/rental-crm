@@ -1,25 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getAuthUserForAction } from "@/lib/auth";
+import { verifySharedSecret } from "@/lib/shared-secret";
+import { logAudit } from "@/lib/audit";
 
-// エージェント(cron等)はCRON_SECRET+明示的なorgIdで呼ぶ。Web UIはログインユーザーのorganizationId。
-async function resolveOrgId(req: NextRequest): Promise<string | null> {
-  const secret = req.headers.get("x-agent-secret");
+// エージェント(cron等)は共有秘密鍵+明示的なorgIdで呼ぶ。Web UIはログインユーザーのorganizationId。
+// implementation-spec-v1.md §3: 秘密鍵の検証は verifySharedSecret に統一（fail-closed・timingSafeEqual）。
+async function resolveContext(req: NextRequest): Promise<{ organizationId: string; userId: string | null } | null> {
   const orgId = req.nextUrl.searchParams.get("orgId");
-  if (secret === process.env.CRON_SECRET && orgId) return orgId;
-
+  if (orgId && req.headers.get("x-agent-secret")) {
+    const denied = verifySharedSecret(req);
+    if (denied) return null;
+    return { organizationId: orgId, userId: null };
+  }
   const user = await getAuthUserForAction();
-  return user?.organizationId || null;
+  if (!user) return null;
+  return { organizationId: user.organizationId, userId: user.id };
 }
 
 // GET: Fetch all agent templates for organization
 export async function GET(req: NextRequest) {
-  const organizationId = await resolveOrgId(req);
-  if (!organizationId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await resolveContext(req);
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const templates = await (prisma as any).agentTemplate.findMany({
-      where: { organizationId },
+      where: { organizationId: ctx.organizationId },
       orderBy: { key: "asc" },
     });
     return NextResponse.json({ templates });
@@ -32,8 +38,8 @@ export async function GET(req: NextRequest) {
 // PUT: Upsert a single template
 export async function PUT(req: NextRequest) {
   try {
-    const organizationId = await resolveOrgId(req);
-    if (!organizationId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await resolveContext(req);
+    if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { key, title, body } = await req.json();
 
@@ -47,8 +53,10 @@ export async function PUT(req: NextRequest) {
       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, NOW())
       ON CONFLICT ("organizationId", "key")
       DO UPDATE SET "title" = $3, "body" = $4, "updatedAt" = NOW()
-    `, organizationId, key, title, body);
+    `, ctx.organizationId, key, title, body);
 
+    // implementation-spec-v1.md §3: エージェントが送る文面のもとなので監査ログに残す
+    await logAudit({ userId: ctx.userId, organizationId: ctx.organizationId, action: "agentTemplate.update", field: key, newValue: body });
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -554,7 +554,7 @@ export async function GET(req: NextRequest) {
   }
 
   // implementation-spec-v1.md §2.2: 拾い上げは agentState(インデックスあり)。memo の contains 検索は廃止
-  const pending = await prisma.customer.findMany({ where: { agentState: "FIRST_MAIL_PENDING" }, take: 5, orderBy: { createdAt: "asc" } });
+  const pending = await prisma.customer.findMany({ where: { organization: { isTest: false }, agentState: "FIRST_MAIL_PENDING" }, take: 5, orderBy: { createdAt: "asc" } });
   for (const c of pending) {
     if (!c.email) continue;
     const org = await getOrg(c.organizationId);
@@ -563,7 +563,7 @@ export async function GET(req: NextRequest) {
     try { await processNewInquiry(c, org, mode); mode === "SEND" ? processed++ : drafted++; } catch (e: any) { console.error(`[Agent] Error 1st mail ${c.name}:`, e.message); errors.push(`1st mail ${c.name}(${c.id}): ${e.message}`); }
   }
 
-  const classifyPending = await prisma.customer.findMany({ where: { agentState: "CLASSIFY_PENDING" }, take: 5, orderBy: { updatedAt: "asc" } });
+  const classifyPending = await prisma.customer.findMany({ where: { organization: { isTest: false }, agentState: "CLASSIFY_PENDING" }, take: 5, orderBy: { updatedAt: "asc" } });
   for (const c of classifyPending) {
     if (!c.email && !c.lineUserId) continue;
     const org = await getOrg(c.organizationId);
@@ -574,7 +574,7 @@ export async function GET(req: NextRequest) {
     try { await classifyReply(c, org, lastMsg.body, mode, lastMsg.id); mode === "SEND" ? processed++ : drafted++; } catch (e: any) { console.error(`[Agent] Error classify ${c.name}:`, e.message); errors.push(`classify ${c.name}(${c.id}): ${e.message}`); }
   }
 
-  const confirmPending = await prisma.customer.findMany({ where: { agentState: "CONFIRM_PENDING" }, take: 5, orderBy: { updatedAt: "asc" } });
+  const confirmPending = await prisma.customer.findMany({ where: { organization: { isTest: false }, agentState: "CONFIRM_PENDING" }, take: 5, orderBy: { updatedAt: "asc" } });
   for (const c of confirmPending) {
     if (!c.email && !c.lineUserId) continue;
     const org = await getOrg(c.organizationId);

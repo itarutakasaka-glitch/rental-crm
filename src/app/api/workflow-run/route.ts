@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { Resend } from "resend";
 import { requireCustomerAccess, requireUser, canAccessOrg } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { resolveTemplateVars } from "@/lib/template-vars";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -15,21 +16,9 @@ function calcNextRunAt(startedAt: Date, daysAfter: number, timeOfDay: string) {
   return new Date(startJST.getTime() - jstOffset);
 }
 
+// implementation-spec-v1.md §1.3: 変数置換は lib/template-vars.ts に集約
 function resolveTemplate(body: string, customer: any, org: any) {
-  return body
-    .replace(/\{\{customer_name\}\}/g, customer.name || "")
-    .replace(/\{\{customer_email\}\}/g, customer.email || "")
-    .replace(/\{\{customer_phone\}\}/g, customer.phone || "")
-    .replace(/\{\{staff_name\}\}/g, customer.assignee?.name || "")
-    .replace(/\{\{property_name\}\}/g, customer.properties?.[0]?.name || "")
-    .replace(/\{\{property_url\}\}/g, customer.properties?.[0]?.url || "")
-    .replace(/\{\{company_name\}\}/g, org?.name || "")
-    .replace(/\{\{store_name\}\}/g, org?.storeName || org?.name || "")
-    .replace(/\{\{store_address\}\}/g, org?.storeAddress || org?.address || "")
-    .replace(/\{\{store_phone\}\}/g, org?.storePhone || org?.phone || "")
-    .replace(/\{\{store_hours\}\}/g, org?.storeHours || "")
-    .replace(/\{\{line_url\}\}/g, org?.lineUrl || "")
-    .replace(/\{\{license_number\}\}/g, org?.licenseNumber || "");
+  return resolveTemplateVars(body, { customer, org });
 }
 
 async function executeImmediateStep(run: any, step: any, customer: any, org: any) {
@@ -93,7 +82,8 @@ export async function PATCH(req: NextRequest) {
   const run = await prisma.workflowRun.findUnique({ where: { id: runId }, select: { id: true, customer: { select: { id: true, organizationId: true } } } });
   if (!run) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!canAccessOrg(u.user, run.customer.organizationId)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  await prisma.workflowRun.update({ where: { id: runId }, data: { status: "STOPPED_BY_REPLY", stoppedAt: new Date(), stopReason: "Manual stop" } });
+  // implementation-spec-v1.md §2.4: 人が止めた場合は STOPPED_MANUAL（以前は返信による停止と区別が付かなかった）
+  await prisma.workflowRun.update({ where: { id: runId }, data: { status: "STOPPED_MANUAL", stoppedAt: new Date(), stopReason: "Manual stop" } });
   await logAudit({ customerId: run.customer.id, userId: u.user.id, action: "workflow.run.stop", field: runId });
   return NextResponse.json({ ok: true });
 }
@@ -110,7 +100,7 @@ export async function POST(req: NextRequest) {
 
   const existing = await prisma.workflowRun.findFirst({ where: { customerId, status: "RUNNING" } });
   if (existing) {
-    await prisma.workflowRun.update({ where: { id: existing.id }, data: { status: "STOPPED_BY_REPLY", stoppedAt: new Date(), stopReason: "Replaced by new workflow" } });
+    await prisma.workflowRun.update({ where: { id: existing.id }, data: { status: "STOPPED_MANUAL", stoppedAt: new Date(), stopReason: "Replaced by new workflow" } });
   }
 
   const workflow = await prisma.workflow.findUnique({ where: { id: workflowId }, include: { steps: { orderBy: { order: "asc" } } } });

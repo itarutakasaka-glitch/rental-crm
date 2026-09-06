@@ -13,6 +13,7 @@ datasource db {
 model Organization {
   id                 String              @id @default(cuid())
   name               String
+  isTest             Boolean             @default(false) // M-13: 権限総当たりテスト用の組織。横断inbox・集計・cronから除外する
   slug               String?             @unique // architecture-v2.md §4: 反響メール宛先ルーティング用(hankyo+<slug>@...)
   phone              String?
   email              String?
