@@ -57,19 +57,54 @@ model User {
   id                String           @id @default(cuid())
   organizationId    String
   organization      Organization     @relation(fields: [organizationId], references: [id])
-  supabaseUserId    String?
+  supabaseUserId    String? // 旧Supabase Auth時代の残骸。2026-09-06に自前認証へ移行済み。参照している箇所は無い
   email             String           @unique
   name              String
   role              String           @default("MEMBER")
   avatarUrl         String?
   createdAt         DateTime         @default(now())
   isStaff           Boolean          @default(false) // true=ヘヤクレス社内オペレーター(複数クライアント横断アクセス可)
+  passwordHash      String? // scrypt。null=未設定(初回はパスワード設定メールから設定する)
   assignedCustomers Customer[]       @relation("AssignedCustomers")
   lockedCustomers   Customer[]       @relation("CustomerLock")
   messages          Message[]        @relation("SentMessages")
   auditLogs         AuditLog[]
   schedules         Schedule[]
   staffAccess       StaffOrgAccess[]
+  sessions          Session[]
+  passwordResets    PasswordReset[]
+}
+
+// 2026-09-06: Supabase Auth からの移行。ログイン状態をDBで持つ。
+// Cookieにはランダムなトークンだけを置き、DBにはそのSHA-256だけを保存する
+// (DBが漏れても、そのままログインできるトークンにはならない)。
+// DBで持つことで「退職者のセッションを即座に無効化する」ができる。
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  ip         String?
+  userAgent  String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// パスワード設定・再設定の一回限りトークン。
+model PasswordReset {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model StaffOrgAccess {

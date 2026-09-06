@@ -1,6 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 import { sendSms } from "@/lib/channels/sms";
 import { getAuthUserForAction, canAccessOrg, type AuthUser } from "@/lib/auth";
@@ -93,17 +92,7 @@ function addTrackingPixel(html: string, msgId: string): string {
 export async function POST(request: NextRequest) {
   try {
     // implementation-spec-v1.md §3: 秘密鍵の比較は lib/shared-secret.ts に統一（timingSafeEqual・fail-closed）
-    let user: any = null;
-    let isAgent = false;
-    if (hasValidSharedSecret(request)) {
-      user = { id: "agent", email: "agent@system" };
-      isAgent = true;
-    } else {
-      const supabase = await createClient();
-      const { data } = await supabase.auth.getUser();
-      user = data?.user;
-    }
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const isAgent = hasValidSharedSecret(request);
 
     let dbUser: any;
     if (isAgent) {
@@ -124,7 +113,7 @@ export async function POST(request: NextRequest) {
     let authUser: AuthUser | null = null;
     if (!isAgent) {
       authUser = await getAuthUserForAction();
-      if (!authUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+      if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       dbUser = { id: authUser.id, name: authUser.name, organizationId: authUser.organizationId };
     }
 

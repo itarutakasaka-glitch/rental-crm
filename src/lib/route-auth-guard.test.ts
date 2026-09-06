@@ -28,7 +28,10 @@ const PUBLIC_ALLOWLIST: Record<string, string> = {
   "public/visit/[orgId]/route.ts": "来店セルフ予約ページの公開情報（営業時間・来店方法）",
   "store-visit-bookings/route.ts": "顧客本人が入れる来店予約リクエスト（レート制限あり）",
   "track/open/[messageId]/route.ts": "メール開封ピクセル。openedAt/openCount のみ更新",
-  "auth/callback/route.ts": "Supabase ログインのコールバック",
+  "auth/login/route.ts": "ログインそのもの（レート制限あり・パスワードで認証する）",
+  "auth/logout/route.ts": "ログアウト（セッションCookieを消すだけ）",
+  "auth/request-reset/route.ts": "パスワード設定・再設定メールの送信依頼（存在の有無を漏らさない・レート制限あり）",
+  "auth/reset/route.ts": "一回限りトークンでのパスワード設定（レート制限あり）",
 };
 
 // 顧客IDを受け取る route は requireCustomerAccess を通す（他の手段で所属判定しない）

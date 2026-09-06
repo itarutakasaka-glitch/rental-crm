@@ -1,8 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db/prisma";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
-import { resolveSingleOrgOrNull } from "@/lib/resolve-single-org";
+import { getSessionUserId } from "@/lib/session";
 
 export type AuthUser = {
   id: string;
@@ -36,36 +35,14 @@ async function toAuthUser(dbUser: any): Promise<AuthUser> {
   };
 }
 
+// 2026-09-06: Supabase Auth から自前認証（lib/session.ts）へ移行。
+// User テーブルが唯一の正本なので、旧実装にあった「初回ログイン時に自動でユーザーを作る」
+// 処理は廃止した（2社目で誤った組織に割り当てる事故の温床だった）。
+// ユーザーは管理者が /settings/staff から登録する。
 export async function getCurrentUser(): Promise<AuthUser> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+  const user = await getAuthUserForAction();
   if (!user) redirect("/login");
-
-  let dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { organization: true },
-  });
-
-  if (!dbUser) {
-    // Auto-create user on first login
-    // TODO: 招待制が無いため、組織が1社しか無い間だけ自動でその組織に割り当てる。
-    // 2社以上になったら「最初の1社」に誤って割り当てる事故を防ぐため失敗させる
-    // (招待リンク等でorganizationIdを明示指定する仕組みが必要)。
-    const org = await resolveSingleOrgOrNull();
-    if (!org) throw new Error("所属組織を自動判定できません。管理者にユーザー登録を依頼してください。");
-
-    dbUser = await prisma.user.create({
-      data: {
-        email: user.email!,
-        name: user.email!.split("@")[0],
-        organizationId: org.id,
-      },
-      include: { organization: true },
-    });
-  }
-
-  return toAuthUser(dbUser);
+  return user;
 }
 
 // アクセス境界の判定を1箇所に集約(architecture-v2.md §2)。
@@ -84,16 +61,17 @@ export async function requireAdmin(): Promise<AuthUser> {
 
 export async function getAuthUserForAction(): Promise<AuthUser | null> {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    const userId = await getSessionUserId();
+    if (!userId) return null;
     const dbUser = await prisma.user.findUnique({
-      where: { email: user.email! },
+      where: { id: userId },
       include: { organization: true },
     });
     if (!dbUser) return null;
     return toAuthUser(dbUser);
-  } catch (e) { return null; }
+  } catch (e) {
+    return null;
+  }
 }
 
 // architecture-v2.md §10 S-1: API routeの「所属チェック忘れ＝他社データ漏えい」を構造的に防ぐ。
