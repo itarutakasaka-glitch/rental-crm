@@ -14,6 +14,7 @@ model Organization {
   id                 String              @id @default(cuid())
   name               String
   isTest             Boolean             @default(false) // M-13: 権限総当たりテスト用の組織。横断inbox・集計・cronから除外する
+  tagPresets         String[]            @default([]) // M-12: タグ候補(§4.3)。候補に無い自由入力も可
   slug               String?             @unique // architecture-v2.md §4: 反響メール宛先ルーティング用(hankyo+<slug>@...)
   phone              String?
   email              String?

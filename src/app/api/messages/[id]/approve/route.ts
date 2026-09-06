@@ -61,6 +61,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ...(nextAgentState === "BOOKED" ? { isBookingConfirmed: true } : {}),
       },
     });
+    // implementation-spec-v1.md §4.3: 人が承認してアポ確定文面を送った時もタグを付ける（cron の自動送信と揃える）
+    if (nextAgentState === "BOOKED") {
+      await prisma.customerTag.upsert({
+        where: { customerId_name: { customerId: customer.id, name: "アポ確定" } },
+        update: {},
+        create: { customerId: customer.id, name: "アポ確定" },
+      }).catch(() => {});
+    }
     await logAudit({ customerId: customer.id, userId: user.id, organizationId: customer.organizationId, action: "message.approve", field: message.channel, oldValue: message.body === finalBody ? undefined : message.body, newValue: message.subject || finalBody.slice(0, 80) });
 
     return NextResponse.json({ success: true, message: updated });

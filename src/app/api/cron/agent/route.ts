@@ -323,6 +323,20 @@ async function processNewInquiry(customer: any, org: any, mode: "DRAFT" | "SEND"
   console.log(`[Agent] 1st mail ${mode === "SEND" ? "sent" : "drafted"} for ${customer.name} (vacancy: ${vacancy}, qa: ${comment ? "yes" : "no"})`);
 }
 
+// implementation-spec-v1.md §4.3: 一覧でタグから拾えるよう自動付与する。
+// タグ付けの失敗で本処理（分類・送信）を止めない。
+async function addTag(customerId: string, name: string) {
+  try {
+    await prisma.customerTag.upsert({
+      where: { customerId_name: { customerId, name } },
+      update: {},
+      create: { customerId, name },
+    });
+  } catch (e) {
+    console.error("[Agent] failed to add tag", name, e);
+  }
+}
+
 // ====== PHASE 3: ClassifyAgent equivalent ======
 async function classifyReply(customer: any, org: any, replyBody: string, mode: "DRAFT" | "SEND", messageId?: string) {
   // architecture-v2.md §9(穴#4): intentCategoryは分類コストを増やさず、既存のA/B/C層判定と
@@ -447,6 +461,7 @@ JSONで回答: {"classification":"A","reason":"理由","intentCategory":"VIEWING
       ...(classification === "A" && !customer.desireSignalDetectedAt ? { desireSignalDetectedAt: new Date() } : {}),
     },
   });
+  if (classification === "A") await addTag(customer.id, "意欲あり");
 }
 
 // ====== PHASE 5: ConfirmAgent equivalent ======
@@ -524,6 +539,7 @@ async function confirmAppointment(customer: any, org: any, replyBody: string, mo
       ...(mode === "SEND" ? { isBookingConfirmed: true } : {}),
     },
   });
+  if (mode === "SEND") await addTag(customer.id, "アポ確定");
   console.log(`[Agent] CONFIRM ${mode === "SEND" ? "sent" : "drafted"}: ${customer.name} datetime=${datetime} phone=${phone} via ${useLineChannel ? "LINE" : "EMAIL"}`);
 }
 
