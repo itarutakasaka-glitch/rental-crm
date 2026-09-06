@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
 import { Rajdhani } from "next/font/google";
 
 const rajdhani = Rajdhani({ subsets: ["latin"], weight: ["400", "500", "600", "700"], display: "swap" });
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { LogoutButton } from "@/components/layout/logout-button";
 
@@ -18,9 +17,8 @@ function Logo() {
 }
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  // 未ログインなら getCurrentUser が /login へリダイレクトする（2026-09-06 自前認証へ移行）
+  const user = await getCurrentUser();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
