@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
   });
   if (!user) return NextResponse.json({ error: `user not found: ${normalizedEmail}` }, { status: 404 });
 
-  const { url, expiresAt } = await createPasswordResetToken(user.id);
+  // 管理API経由は24時間有効（担当者に手渡しするまでの間を見込む。§6.1 / password-reset.ts のコメント参照）
+  const { url, expiresAt } = await createPasswordResetToken(user.id, "admin");
   await logAudit({
     userId: user.id, organizationId: user.organizationId,
     action: "auth.password.linkIssued", field: normalizedEmail, newValue: "admin API",
