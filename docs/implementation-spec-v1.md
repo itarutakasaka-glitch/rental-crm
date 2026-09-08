@@ -85,6 +85,7 @@
 | 人が選ぶ定型文 | Template（category 付き） | 送信パネルの「定型文」 | `{{customer_name}}` `{{company_name}}` `{{store_name}}` `{{store_address}}` `{{store_phone}}` `{{store_hours}}` `{{line_url}}` `{{license_number}}` `{{property_name}}` `{{property_url}}` `{{staff_name}}` `{{visit_url}}` |
 | エージェントが引く文面 | AgentTemplate（key） | cron/agent・店舗振り分けの下書き | 同上 ＋ `{visit_proposal}` `{store_access}` `{appointment_datetime}` |
 | 橋渡し | Template.agentKey | 同じ文面を両方から引く | |
+| 来店セルフ予約の自動返信 | StoreVisitSetting.autoReplyBody | 予約リクエストへの即時返信 | `{{visit_date}}` `{{visit_time}}` `{{visit_method}}` `{{num_guests}}` `{{visit_memo}}` `{{visit_status}}`（確定／未確定の案内文。定型文に無ければ末尾に自動で足す） |
 
 確定: **新しい変数は上の表に追記してから使う**。変数の置換関数は現状3箇所（`customer-detail.tsx` / `send-message/route.ts` / `workflow-run/route.ts`）に重複しているため `lib/template-vars.ts` に1本化する（Phase D-0）。
 
@@ -461,8 +462,8 @@ OrganizationChannel
 
 **D-1（1社目＝フラットエージェンシーを本番運用）**
 - [ ] F-1〜F-12・F-17 の MUST が揃う
-- [ ] M-3 OrganizationChannel で会社の LINE 公式・送信元を設定できる
-- [ ] M-6 承認制セルフ予約
+- [x] M-3 OrganizationChannel で会社の LINE 公式・送信元を設定できる（2026-09-08 PR #42。`CHANNEL_SECRET_KEY` の登録＝Itaru の手作業が残り）
+- [x] M-6 承認制セルフ予約（2026-09-08 PR #43）。M-10 は INTERNAL のみ実装（外部カレンダーは未接続＝連動なし扱い）
 - [ ] §5 のドライラン→取り込み→並行稼働2週間を完了し、切替後1週間で「送信事故 0 件・未対応滞留 24h 超 0 件」
 
 **D-2（5社）**
@@ -524,6 +525,22 @@ OrganizationChannel
   - 復旧手順書 `docs/runbook-restore.md`
 - **2026-09-08 認証基盤の移行（PR #39・#40、計画外）**: Supabase 無料プランの自動停止で「顧客データは無事なのにログインだけ落ちる」障害が実際に発生。認証を Neon 側の自前実装へ移行した（`User.passwordHash` は scrypt、`Session` はDB管理でCookieには乱数トークンのみ）。**アプリに存在しなかったパスワード設定・再設定の導線**（`/forgot-password` → Resend メール → `/reset-password`）を新設。総当たり対策と監査ログ（login / failed / logout / reset / linkIssued）付き。緊急口 `/api/agent/issue-reset-link`（共有秘密鍵・監査ログ・24時間有効）。あわせて「初回ログイン時にユーザーを自動作成して1社目に割り当てる」処理を廃止（2社目で誤配属する事故の温床。architecture-v2 の B-1）。**外部の認証サービスへの依存はゼロになった。**
 - **2026-09-08 CI 追加（PR #41）**: `.github/workflows/ci.yml`。PR ごとに型検査・テスト・ビルドを回す。これまで CI が無く、認証漏れを検出する `route-auth-guard.test.ts` が手元でしか走っていなかった。テストが0件でも成功に見える事故を防ぐため、実行件数の下限チェック付き。
+- **2026-09-08 D-1 第2弾（PR #42）**: M-3 `OrganizationChannel`。会社（必要なら店舗）ごとにメール・LINE・SMS の送信元を持てるようにした。
+  - 秘密情報は AES-256-GCM で暗号化して保存（`lib/crypto.ts`・鍵は `CHANNEL_SECRET_KEY`）。復号できない値は平文として返さず `null`（誤って送信に使わせない）
+  - 解決は `lib/channel-resolver.ts`。店舗 → 会社 → 既定の順。**会社が「無効」にしている時は既定に落とさず送信を中止**し `#900_dev_monitoring` へ通知する。判断部分は DB から切り離して `lib/channel-decision.ts` に置き、テストで固定した
+  - メール送信の全経路（`agent/send`・`broadcast`・`send-message`・`store-visit-bookings`・`workflow-run`）をこの解決に通した
+  - 会社ごとの LINE 公式アカウント用に `/api/webhook/line/[channelId]` を新設（§6 の設計どおり）。URL から会社が確定するため、共通アカウントのように「登録が1社なら その会社」と推測しない。顧客の検索もその会社の中に限定。Webhook 本体は `lib/line-webhook.ts` に1本化し、共通/会社別の違いを「認証情報と対象会社」だけにした
+  - 設定画面 `/settings/channels`（カードは縦1列）。秘密情報はマスクしか返さない
+  - テスト 43件 → **68件**（crypto 8・channel-decision 14 ほか）
+- **2026-09-08 D-1 第3弾（PR #43）**: M-6 承認制セルフ予約 と M-10 店舗スケジュール連動（INTERNAL）。
+  - `StoreVisitBooking.status` を enum 化し、`confirmedBy`（SCHEDULE_LINK / STAFF_CONTACT）・`confirmedAt`・`confirmedByUserId`・`rejectReason`・`storeId` を追加。既に CONFIRMED だった行は旧仕様（自動確定）なので STAFF_CONTACT に寄せた
+  - **予約時点では確定しない**（§2.5）。連動ありの店舗だけ空きを確認して即時確定し、埋まっていれば予約を作らず同じ日の空き枠を候補として返す（409）
+  - 確定したときにだけ `Schedule(VISIT)` を作り、追客を `STOPPED_BY_VISIT` で止め、`isBookingConfirmed` を立てる（`lib/booking.ts` に集約）。以前は予約と同時に無条件で予定を作っていた
+  - 顧客への自動返信に `{{visit_status}}`（確定／未確定の案内）を追加。定型文に無い会社には末尾へ自動で足す
+  - 担当者向け API `/api/bookings`（一覧）・`/api/bookings/[id]`（confirm / reject / cancel）。顧客詳細のスケジュールタブに「未確定の来店予約」カードと **「連絡済み・確定」** ボタン。取り消し時は作った来店予定も消す
+  - M-10 `StoreScheduleLink`。設定画面 `/settings/schedule-link`（店舗ごとに縦1列）。**INTERNAL のみ実装**。外部カレンダーを選んでも「未実装＝連動なし」として扱い、勝手に確定させない。連動先が失敗中（24時間以内にエラー）の店舗も連動なし扱い
+  - 空き判定は `lib/schedule-slots.ts` に DB から切り離して置き、テストで固定（枠の途中の時刻を弾く・一部重なりも埋まり扱い・定休日は候補を出さない）
+  - テスト 68件 → **83件**
 - 残り（D-0）: 権限総当たりテストの**後半**（A社・B社・staff の3ユーザーで実際にログインして 200/403 を確認する部分。Supabase のテストアカウント3つが要る＝Itaru の手作業）、Neon の PITR 確認（S-3）、`RESEND_WEBHOOK_SECRET` の登録。
   前半（未ログイン・鍵なしで弾かれること）は `scripts/check-public-endpoints.mjs` で本番に対して実行できる。
 
@@ -537,4 +554,6 @@ OrganizationChannel
 - v1.5 2026-09-05: 引き継ぎ文書で「薄い」と挙げた箇所を埋めた。§4.1 レポート画面、§4.2 会社別振り分けルール（正本＝マニュアルB YAML）、§4.3 タグ、§5.2b 移行スクリプト設計、§6.1 外部連携の設定画面と移行、§8.1b 権限総当たりテスト設計、§10 画面仕様。M-11〜M-13 追加。
 - v1.6 2026-09-06: D-0 第2弾の実施状況を追記（監査ログ・秘密鍵統一・変数置換1本化・svix 署名検証・STOPPED_MANUAL・M-13・復旧手順書）。
 - v1.8 2026-09-08: 認証の自前実装への移行（計画外・障害対応）と CI 追加を反映。D-0 のチェックリストを実測に合わせて更新。
+- v1.9 2026-09-08: D-1 第2弾。M-3 `OrganizationChannel` を実装（PR #42）。§6 の解決順・§6.1 の設定画面・会社別 LINE Webhook を実装に反映。
+- v1.10 2026-09-08: D-1 第3弾。M-6 承認制セルフ予約・M-10 店舗スケジュール連動（INTERNAL のみ）を実装（PR #43）。§1.3 の変数表に来店予約の変数を追記。
 - v1.7 2026-09-06: D-1 第1弾。F-1/F-2（店舗フィルタ・3段階ドリルダウン）・F-4（タグ）・F-17（横断検索）を実装し §4 の表を更新。受信トレイの絞り込みをすべてサーバー側に移した（ページングと併用したときに件数と結果が嘘にならないように）。M-12 `Organization.tagPresets` 追加。

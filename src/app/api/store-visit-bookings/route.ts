@@ -4,6 +4,7 @@ import { getResend } from "@/lib/resend";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { resolveTemplateVars } from "@/lib/template-vars";
 import { resolveEmailChannel, buildEmailFrom } from "@/lib/channel-resolver";
+import { getScheduleLinkState, checkStoreAvailability, confirmBooking } from "@/lib/booking";
 
 
 export async function POST(request: Request) {
@@ -95,14 +96,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "\u96FB\u8A71\u756A\u53F7\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044" }, { status: 400 });
     }
 
+    // implementation-spec-v1.md 2.5 (M-6): まず未確定(PENDING)で受け付ける。
+    // 店舗スケジュール連動がある店舗だけ、空きを確認できたらこの場で確定する。
+    const bookingDate = new Date(visitDate);
+    const link = await getScheduleLinkState(customer.storeId, {
+      hoursStart: setting.availableTimeStart,
+      hoursEnd: setting.availableTimeEnd,
+    });
+
+    if (link.kind === "linked") {
+      const avail = await checkStoreAvailability({
+        organizationId,
+        storeId: customer.storeId!,
+        visitDate: bookingDate,
+        visitTime,
+        slotMinutes: link.slotMinutes,
+        hoursStart: link.hoursStart,
+        hoursEnd: link.hoursEnd,
+      });
+      if (avail.kind === "ng") {
+        // 埋まっている・営業時間外。予約は作らず、同じ日の空き枠を候補として返す
+        return NextResponse.json({ error: avail.reason, alternatives: avail.alternatives }, { status: 409 });
+      }
+    }
+
     const booking = await prisma.storeVisitBooking.create({
       data: {
         organizationId,
         customerId: customer.id,
+        storeId: customer.storeId,
         name: customerName,
         email: customerEmail,
         phone: customerPhone,
-        visitDate: new Date(visitDate),
+        visitDate: bookingDate,
         visitTime,
         visitMethod: visitMethod || "",
         memo: memo || "",
@@ -110,23 +136,12 @@ export async function POST(request: Request) {
       },
     });
 
-    const [hours, minutes] = visitTime.split(":").map(Number);
-    const startAt = new Date(visitDate);
-    startAt.setHours(hours, minutes, 0, 0);
-    const endAt = new Date(startAt);
-    endAt.setHours(endAt.getHours() + 1);
-
-    await prisma.schedule.create({
-      data: {
-        organizationId,
-        customerId: customer.id,
-        title: `${customerName} - \u6765\u5e97\u4e88\u7d04`,
-        description: `${visitMethod ? visitMethod + "\n" : ""}${memo || ""}`,
-        type: "VISIT",
-        startAt,
-        endAt,
-      },
-    });
+    // 連動ありなら即時確定。Schedule(VISIT) の作成・追客停止もここで行う
+    let confirmed = false;
+    if (link.kind === "linked") {
+      const r = await confirmBooking({ bookingId: booking.id, by: "SCHEDULE_LINK", slotMinutes: link.slotMinutes });
+      confirmed = r.ok;
+    }
 
     // Create notification message so it appears in customer detail chat
     const dateLabel = visitDate.replace(/-/g, "/");
@@ -137,16 +152,20 @@ export async function POST(request: Request) {
         customerId: customer.id,
         direction: "INBOUND",
         channel: "EMAIL",
-        subject: "\u3010\u6765\u5E97\u4E88\u7D04\u3011",
-        body: `\u6765\u5E97\u4E88\u7D04\u304C\u5165\u308A\u307E\u3057\u305F\u3002\n\u65E5\u6642: ${dateLabel} ${visitTime}\n\u4EBA\u6570: ${body.numGuests || 1}\u4EBA${methodLabel}\n\u96FB\u8A71: ${customerPhone}${memoLabel}`,
+        subject: confirmed ? "\u3010\u6765\u5E97\u4E88\u7D04\u30FB\u78BA\u5B9A\u3011" : "\u3010\u6765\u5E97\u4E88\u7D04\u30FB\u672A\u78BA\u5B9A\u3011",
+        body:
+          `\u6765\u5E97\u4E88\u7D04\u304C\u5165\u308A\u307E\u3057\u305F\u3002\n\u65E5\u6642: ${dateLabel} ${visitTime}\n\u4EBA\u6570: ${body.numGuests || 1}\u4EBA${methodLabel}\n\u96FB\u8A71: ${customerPhone}${memoLabel}\n\n` +
+          (confirmed
+            ? "\u5E97\u8217\u30B9\u30B1\u30B8\u30E5\u30FC\u30EB\u306E\u7A7A\u304D\u3092\u78BA\u8A8D\u3057\u3001\u78BA\u5B9A\u6E08\u307F\u3067\u3059\u3002"
+            : `\u672A\u78BA\u5B9A\u3067\u3059\u3002\u304A\u5BA2\u69D8\u3078\u9023\u7D61\u3057\u3001\u8A73\u7D30\u753B\u9762\u306E\u300C\u9023\u7D61\u6E08\u307F\u30FB\u78BA\u5B9A\u300D\u3092\u62BC\u3057\u3066\u304F\u3060\u3055\u3044\u3002${link.kind === "linked" ? "" : "\uFF08" + link.reason + "\uFF09"}`),
         status: "DELIVERED",
       },
     });
 
-    // Mark as needs action
+    // 未確定の予約は担当者の対応が要る。確定済みなら confirmBooking 側で下ろしてある
     await prisma.customer.update({
       where: { id: customer.id },
-      data: { isNeedAction: true, lastActiveAt: new Date() },
+      data: { isNeedAction: !confirmed, lastActiveAt: new Date() },
     });
 
     if (setting.autoReplySubject && setting.autoReplyBody && customerEmail) {
@@ -162,10 +181,18 @@ export async function POST(request: Request) {
           visit_method: visitMethod || "",
           num_guests: String(body.numGuests || 1),
           visit_memo: memo || "",
+          // implementation-spec-v1.md §2.5: 未確定であることを顧客に伝える。
+          // 定型文に {{visit_status}} が無い会社もあるので、無ければ末尾に足す。
+          visit_status: confirmed
+            ? "ご予約は確定しております。当日はお気をつけてお越しくださいませ。"
+            : "現時点ではお席の確保が完了しておりません。店舗より確認のご連絡をいたします。",
         },
       };
       const subjectText = resolveTemplateVars(setting.autoReplySubject, varCtx);
-      const bodyText = resolveTemplateVars(setting.autoReplyBody, varCtx);
+      let bodyText = resolveTemplateVars(setting.autoReplyBody, varCtx);
+      if (!setting.autoReplyBody.includes("{{visit_status}}")) {
+        bodyText = `${bodyText}\n\n${varCtx.extra.visit_status}`;
+      }
 
       try {
         const resend = getResend();
@@ -194,7 +221,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, bookingId: booking.id });
+    return NextResponse.json({ success: true, bookingId: booking.id, status: confirmed ? "CONFIRMED" : "PENDING" });
   } catch (error) {
     console.error("POST store-visit-bookings error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
