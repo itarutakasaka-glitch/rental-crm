@@ -1,4 +1,4 @@
-# heyacules cloud 実装仕様書 v1.7
+# heyacules cloud 実装仕様書 v1.8
 
 2026-09-05 作成。**「ちゃんとしたサービスにする」前提で、Phase D（カナリー置換）に入る前に確定させる仕様**。
 `architecture-v2.md` が「なぜ・全体像」、この文書が「何を・どう作るか」。両方とも正本。矛盾したらこの文書を直す（実装はこの文書に従う）。
@@ -442,7 +442,7 @@ OrganizationChannel
 | 項目 | 仕様 |
 |---|---|
 | 対象環境 | 本番（Q-6 決定: staging は作らない）。`Organization` を2社 seed する（名前 `__test-org-a` / `__test-org-b`、`slug` `test-a` / `test-b`）。顧客は各社1件（氏名「テスト太郎」、メール `test-a@example.com`、電話なし）。**実在の個人情報は入れない** |
-| ユーザー | A社の一般ユーザー、B社の一般ユーザー、staff（両社に `StaffOrgAccess`）の3人。Supabase のテストアカウントを3つ用意し、メール/パスワードでログインしてセッション Cookie を取る（`/api/auth/callback` 経由） |
+| ユーザー | A社の一般ユーザー、B社の一般ユーザー、staff（両社に `StaffOrgAccess`）の3人。`/settings/staff` で作成し、`/api/agent/issue-reset-link` で各自のパスワードを設定して `/api/auth/login` からセッション Cookie を取る（2026-09-08 の自前認証移行により Supabase のテストアカウントは不要になった） |
 | 実行 | §3 の表の各行について、3ユーザー×（自社の顧客ID／他社の顧客ID）で呼び、期待値（自社 200・他社 403・未ログイン 401 または 307）と照合。書き込み系は本文に `"__test": true` を付け、テスト後に作成物を削除 |
 | 判定 | 1件でも期待外なら失敗。結果は表（route × ユーザー × 対象 → 実際のステータス）で出力し、CI（GitHub Actions・毎晩）で実行。失敗は Slack `#900_dev_monitoring` へ |
 | 後片付け | テスト組織のデータは毎回削除。テスト組織自体は残す（`isTest=true`・M-13。横断 inbox と集計から除外） |
@@ -450,12 +450,14 @@ OrganizationChannel
 ### 8.2 フェーズごとの受け入れ条件
 
 **D-0（仕様の前提整備）**
-- [ ] M-1 agentState 移行完了。memo にマーカー文字列が残っていない（SQL で 0 件）
-- [ ] M-2 / M-4 / M-5 適用済み
-- [ ] §3 の ⚠ をすべて ✅ に（監査ログ・`verifySharedSecret` 統一・preference の所属チェック・staff の管理者限定）
-- [ ] 権限総当たりテストが CI で通る
-- [ ] 変数置換の1本化（`lib/template-vars.ts`）
-- [ ] 復旧手順書と PITR 確認
+- [x] M-1 agentState 移行完了。memo にマーカー文字列が残っていない（2026-09-08 本番で 0 件を確認）
+- [x] M-2 / M-4 / M-5 適用済み
+- [x] §3 の ⚠ をすべて ✅ に（監査ログ・`verifySharedSecret` 統一・preference の所属チェック・staff の管理者限定）
+- [x] 静的な認証ガード（`route-auth-guard.test.ts`）が CI で通る（2026-09-08 GitHub Actions を追加）
+- [ ] 権限総当たりテストの**後半**（3ユーザーで実際にログインして 200/403 を確認）。テスト用アカウントの作成が要る
+- [x] 変数置換の1本化（`lib/template-vars.ts`）
+- [x] 復旧手順書（`docs/runbook-restore.md`）
+- [ ] **S-3: Neon の PITR 確認（Itaru の手作業）**
 
 **D-1（1社目＝フラットエージェンシーを本番運用）**
 - [ ] F-1〜F-12・F-17 の MUST が揃う
@@ -520,6 +522,8 @@ OrganizationChannel
   - M-13 `Organization.isTest`: 横断inbox・cron/agent・cron/workflow・staff付与から除外。テスト組織の seed API（`/api/agent/seed-test-orgs`）
   - テスト 20件 → **43件**（template-vars 9・svix 7・route 認証ガード 3・agentState 3・store-routing 16・org_default 1 ほか）
   - 復旧手順書 `docs/runbook-restore.md`
+- **2026-09-08 認証基盤の移行（PR #39・#40、計画外）**: Supabase 無料プランの自動停止で「顧客データは無事なのにログインだけ落ちる」障害が実際に発生。認証を Neon 側の自前実装へ移行した（`User.passwordHash` は scrypt、`Session` はDB管理でCookieには乱数トークンのみ）。**アプリに存在しなかったパスワード設定・再設定の導線**（`/forgot-password` → Resend メール → `/reset-password`）を新設。総当たり対策と監査ログ（login / failed / logout / reset / linkIssued）付き。緊急口 `/api/agent/issue-reset-link`（共有秘密鍵・監査ログ・24時間有効）。あわせて「初回ログイン時にユーザーを自動作成して1社目に割り当てる」処理を廃止（2社目で誤配属する事故の温床。architecture-v2 の B-1）。**外部の認証サービスへの依存はゼロになった。**
+- **2026-09-08 CI 追加（PR #41）**: `.github/workflows/ci.yml`。PR ごとに型検査・テスト・ビルドを回す。これまで CI が無く、認証漏れを検出する `route-auth-guard.test.ts` が手元でしか走っていなかった。テストが0件でも成功に見える事故を防ぐため、実行件数の下限チェック付き。
 - 残り（D-0）: 権限総当たりテストの**後半**（A社・B社・staff の3ユーザーで実際にログインして 200/403 を確認する部分。Supabase のテストアカウント3つが要る＝Itaru の手作業）、Neon の PITR 確認（S-3）、`RESEND_WEBHOOK_SECRET` の登録。
   前半（未ログイン・鍵なしで弾かれること）は `scripts/check-public-endpoints.mjs` で本番に対して実行できる。
 
@@ -532,4 +536,5 @@ OrganizationChannel
 - v1.4 2026-09-05: Q-7 決定（連動先＝Google カレンダー・サイボウズ・TimeTree・カナリー内スケジュール）。§6.2 に連動先ごとの方式・可否・実装順を追加。
 - v1.5 2026-09-05: 引き継ぎ文書で「薄い」と挙げた箇所を埋めた。§4.1 レポート画面、§4.2 会社別振り分けルール（正本＝マニュアルB YAML）、§4.3 タグ、§5.2b 移行スクリプト設計、§6.1 外部連携の設定画面と移行、§8.1b 権限総当たりテスト設計、§10 画面仕様。M-11〜M-13 追加。
 - v1.6 2026-09-06: D-0 第2弾の実施状況を追記（監査ログ・秘密鍵統一・変数置換1本化・svix 署名検証・STOPPED_MANUAL・M-13・復旧手順書）。
+- v1.8 2026-09-08: 認証の自前実装への移行（計画外・障害対応）と CI 追加を反映。D-0 のチェックリストを実測に合わせて更新。
 - v1.7 2026-09-06: D-1 第1弾。F-1/F-2（店舗フィルタ・3段階ドリルダウン）・F-4（タグ）・F-17（横断検索）を実装し §4 の表を更新。受信トレイの絞り込みをすべてサーバー側に移した（ページングと併用したときに件数と結果が嘘にならないように）。M-12 `Organization.tagPresets` 追加。
