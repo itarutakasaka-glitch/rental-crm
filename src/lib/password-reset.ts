@@ -5,13 +5,20 @@ import { appBaseUrl } from "@/lib/template-vars";
 
 // パスワード設定・再設定の一回限りトークン。
 // Cookie と同じ方針で、DB には SHA-256 だけを保存する。
-const RESET_TTL_MS = 60 * 60 * 1000; // 1時間
+//
+// 有効期限は発行経路で分ける:
+// - メール経由（本人が自分で要求）: 1時間。届いたらすぐ使う前提の標準的な長さ
+// - 管理API経由（/api/agent/issue-reset-link）: 24時間。共有秘密鍵で保護され発行が監査ログに
+//   残る経路で、担当者に手渡しするまでに間が空くため。1時間だと渡した頃には切れていて
+//   再発行を繰り返すことになる（2026-09-08に実際に3回繰り返した）。
+const RESET_TTL_EMAIL_MS = 60 * 60 * 1000;
+const RESET_TTL_ADMIN_MS = 24 * 60 * 60 * 1000;
 
-export async function createPasswordResetToken(userId: string) {
+export async function createPasswordResetToken(userId: string, via: "email" | "admin" = "email") {
   // 同じユーザーの未使用トークンは無効化する（最後に発行したものだけ有効）
   await prisma.passwordReset.deleteMany({ where: { userId, usedAt: null } });
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + RESET_TTL_MS);
+  const expiresAt = new Date(Date.now() + (via === "admin" ? RESET_TTL_ADMIN_MS : RESET_TTL_EMAIL_MS));
   await prisma.passwordReset.create({ data: { tokenHash: hashToken(token), userId, expiresAt } });
   return { token, expiresAt, url: `${appBaseUrl()}/reset-password?token=${encodeURIComponent(token)}` };
 }
