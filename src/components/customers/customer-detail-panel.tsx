@@ -99,6 +99,8 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [schEndAt, setSchEndAt] = useState("");
   const [schStaff, setSchStaff] = useState("");
   const [schEditId, setSchEditId] = useState<string | null>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookingBusy, setBookingBusy] = useState<string | null>(null);
 
   const fetchSchedules = useCallback(async () => {
     try {
@@ -106,6 +108,36 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
       if (res.ok) setSchedules(await res.json());
     } catch (e) { console.error(e); }
   }, [customerId]);
+
+  // implementation-spec-v1.md 2.5 (M-6): 未確定の来店予約。
+  // 担当者がお客様に連絡した事実をもって確定する（連動していない店舗の確定手段）。
+  const fetchBookings = useCallback(async () => {
+    try {
+      const res = await fetch("/api/bookings?customerId=" + customerId);
+      if (res.ok) setBookings((await res.json()).bookings || []);
+    } catch (e) { console.error(e); }
+  }, [customerId]);
+
+  const handleBookingAction = async (bookingId: string, action: "confirm" | "reject") => {
+    let reason: string | null = "";
+    if (action === "reject") {
+      reason = prompt("お受けできない理由を入力してください（お客様への案内に使います）");
+      if (reason === null) return;
+    } else if (!confirm("お客様へ連絡済みですか？この予約を確定にします。")) {
+      return;
+    }
+    setBookingBusy(bookingId);
+    try {
+      const res = await fetch("/api/bookings/" + bookingId, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, reason }),
+      });
+      if (!res.ok) alert((await res.json().catch(() => ({}))).error || "変更できませんでした");
+      await Promise.all([fetchBookings(), fetchSchedules(), fetchCustomer()]);
+      onUpdated();
+    } finally { setBookingBusy(null); }
+  };
 
   const handleScheduleSave = async () => {
     if (!schTitle.trim() || !schStartAt) return;
@@ -285,7 +317,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     } catch (e) { console.error(e); }
   }, []);
 
-  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchOrg(); fetchRecords(); fetchSchedules(); fetchPreference(); fetchWorkflows(); fetchWfRuns(); }, [fetchCustomer, fetchTemplates, fetchOrg, fetchRecords, fetchSchedules, fetchPreference, fetchWorkflows, fetchWfRuns]);
+  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchOrg(); fetchRecords(); fetchSchedules(); fetchBookings(); fetchPreference(); fetchWorkflows(); fetchWfRuns(); }, [fetchCustomer, fetchTemplates, fetchOrg, fetchRecords, fetchSchedules, fetchBookings, fetchPreference, fetchWorkflows, fetchWfRuns]);
   useEffect(() => { const iv = setInterval(fetchCustomer, 10000); return () => clearInterval(iv); }, [fetchCustomer]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [customer?.messages]);
 
@@ -940,7 +972,32 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
               </div>
             </div>
             <div style={{ flex: 1, overflow: "auto", padding: "12px 14px" }}>
-              {schedules.length === 0 ? (
+              {/* 未確定の来店予約（縦1列） */}
+              {bookings.map((b: any) => (
+                <div key={b.id} style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 8, background: "#FFFBEB", border: "1px solid #FCD34D" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", marginBottom: 4 }}>未確定の来店予約</div>
+                  <div style={{ fontSize: 12, color: "#374151", marginBottom: 2 }}>
+                    {String(b.visitDate).slice(0, 10).replace(/-/g, "/")} {b.visitTime}
+                    {b.store?.name ? "（" + b.store.name + "）" : ""}
+                  </div>
+                  {b.visitMethod && <div style={{ fontSize: 11, color: "#6b7280" }}>来店方法: {b.visitMethod}</div>}
+                  {b.memo && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{b.memo}</div>}
+                  <div style={{ fontSize: 10, color: "#92400E", marginTop: 6, lineHeight: 1.6 }}>
+                    店舗のスケジュールと連動していないため、まだ席は取れていません。お客様へ連絡してから確定してください。
+                  </div>
+                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                    <button onClick={() => handleBookingAction(b.id, "confirm")} disabled={bookingBusy === b.id}
+                      style={{ padding: "5px 14px", fontSize: 12, fontWeight: 600, border: "none", borderRadius: 4, cursor: bookingBusy === b.id ? "not-allowed" : "pointer", background: bookingBusy === b.id ? "#d1d5db" : "#d4a017", color: "#fff" }}>
+                      連絡済み・確定
+                    </button>
+                    <button onClick={() => handleBookingAction(b.id, "reject")} disabled={bookingBusy === b.id}
+                      style={{ padding: "5px 14px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, cursor: bookingBusy === b.id ? "not-allowed" : "pointer", background: "#fff", color: "#6b7280" }}>
+                      お受けできない
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {schedules.length === 0 && bookings.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 30, color: "#9ca3af", fontSize: 12 }}>{"\u30B9\u30B1\u30B8\u30E5\u30FC\u30EB\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093"}</div>
               ) : (
                 schedules.map((sch: any) => {

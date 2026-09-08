@@ -57,6 +57,8 @@ const CUSTOMER_SCOPED_EXEMPT: Record<string, string> = {
   "webhook/line/route.ts": "受信webhook。LINE 署名で検証し、lineUserId から顧客を引く",
   "webhook/line/[channelId]/route.ts": "受信webhook。会社ごとのチャネルシークレットで署名検証し、その会社の中だけで顧客を引く",
   "store-visit-bookings/route.ts": "公開route。organizationId と一致する顧客だけを対象にしている",
+  "bookings/route.ts": "担当者向けの予約一覧。organizationId で絞った予約だけを返す",
+  "bookings/[id]/route.ts": "canAccessOrg で予約の所属会社を確認している",
   "public/visit/[orgId]/route.ts": "公開route。URL の組織の公開情報のみ",
   "track/open/[messageId]/route.ts": "公開route。開封記録のみ",
 };

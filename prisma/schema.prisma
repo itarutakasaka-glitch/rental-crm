@@ -113,6 +113,7 @@ model User {
   staffAccess       StaffOrgAccess[]
   sessions          Session[]
   passwordResets    PasswordReset[]
+  confirmedBookings StoreVisitBooking[] @relation("ConfirmedBookings")
 }
 
 // 2026-09-06: Supabase Auth からの移行。ログイン状態をDBで持つ。
@@ -178,6 +179,8 @@ model Store {
   closedDayRules    StoreClosedDayRule[]
   customers         Customer[]
   channels          OrganizationChannel[]
+  visitBookings     StoreVisitBooking[]
+  scheduleLink      StoreScheduleLink?
 
   @@unique([organizationId, slug])
 }
@@ -628,21 +631,80 @@ model StoreVisitSetting {
   updatedAt          DateTime     @updatedAt
 }
 
+// implementation-spec-v1.md §2.5 (M-6): 予約を入れた時点では確定しない。
+// 店舗スケジュール連動がある店舗だけ即時確定し、無い店舗は担当者が連絡した事実で確定する。
 model StoreVisitBooking {
-  id             String       @id @default(cuid())
-  organizationId String
-  customerId     String?
-  name           String
-  email          String
-  phone          String       @default("")
-  visitDate      DateTime     @db.Date
-  visitTime      String
-  visitMethod    String       @default("")
-  memo           String       @default("")
-  status         String       @default("PENDING")
-  createdAt      DateTime     @default(now())
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  customer       Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  id                String        @id @default(cuid())
+  organizationId    String
+  customerId        String?
+  storeId           String?
+  name              String
+  email             String
+  phone             String        @default("")
+  visitDate         DateTime      @db.Date
+  visitTime         String
+  visitMethod       String        @default("")
+  memo              String        @default("")
+  status            BookingStatus @default(PENDING)
+  confirmedBy       ConfirmedBy?
+  confirmedAt       DateTime?
+  confirmedByUserId String?
+  /// REJECTED にした理由（顧客への案内文にも使う）
+  rejectReason      String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt @default(now())
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer          Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  store             Store?        @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  confirmedByUser   User?         @relation("ConfirmedBookings", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, visitDate])
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  CANCELLED
+}
+
+enum ConfirmedBy {
+  /// 店舗スケジュール連動で空きを確認し、連動先に書き込めた
+  SCHEDULE_LINK
+  /// 担当者が顧客に連絡した事実をもって確定した
+  STAFF_CONTACT
+}
+
+// implementation-spec-v1.md §6.2 (M-10): 店舗ごとの外部カレンダー連動設定。
+// INTERNAL は CRM 内の枠（営業時間×枠の長さ×定休日）で、連動先が無い店舗の基盤。
+model StoreScheduleLink {
+  id            String           @id @default(cuid())
+  storeId       String           @unique
+  store         Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  provider      ScheduleProvider @default(INTERNAL)
+  isActive      Boolean          @default(false)
+  /// 連動先のカレンダー識別子（Google のカレンダーID 等）
+  calendarId    String?
+  /// 連動先の認証情報。§6 と同じ AES-256-GCM で暗号化して保存する
+  secretEnc     String?
+  /// 1枠の長さ（分）
+  slotMinutes   Int              @default(60)
+  /// 受付する営業時間。未設定なら StoreVisitSetting の値を使う
+  hoursStart    String?
+  hoursEnd      String?
+  /// 直近の連動失敗。失敗中は「連動なし」として扱う（黙って確定にしない）
+  lastErrorAt   DateTime?
+  lastError     String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+enum ScheduleProvider {
+  INTERNAL
+  GOOGLE_CALENDAR
+  CYBOZU
+  TIMETREE
+  CANARY
 }
 
 model VisitReminder {
