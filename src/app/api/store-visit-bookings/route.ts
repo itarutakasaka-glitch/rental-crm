@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { getResend } from "@/lib/resend";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { resolveTemplateVars } from "@/lib/template-vars";
+import { resolveEmailChannel, buildEmailFrom } from "@/lib/channel-resolver";
 
 
 export async function POST(request: Request) {
@@ -149,8 +150,7 @@ export async function POST(request: Request) {
     });
 
     if (setting.autoReplySubject && setting.autoReplyBody && customerEmail) {
-      const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
-      const fromName = org.storeName || org.name || "CRM";
+      const fromName = org.storeName || org.name || "ヘヤクレス";
       // implementation-spec-v1.md §1.3: 変数置換は lib/template-vars.ts に集約。
       // 来店予約固有の変数（visit_date 等）は extra で渡す。
       const varCtx = {
@@ -170,8 +170,10 @@ export async function POST(request: Request) {
       try {
         const resend = getResend();
         if (!resend) throw new Error("メール送信が未設定です(RESEND_API_KEY)");
+        // implementation-spec-v1.md §6: 会社ごとの差出人（無効化されていれば例外→下のcatchでログのみ）
+        const emailCh = await resolveEmailChannel(org.id, customer.storeId);
         await resend.emails.send({
-          from: `${fromName} <${fromEmail}>`,
+          from: buildEmailFrom(emailCh, fromName),
           to: customerEmail,
           subject: subjectText,
           text: bodyText,

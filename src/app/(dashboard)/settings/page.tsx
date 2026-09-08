@@ -13,6 +13,7 @@ export default async function SettingsPage() {
     { href: "/settings/organization", icon: "\uD83C\uDFE2", label: "\u4F1A\u793E\u30FB\u5E97\u8217\u60C5\u5831", desc: "\u4F1A\u793E\u540D\u30FB\u4F4F\u6240\u30FB\u96FB\u8A71\u30FB\u514D\u8A31\u756A\u53F7\u306A\u3069\u3092\u7BA1\u7406", count: null },
     { href: "/settings/status", icon: "\uD83C\uDFF7\uFE0F", label: "\u30B9\u30C6\u30FC\u30BF\u30B9\u8A2D\u5B9A", desc: "\u55B6\u696D\u9032\u6357\u30B9\u30C6\u30FC\u30BF\u30B9\u3092\u7BA1\u7406", count: sCount },
     { href: "/settings/templates", icon: "\uD83D\uDCDD", label: "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u8A2D\u5B9A", desc: "\u30E1\u30FC\u30EB\u30FBLINE\u30FBSMS\u306E\u5B9A\u578B\u6587\u3092\u7BA1\u7406", count: tCount },
+    { href: "/settings/channels", icon: "\uD83D\uDD0C", label: "\u5916\u90E8\u9023\u643A", desc: "\u30E1\u30FC\u30EB\u30FBLINE\u30FBSMS\u306E\u9001\u4FE1\u5143\u3092\u4F1A\u793E\u3054\u3068\u306B\u8A2D\u5B9A", count: null },
     { href: "/settings/workflow", icon: "\uD83D\uDD04", label: "\u30EF\u30FC\u30AF\u30D5\u30ED\u30FC\u8A2D\u5B9A", desc: "\u81EA\u52D5\u8FFD\u5BA2\u30D5\u30ED\u30FC\u306E\u8A2D\u5B9A\u30FB\u7BA1\u7406", count: wCount },
   ];
   return (

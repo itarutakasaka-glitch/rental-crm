@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma';
 import { getResend } from "@/lib/resend";
 import { verifySharedSecret } from '@/lib/shared-secret';
 import { logAudit } from '@/lib/audit';
+import { resolveEmailChannel, buildEmailFrom, ChannelBlockedError } from '@/lib/channel-resolver';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,12 +18,13 @@ export async function POST(req: NextRequest) {
     if (!customer) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     if (!customer.email) return NextResponse.json({ error: 'No email' }, { status: 400 });
 
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@send.heyacules.com';
-    const orgName = customer.organization?.storeName || customer.organization?.name || '????????';
+    // implementation-spec-v1.md §6: 差出人は会社(店舗)ごとの設定を優先する
+    const orgName = customer.organization?.storeName || customer.organization?.name || 'ヘヤクレス';
+    const emailCh = await resolveEmailChannel(customer.organizationId, customer.storeId);
     const resend = getResend();
     if (!resend) return NextResponse.json({ error: 'メール送信が未設定です(RESEND_API_KEY)' }, { status: 500 });
     const { data, error } = await resend.emails.send({
-      from: orgName + ' <' + fromEmail + '>',
+      from: buildEmailFrom(emailCh, orgName),
       to: [customer.email],
       subject: subject,
       html: body,
@@ -37,6 +39,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, messageId: data?.id });
   } catch (error: any) {
+    // 会社の連携設定が無効/不完全なときは、既定の差出人で送らずここで止める
+    if (error instanceof ChannelBlockedError) {
+      return NextResponse.json({ error: `送信を中止しました: ${error.detail}` }, { status: 409 });
+    }
     console.error('[Agent Send] Error:', error?.message || error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

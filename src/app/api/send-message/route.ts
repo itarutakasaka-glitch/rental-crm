@@ -6,6 +6,7 @@ import { getAuthUserForAction, canAccessOrg, type AuthUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { resolveTemplateVars, buildVisitUrl } from "@/lib/template-vars";
 import { hasValidSharedSecret } from "@/lib/shared-secret";
+import { resolveEmailChannel, buildEmailFrom, ChannelBlockedError } from "@/lib/channel-resolver";
 
 
 const CALL_RESULT_LABELS: Record<string, string> = {
@@ -151,8 +152,15 @@ export async function POST(request: NextRequest) {
 
     if (channel === "EMAIL") {
       if (!to) return NextResponse.json({ error: "Missing email" }, { status: 400 });
-      const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
-      const fromName = org?.storeName || org?.name || "Claude Cloud CRM";
+      const fromName = org?.storeName || org?.name || "ヘヤクレス";
+      // implementation-spec-v1.md §6: 会社(店舗)ごとの差出人。無効化されていれば送らない
+      let emailCh;
+      try {
+        emailCh = await resolveEmailChannel(customer.organizationId, customer.storeId);
+      } catch (e) {
+        if (e instanceof ChannelBlockedError) return NextResponse.json({ error: `送信を中止しました: ${e.detail}` }, { status: 409 });
+        throw e;
+      }
       // Create message first to get ID for tracking pixel
       const preMsg = await prisma.message.create({
         data: { customerId, senderId: dbUser.id, direction: "OUTBOUND", channel: "EMAIL", subject: finalSubject, body: finalBody, status: "PENDING" as any },
@@ -167,7 +175,7 @@ export async function POST(request: NextRequest) {
       const resend = getResend();
       if (!resend) return NextResponse.json({ error: "メール送信が未設定です(RESEND_API_KEY)" }, { status: 500 });
       const result = await resend.emails.send({
-        from: `${fromName} <${fromEmail}>`,
+        from: buildEmailFrom(emailCh, fromName),
         to: [to],
         subject: finalSubject || "\uFF08\u4EF6\u540D\u306A\u3057\uFF09",
         html: htmlWithPixel,
