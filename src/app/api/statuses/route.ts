@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getAuthUserForAction } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { deleteWouldRemoveLastNew, categoryChangeWouldRemoveLastNew, NO_NEW_STATUS_MESSAGE } from "@/lib/status-guard";
 
 // ★2026-08-30発見・修正: 全ハンドラが実在しない"org_default"という文字列IDで
 // organizationIdを検索/書き込みしていた。GET は常に空配列を返し、POSTは
@@ -53,6 +54,16 @@ export async function PATCH(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { id, name, color, systemCategory } = await request.json();
     if (!id) return NextResponse.json({ error: "IDは必須です" }, { status: 400 });
+    // F-3: 会社から「新規」カテゴリが消えると、新規反響が集計にも一覧にも出なくなる
+    if (systemCategory !== undefined) {
+      const all = await prisma.status.findMany({
+        where: { organizationId: user.organizationId },
+        select: { id: true, systemCategory: true },
+      });
+      if (categoryChangeWouldRemoveLastNew(all, id, systemCategory)) {
+        return NextResponse.json({ error: NO_NEW_STATUS_MESSAGE }, { status: 400 });
+      }
+    }
     const updated = await prisma.status.updateMany({
       where: { id, organizationId: user.organizationId },
       data: {
@@ -98,6 +109,26 @@ export async function DELETE(request: NextRequest) {
     const status = await prisma.status.findFirst({ where: { id, organizationId: user.organizationId } });
     if (!status) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (status.isDefault) return NextResponse.json({ error: "デフォルトステータスは削除できません" }, { status: 400 });
+
+    // F-3: 最後の「新規」は消させない
+    const all = await prisma.status.findMany({
+      where: { organizationId: user.organizationId },
+      select: { id: true, systemCategory: true },
+    });
+    if (deleteWouldRemoveLastNew(all, id)) {
+      return NextResponse.json({ error: NO_NEW_STATUS_MESSAGE }, { status: 400 });
+    }
+
+    // 顧客が使っているステータスを消すと外部キー違反で 500 になっていた。
+    // 何件が使っているかを添えて、先に付け替えてもらう。
+    const inUse = await prisma.customer.count({ where: { statusId: id } });
+    if (inUse > 0) {
+      return NextResponse.json(
+        { error: `このステータスの顧客が ${inUse} 件あります。先に別のステータスへ変更してください。` },
+        { status: 400 }
+      );
+    }
+
     await prisma.status.delete({ where: { id } });
     await logAudit({ userId: user.id, organizationId: user.organizationId, action: "status.delete", field: id, oldValue: status.name });
     return NextResponse.json({ ok: true });

@@ -42,9 +42,16 @@ function DraftApprovalBubble({ m, chInfo, onDone }: { m: any; chInfo: { label: s
     } catch (e: any) { setErr(e.message); } finally { setBusy(null); }
   };
   const reject = async () => {
+    // F-8: なぜ送らなかったかを残す（後から追えないと、同じ下書きが繰り返し出る原因を潰せない）
+    const reason = prompt("却下の理由を入力してください（任意・後から見返せます）");
+    if (reason === null) return;
     setBusy("reject"); setErr("");
     try {
-      const res = await fetch(`/api/messages/${m.id}/approve`, { method: "DELETE" });
+      const res = await fetch(`/api/messages/${m.id}/approve`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
       if (!res.ok) throw new Error("却下に失敗しました");
       onDone();
     } catch (e: any) { setErr(e.message); } finally { setBusy(null); }
