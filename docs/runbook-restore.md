@@ -23,7 +23,7 @@ implementation-spec-v1.md §7 の RPO 1時間以内 / RTO 4時間以内 を満�
 - **アプリは 200 だが DB 系が 500** → §2（DB 障害）
 - **デプロイ直後から壊れた** → §1（コードを戻す）
 - **データが消えた・壊れた** → §3（時点復元）
-- **ログインできない** → §4（Supabase Auth）
+- **ログインできない** → §4（認証）
 
 ---
 
@@ -71,16 +71,26 @@ implementation-spec-v1.md §7 の RPO 1時間以内 / RTO 4時間以内 を満�
 
 ---
 
-## 4. ログインできない（Supabase Auth）
+## 4. ログインできない（認証）
 
-ログインだけ Supabase に残存依存している（**Supabase プロジェクトを削除しない**）。
+2026-09-08 に Supabase Auth から自前認証へ移行済み。認証情報は Neon の `User.passwordHash` と `Session` にあり、**外部の認証サービスには依存していない**。
 
-1. Supabase ダッシュボードでプロジェクトが Active か
-2. Vercel の env `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` が Supabase の値と一致するか
-3. 直したら最新の本番デプロイを redeploy
-4. 個別ユーザーだけ入れない場合は Supabase の Users で該当ユーザーの状態を確認（削除・パスワード変更は Itaru が操作する）
+| 症状 | 対応 |
+|---|---|
+| 全員ログインできない | Neon 自体の障害（§2）か、直前のデプロイ（§1）。`/login` が 200 で返るか、`/api/cron/timeout-check` が通るかで切り分ける |
+| 特定の人だけ入れない | ログイン画面の「パスワードを忘れた方・初めての方」から本人に再設定してもらう（Resend でメール送信・リンクは1時間有効） |
+| メールが届かない／急ぐ | 管理APIで設定リンクを直接発行する（下記）。共有秘密鍵で保護され、発行は監査ログに残る |
+| 退職者を締め出したい | `/settings/staff` で該当ユーザーを更新するか、`Session` を削除する（そのユーザーの全セッションが即座に無効になる） |
 
-DB（Neon）と認証（Supabase）は別なので、**Supabase が落ちても顧客データは無事**。逆にログインできなくても cron と webhook は動き続ける。
+設定リンクの直接発行:
+
+```bash
+curl -s -X POST https://tama-fudosan-crm-2026.vercel.app/api/agent/issue-reset-link   -H "Authorization: Bearer $CRON_SECRET" -H "Content-Type: application/json"   -d '{"email":"<対象のメール>"}'
+```
+
+返ってきた `url` を本人に渡す（管理API経由は24時間有効）。**パスワードそのものは誰も見られない**（scrypt でハッシュ化して保存しているため）。
+
+ログインが落ちても cron と webhook は動き続ける（どちらもセッションを使わない）。
 
 ---
 

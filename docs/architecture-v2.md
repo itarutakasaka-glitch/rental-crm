@@ -32,7 +32,7 @@
 | 8 | エラーのSlack通知ゼロ（ハウスルール違反：全システムのエラーは#900_dev_monitoringへBot名義通知）。cronは毎分動いているのに失敗しても誰も気づかない |
 | 9 | マイグレーション機構が場当たり（`/api/agent/migrate`にSQL追記方式）。prisma migrate未導入、`neon-init.sql`は凍結スナップショットで今後ズレる |
 | 10 | npm audit high 11件が初日から放置 |
-| 11 | Neonのバックアップ/PITR未確認。**Supabase AuthはDB移行後も残存依存**（ログインはSupabase。プロジェクトを消すとログイン不能）——どこにも明文化されていなかった |
+| 11 | Neonのバックアップ/PITR未確認（**S-3 として継続中**）。~~Supabase AuthはDB移行後も残存依存~~ → **2026-09-08 解消**: 無料プランの自動停止でログイン不能の障害が実際に発生したため、認証をNeon側の自前実装へ移行し依存を解消した（下記§1・§6） |
 | 12 | テンプレート3重構造（Template/AgentTemplate/drafts.jsハードコード）未整理 |
 | 13 | Neonデータ移行時、旧DBのドリフトカラム（Customer.currentAddress、Message.metadata、Workflow.triggerType等）のデータは**意図的に捨てた**。会話ログには残るが設計書に記録が無かった（→ここに記録） |
 
@@ -47,12 +47,12 @@
 ## 1. システム構成（現状の実物）
 
 ```
-[オペレーター/クライアント] ──ログイン──> Supabase Auth（認証のみ・残存依存）
+[オペレーター/クライアント] ──ログイン──> 自前認証（scrypt + Session表。2026-09-08にSupabaseから移行）
         │
         v
 Vercel: Next.js 15 App Router（tama-fudosan-crm-2026）
   ├─ 画面: /inbox（全社ダッシュボード） /customers /settings/* /agent/*
-  ├─ API routes: /api/*（Supabaseセッション or CRON_SECRETで認証）
+  ├─ API routes: /api/*（セッションCookie or CRON_SECRETで認証）
   ├─ server actions: sendMessage等（★P0-1：要認証化）
   └─ Vercel Cron: /api/cron/agent（毎分） /api/cron/workflow（毎時）
         │
@@ -63,7 +63,7 @@ Neon Postgres（Prisma。2026-08-29にSupabase DBから移行済み・旧接続�
      / OpenAI（分類・下書き生成） / Browserless（スクレイピング）
 ```
 
-- ローカル環境の制約：この開発環境からNeon/Supabaseに直接DB接続できない（ハング）。**DBを触る操作はすべて本番APIエンドポイント経由**（`/api/agent/migrate*`パターン）で行うのが確立した手順。
+- ローカル環境の制約：この開発環境からNeonに直接DB接続できない（ハング）。supabase.coへは名前解決自体ができない。**DBを触る操作はすべて本番APIエンドポイント経由**（`/api/agent/migrate*`パターン）で行うのが確立した手順。
 
 ## 2. テナントモデルとアクセス規則
 
@@ -124,7 +124,7 @@ User
 
 - **エラー通知**: `lib/notify-slack.ts`を作り、cron・webhookのcatch節から`#900_dev_monitoring`（C0BHASH7LB1）へBot名義で通知。「何が落ちたか＋人手で何をすべきか」を本文に含める（ハウスルール準拠）
 - **バックアップ**: Neonのブランチ/PITR設定を確認。`SUPABASE_DATABASE_URL_BACKUP`はItaruが実データ確認後に削除判断
-- **認証の残存依存**: Supabase Authは使い続ける（プロジェクト削除禁止）。Auth移行は当面しない
+- **認証**: 2026-09-08にSupabase Authから自前実装（`lib/password.ts` / `lib/session.ts`、Neonの`User.passwordHash`と`Session`）へ移行。外部の認証サービスへの依存は無い。パスワード設定・再設定はResendのメール経由（`/forgot-password`）、緊急時は`/api/agent/issue-reset-link`（共有秘密鍵・監査ログ）
 - **依存更新**: npm audit highを解消し、以後は月次で確認
 
 ## 7. ロードマップ（フェーズ＝縦1列）
@@ -213,7 +213,7 @@ cron/agentの下書き生成ロジック（今回のPhase Bで大きく変更済
 
 ### B: 規模で効いてくる
 
-- B-1 Supabase Auth 残存依存＋**招待制なし**(`auth.ts` に「2社目で自動所属が破綻する」TODO が既にある)
+- ~~B-1 Supabase Auth 残存依存＋招待制なし~~ → **2026-09-08 解消**: 自前認証へ移行し、あわせて「初回ログイン時に自動でユーザーを作り1社目に割り当てる」処理を廃止（2社目で誤配属する事故の温床だった）。ユーザーは管理者が`/settings/staff`から登録する
 - B-2 公開予約ページ(`store-visit-bookings`)がレート制限なし。任意の顧客IDの phone を上書き可(影響小・整合性)
 - B-3 個人情報の**削除/保持期間の仕組みなし**(`merge` のみ)。削除依頼に応えられない
 - B-4 依存の CVE 4件は「このアプリでは踏めない」ことを確認済み(§9 参照)。A-1 で同時解消

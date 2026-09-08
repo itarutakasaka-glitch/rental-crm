@@ -1,0 +1,55 @@
+name: CI
+
+# implementation-spec-v1.md §8: D-0 の受け入れ条件「権限総当たりテストが CI で通る」。
+# これまで CI が無く、route-auth-guard.test.ts（認証漏れの検出）などが手元でしか
+# 走っていなかった。PR ごとに自動で回すことで、認証漏れ・org_default 直書き・
+# 秘密鍵の独自比較がマージ前に必ず止まる。
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 依存をインストール
+        run: npm ci
+
+      - name: Prisma クライアント生成
+        run: npx prisma generate
+
+      - name: 型検査
+        run: npx tsc --noEmit -p .
+
+      - name: テスト
+        run: npm test 2>&1 | tee test-output.txt
+
+      - name: テストが実際に実行されたことを確認
+        # グロブの解釈違いでテストが0件になっても「成功」に見えてしまうのを防ぐ
+        run: |
+          node -e "
+          const fs = require('fs');
+          const out = fs.readFileSync('test-output.txt', 'utf8');
+          const pass = Number((out.match(/pass (\d+)/) || [])[1] || 0);
+          const fail = Number((out.match(/fail (\d+)/) || [])[1] || 0);
+          console.log('pass=' + pass + ' fail=' + fail);
+          if (fail > 0) throw new Error('失敗したテストがあります');
+          if (pass < 40) throw new Error('実行されたテストが少なすぎます (' + pass + ')。グロブが効いていない可能性');
+          "
+
+      - name: ビルド
+        # DBには接続しない（全ページが動的レンダリング）。Prisma のURL形式チェックだけ通ればよい
+        run: npx next build
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+          NEXT_PUBLIC_APP_URL: https://tama-fudosan-crm-2026.vercel.app

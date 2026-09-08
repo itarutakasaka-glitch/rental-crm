@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { Resend } from "resend";
+import { getResend } from "@/lib/resend";
 import { requireCustomerAccess, requireUser, canAccessOrg } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { resolveTemplateVars } from "@/lib/template-vars";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 function calcNextRunAt(startedAt: Date, daysAfter: number, timeOfDay: string) {
   const jstOffset = 9 * 60 * 60 * 1000;
@@ -32,6 +31,8 @@ async function executeImmediateStep(run: any, step: any, customer: any, org: any
     if (step.channel === "EMAIL" && customer.email) {
       const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
       const fromName = customer.assignee?.name || org?.storeName || org?.name || "CRM";
+      const resend = getResend();
+      if (!resend) throw new Error("メール送信が未設定です(RESEND_API_KEY)");
       await resend.emails.send({
         from: `${fromName} <${fromEmail}>`,
         to: customer.email,

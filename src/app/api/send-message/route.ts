@@ -1,13 +1,12 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { Resend } from "resend";
+import { getResend } from "@/lib/resend";
 import { sendSms } from "@/lib/channels/sms";
 import { getAuthUserForAction, canAccessOrg, type AuthUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { resolveTemplateVars, buildVisitUrl } from "@/lib/template-vars";
 import { hasValidSharedSecret } from "@/lib/shared-secret";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const CALL_RESULT_LABELS: Record<string, string> = {
   success: "\u6210\u529F\uFF08\u901A\u8A71\u3042\u308A\uFF09",
@@ -165,6 +164,8 @@ export async function POST(request: NextRequest) {
         org?.storeAddress || org?.address || ""
       );
       const htmlWithPixel = addTrackingPixel(baseHtml, preMsg.id);
+      const resend = getResend();
+      if (!resend) return NextResponse.json({ error: "メール送信が未設定です(RESEND_API_KEY)" }, { status: 500 });
       const result = await resend.emails.send({
         from: `${fromName} <${fromEmail}>`,
         to: [to],
