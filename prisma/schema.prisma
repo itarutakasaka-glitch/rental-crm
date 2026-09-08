@@ -51,6 +51,46 @@ model Organization {
   agentTemplates     AgentTemplate[]
   initialCostRules   InitialCostRule[]
   staffOrgAccesses   StaffOrgAccess[]
+  channels           OrganizationChannel[]
+}
+
+// implementation-spec-v1.md §6 (M-3): 会社ごと（必要なら店舗ごと）の外部連携。
+// 全社共通のアカウントで送っていると、2社目を入れたときに「他社の名義・他社のLINE公式」で
+// 顧客へ送ってしまう。会社の設定を正とし、無ければシステム既定(環境変数)へ落とす。
+// 秘密情報は AES-256-GCM で暗号化して保存する（lib/crypto.ts・鍵は env CHANNEL_SECRET_KEY）。
+//
+// 一意制約は部分インデックスでSQL側に定義している（Prismaでは表現できない）:
+//   storeId IS NULL     → (organizationId, type) で一意（会社レベルの設定）
+//   storeId IS NOT NULL → (organizationId, storeId, type) で一意（店舗レベルの設定）
+model OrganizationChannel {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  storeId          String?
+  store            Store?       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  type             ChannelType
+  isActive         Boolean      @default(true)
+
+  fromName         String? // EMAIL: 送信者名
+  fromAddress      String? // EMAIL: 送信元アドレス（Resendで認証済みドメインのもの）
+  lineChannelId    String? // LINE: チャネルID（webhook URL の一部にもなる）
+  lineBasicId      String? // LINE: 友だち追加ID（@xxxx）。{{line_url}} の生成に使う
+  smsFromNumber    String? // SMS: Twilio の送信元番号
+
+  secretEnc        String? // LINE channel access token / Twilio auth token（暗号化）
+  webhookSecretEnc String? // LINE channel secret / Resend signing secret（暗号化）
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([organizationId, type])
+  @@index([lineChannelId])
+}
+
+enum ChannelType {
+  EMAIL
+  LINE
+  SMS
 }
 
 model User {
@@ -137,6 +177,7 @@ model Store {
   updatedAt         DateTime             @updatedAt
   closedDayRules    StoreClosedDayRule[]
   customers         Customer[]
+  channels          OrganizationChannel[]
 
   @@unique([organizationId, slug])
 }

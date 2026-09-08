@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth";
 import { getResend } from "@/lib/resend";
 import { logAudit } from "@/lib/audit";
+import { resolveEmailChannel, buildEmailFrom, ChannelBlockedError } from "@/lib/channel-resolver";
 
 
 function textToHtml(text: string): string {
@@ -37,14 +38,23 @@ export async function POST(request: NextRequest) {
     });
     const results: { customerId: string; success: boolean; error?: string }[] = [];
     const resend = getResend();
+    // implementation-spec-v1.md §6: 会社ごとの差出人。無効化されていれば1件も送らずに止める
+    let emailCh = null as Awaited<ReturnType<typeof resolveEmailChannel>> | null;
+    if (channel === "EMAIL") {
+      try {
+        emailCh = await resolveEmailChannel(dbUser.organizationId);
+      } catch (e) {
+        if (e instanceof ChannelBlockedError) return NextResponse.json({ error: `送信を中止しました: ${e.detail}` }, { status: 409 });
+        throw e;
+      }
+    }
     for (const c of customers) {
       try {
         if (channel === "EMAIL") {
           if (!c.email) { results.push({ customerId: c.id, success: false, error: "No email" }); continue; }
           if (!resend) { results.push({ customerId: c.id, success: false, error: "メール送信が未設定(RESEND_API_KEY)" }); continue; }
-          const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
-          const fromName = org?.storeName || org?.name || "Claude Cloud CRM";
-          const sent = await resend.emails.send({ from: `${fromName} <${fromEmail}>`, to: [c.email], subject: subject || "No Subject", html: textToHtml(body), replyTo: `reply-${c.id}@moutrenoi.resend.app`, });
+          const fromName = org?.storeName || org?.name || "ヘヤクレス";
+          const sent = await resend.emails.send({ from: buildEmailFrom(emailCh!, fromName), to: [c.email], subject: subject || "No Subject", html: textToHtml(body), replyTo: `reply-${c.id}@moutrenoi.resend.app`, });
           await prisma.message.create({ data: { customerId: c.id, direction: "OUTBOUND", channel: "EMAIL", subject, body, status: "SENT", externalId: (sent as any)?.data?.id || null } });
           await prisma.customer.update({ where: { id: c.id }, data: { isNeedAction: false, lastContactAt: new Date() } });
           results.push({ customerId: c.id, success: true });

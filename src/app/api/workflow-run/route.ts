@@ -4,6 +4,7 @@ import { getResend } from "@/lib/resend";
 import { requireCustomerAccess, requireUser, canAccessOrg } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { resolveTemplateVars } from "@/lib/template-vars";
+import { resolveEmailChannel, buildEmailFrom } from "@/lib/channel-resolver";
 
 
 function calcNextRunAt(startedAt: Date, daysAfter: number, timeOfDay: string) {
@@ -29,12 +30,12 @@ async function executeImmediateStep(run: any, step: any, customer: any, org: any
     const subject = resolveTemplate(template.subject || template.name, customer, org);
 
     if (step.channel === "EMAIL" && customer.email) {
-      const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
-      const fromName = customer.assignee?.name || org?.storeName || org?.name || "CRM";
+      const fromName = customer.assignee?.name || org?.storeName || org?.name || "ヘヤクレス";
+      const emailCh = await resolveEmailChannel(customer.organizationId, customer.storeId);
       const resend = getResend();
       if (!resend) throw new Error("メール送信が未設定です(RESEND_API_KEY)");
       await resend.emails.send({
-        from: `${fromName} <${fromEmail}>`,
+        from: buildEmailFrom(emailCh, fromName),
         to: customer.email,
         subject,
         text: body,

@@ -21,6 +21,8 @@ const AUTH_MARKERS = [
   "verifySharedSecret(",
   "verifyLineSignature(",
   "verifySvixSignature(",
+  // LINE Webhook の本体。中で verifyLineSignature を通し、検証できなければ 401 で止める
+  "handleLineWebhook(",
 ];
 
 // 意図的に公開している route（理由を必ず書く）。ここに足すときは仕様書 §3 の表も更新する。
@@ -53,6 +55,7 @@ const CUSTOMER_SCOPED_EXEMPT: Record<string, string> = {
   "cron/workflow/route.ts": "cron。共有秘密鍵で保護し、顧客ごとに所属組織の設定を使う",
   "webhook/email/route.ts": "受信webhook。宛先から解決した1組織の中だけで顧客を扱う",
   "webhook/line/route.ts": "受信webhook。LINE 署名で検証し、lineUserId から顧客を引く",
+  "webhook/line/[channelId]/route.ts": "受信webhook。会社ごとのチャネルシークレットで署名検証し、その会社の中だけで顧客を引く",
   "store-visit-bookings/route.ts": "公開route。organizationId と一致する顧客だけを対象にしている",
   "public/visit/[orgId]/route.ts": "公開route。URL の組織の公開情報のみ",
   "track/open/[messageId]/route.ts": "公開route。開封記録のみ",
