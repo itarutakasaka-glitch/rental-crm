@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { Resend } from 'resend';
+import { getResend } from "@/lib/resend";
 import { verifySharedSecret } from '@/lib/shared-secret';
 import { logAudit } from '@/lib/audit';
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,6 +19,8 @@ export async function POST(req: NextRequest) {
 
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@send.heyacules.com';
     const orgName = customer.organization?.storeName || customer.organization?.name || '????????';
+    const resend = getResend();
+    if (!resend) return NextResponse.json({ error: 'メール送信が未設定です(RESEND_API_KEY)' }, { status: 500 });
     const { data, error } = await resend.emails.send({
       from: orgName + ' <' + fromEmail + '>',
       to: [customer.email],

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { Resend } from "resend";
+import { getResend } from "@/lib/resend";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { resolveTemplateVars } from "@/lib/template-vars";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
   try {
@@ -169,6 +168,8 @@ export async function POST(request: Request) {
       const bodyText = resolveTemplateVars(setting.autoReplyBody, varCtx);
 
       try {
+        const resend = getResend();
+        if (!resend) throw new Error("メール送信が未設定です(RESEND_API_KEY)");
         await resend.emails.send({
           from: `${fromName} <${fromEmail}>`,
           to: customerEmail,

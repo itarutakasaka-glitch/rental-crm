@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth";
-import { Resend } from "resend";
+import { getResend } from "@/lib/resend";
 import { logAudit } from "@/lib/audit";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 function textToHtml(text: string): string {
   let h = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -37,10 +36,12 @@ export async function POST(request: NextRequest) {
       select: { id: true, name: true, email: true, lineUserId: true },
     });
     const results: { customerId: string; success: boolean; error?: string }[] = [];
+    const resend = getResend();
     for (const c of customers) {
       try {
         if (channel === "EMAIL") {
           if (!c.email) { results.push({ customerId: c.id, success: false, error: "No email" }); continue; }
+          if (!resend) { results.push({ customerId: c.id, success: false, error: "メール送信が未設定(RESEND_API_KEY)" }); continue; }
           const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@send.heyacules.com";
           const fromName = org?.storeName || org?.name || "Claude Cloud CRM";
           const sent = await resend.emails.send({ from: `${fromName} <${fromEmail}>`, to: [c.email], subject: subject || "No Subject", html: textToHtml(body), replyTo: `reply-${c.id}@moutrenoi.resend.app`, });
