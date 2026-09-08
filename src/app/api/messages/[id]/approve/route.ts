@@ -77,7 +77,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
-// 下書きを却下(送信しない)。Message自体は履歴として残すためstatusをFAILEDにする。
+// 下書きを却下(送信しない)。Message自体は履歴として残す。
+// F-8: 送信失敗(FAILED)と区別するため REJECTED にし、理由・人・日時を残す。
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAuthUserForAction();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -88,7 +89,18 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!canAccessOrg(user, message.customer.organizationId)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (message.status !== "PENDING") return NextResponse.json({ error: "この下書きは既に処理済みです" }, { status: 400 });
 
-  await prisma.message.update({ where: { id }, data: { status: "FAILED" } });
-  await logAudit({ customerId: message.customer.id, userId: user.id, organizationId: message.customer.organizationId, action: "message.reject", field: message.channel, oldValue: message.subject || message.body.slice(0, 80) });
+  const { reason } = await req.json().catch(() => ({ reason: null }));
+  const rejectReason = typeof reason === "string" && reason.trim() ? reason.trim().slice(0, 500) : null;
+
+  await prisma.message.update({
+    where: { id },
+    data: { status: "REJECTED", rejectReason, rejectedByUserId: user.id, rejectedAt: new Date() },
+  });
+  await logAudit({
+    customerId: message.customer.id, userId: user.id, organizationId: message.customer.organizationId,
+    action: "message.reject", field: message.channel,
+    oldValue: message.subject || message.body.slice(0, 80),
+    newValue: rejectReason || "(理由なし)",
+  });
   return NextResponse.json({ success: true });
 }

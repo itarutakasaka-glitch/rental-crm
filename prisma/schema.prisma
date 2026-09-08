@@ -361,6 +361,10 @@ model Message {
   clickCount        Int              @default(0)
   bouncedAt         DateTime?
   bounceReason      String?
+  /// F-8: 下書きを却下した理由・人・日時。なぜ送らなかったかを後から追えるようにする
+  rejectReason      String?
+  rejectedByUserId  String?
+  rejectedAt        DateTime?
   workflowStepRunId String?
   workflowStepRun   WorkflowStepRun? @relation(fields: [workflowStepRunId], references: [id])
   createdAt         DateTime         @default(now())
@@ -387,6 +391,8 @@ enum MessageStatus {
   DELIVERED
   FAILED
   BOUNCED
+  /// F-8: 人が却下した下書き。送信失敗(FAILED)と区別する
+  REJECTED
 }
 
 model MessageEvent {
