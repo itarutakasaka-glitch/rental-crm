@@ -59,6 +59,7 @@ const CUSTOMER_SCOPED_EXEMPT: Record<string, string> = {
   "store-visit-bookings/route.ts": "公開route。organizationId と一致する顧客だけを対象にしている",
   "bookings/route.ts": "担当者向けの予約一覧。organizationId で絞った予約だけを返す",
   "bookings/[id]/route.ts": "canAccessOrg で予約の所属会社を確認している",
+  "attachments/[id]/download/route.ts": "canAccessOrg で添付の所属会社を確認している（顧客に紐づかない添付もあるため）",
   "public/visit/[orgId]/route.ts": "公開route。URL の組織の公開情報のみ",
   "track/open/[messageId]/route.ts": "公開route。開封記録のみ",
 };

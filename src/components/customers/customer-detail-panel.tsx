@@ -15,6 +15,16 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 // Spinner replaced by CyberpunkSpinner
 
+const ATTACH_ICON = String.fromCodePoint(0x1F4CE); // クリップ
+
+/** 添付のサイズ表示（lib/attachment-rules.ts の formatSize と同じ規則） */
+function fmtSize(bytes: number) {
+  if (!bytes && bytes !== 0) return "";
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+  return (bytes / 1024 / 1024).toFixed(1) + " MB";
+}
+
 function formatDate(d: string) {
   return new Date(d).toLocaleString("ja-JP", { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
@@ -101,6 +111,11 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
   const [schEditId, setSchEditId] = useState<string | null>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [bookingBusy, setBookingBusy] = useState<string | null>(null);
+  // F-7: 送信前の添付。アップロード済みで、まだメッセージに紐づいていないもの
+  const [pendingFiles, setPendingFiles] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [attachError, setAttachError] = useState("");
+  const [blobReady, setBlobReady] = useState(true);
 
   const fetchSchedules = useCallback(async () => {
     try {
@@ -117,6 +132,40 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
       if (res.ok) setBookings((await res.json()).bookings || []);
     } catch (e) { console.error(e); }
   }, [customerId]);
+
+  const fetchPendingFiles = useCallback(async () => {
+    try {
+      const res = await fetch("/api/attachments?customerId=" + customerId);
+      if (res.ok) {
+        const d = await res.json();
+        setPendingFiles(d.attachments || []);
+        setBlobReady(d.blobConfigured !== false);
+      }
+    } catch (e) { console.error(e); }
+  }, [customerId]);
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setAttachError(""); setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("customerId", customerId);
+      for (const f of Array.from(files)) fd.append("files", f);
+      const res = await fetch("/api/attachments", { method: "POST", body: fd });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) setAttachError(d.error || "アップロードに失敗しました");
+      await fetchPendingFiles();
+    } finally { setUploading(false); }
+  };
+
+  const handleRemoveFile = async (id: string) => {
+    setAttachError("");
+    const res = await fetch("/api/attachments", {
+      method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }),
+    });
+    if (!res.ok) setAttachError((await res.json().catch(() => ({}))).error || "削除に失敗しました");
+    await fetchPendingFiles();
+  };
 
   const handleBookingAction = async (bookingId: string, action: "confirm" | "reject") => {
     let reason: string | null = "";
@@ -317,7 +366,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     } catch (e) { console.error(e); }
   }, []);
 
-  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchOrg(); fetchRecords(); fetchSchedules(); fetchBookings(); fetchPreference(); fetchWorkflows(); fetchWfRuns(); }, [fetchCustomer, fetchTemplates, fetchOrg, fetchRecords, fetchSchedules, fetchBookings, fetchPreference, fetchWorkflows, fetchWfRuns]);
+  useEffect(() => { setLoading(true); fetchCustomer(); fetchTemplates(); fetchOrg(); fetchRecords(); fetchSchedules(); fetchBookings(); fetchPendingFiles(); fetchPreference(); fetchWorkflows(); fetchWfRuns(); }, [fetchCustomer, fetchTemplates, fetchOrg, fetchRecords, fetchSchedules, fetchBookings, fetchPendingFiles, fetchPreference, fetchWorkflows, fetchWfRuns]);
   useEffect(() => { const iv = setInterval(fetchCustomer, 10000); return () => clearInterval(iv); }, [fetchCustomer]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [customer?.messages]);
 
@@ -375,6 +424,10 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
     setSending(true);
     try {
       const payload: any = { customerId, channel: composeChannel, body: body.trim() };
+      // F-7: 添付を付けられるのはメールだけ（サーバー側でも同じ判定をしている）
+      if (composeChannel === "EMAIL" && pendingFiles.length > 0) {
+        payload.attachmentIds = pendingFiles.map((f: any) => f.id);
+      }
       if (composeChannel === "EMAIL") {
         if (!customer?.email) { setSending(false); return; }
         payload.to = customer.email;
@@ -395,7 +448,7 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
       setSubject(""); setBody("");
-      fetchCustomer(); onUpdated();
+      fetchCustomer(); fetchPendingFiles(); onUpdated();
     } catch (e) { console.error(e); }
     finally { setSending(false); }
   };
@@ -577,6 +630,23 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                       }}>
                         {msg.subject && <div style={{ fontSize: 11, fontWeight: 600, color: "#374151", marginBottom: 4 }}>{msg.subject}</div>}
                         <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{msg.body}</div>
+                        {/* F-6: 添付。実体は認証付きのダウンロード経路からのみ取得する */}
+                        {Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
+                          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                            {msg.attachments.map((att: any) => (
+                              <a key={att.id} href={"/api/attachments/" + att.id + "/download"}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: 6, fontSize: 11,
+                                  padding: "5px 8px", borderRadius: 6, background: "#fff",
+                                  border: "1px solid #d1d5db", color: "#374151", textDecoration: "none",
+                                }}>
+                                <span>{ATTACH_ICON}</span>
+                                <span style={{ flex: 1, wordBreak: "break-all" }}>{att.filename}</span>
+                                <span style={{ color: "#9ca3af", flexShrink: 0 }}>{fmtSize(att.size)}</span>
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
                         {msg.channel === "EMAIL" && <span>{"\u2709\uFE0F"}</span>}
@@ -657,6 +727,40 @@ export function CustomerDetailPanel({ customerId, statuses, staffList, onClose, 
                         <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={"\u30E1\u30C3\u30BB\u30FC\u30B8\u3092\u5165\u529B..."}
                           style={{ width: "100%", height: editorH, padding: "5px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: "0 4px 4px 4px", resize: "none", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
                       )}
+                      {/* F-7: 添付（メールのみ） */}
+                      <div style={{ marginTop: 6 }}>
+                        {!blobReady && (
+                          <div style={{ fontSize: 10, color: "#92400E", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 4, padding: "5px 8px", marginBottom: 4 }}>
+                            添付ファイルの保存先が未設定のため、いまは添付できません。
+                          </div>
+                        )}
+                        {pendingFiles.length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 4 }}>
+                            {pendingFiles.map((f: any) => (
+                              <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, padding: "4px 8px", background: "#F8F9FB", border: "1px solid #e5e7eb", borderRadius: 4 }}>
+                                <span>{ATTACH_ICON}</span>
+                                <span style={{ flex: 1, wordBreak: "break-all", color: "#374151" }}>{f.filename}</span>
+                                <span style={{ color: "#9ca3af" }}>{f.sizeLabel}</span>
+                                <button onClick={() => handleRemoveFile(f.id)} title="取り消す"
+                                  style={{ border: "none", background: "none", color: "#DC2626", cursor: "pointer", fontSize: 12, padding: "0 2px" }}>{"×"}</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {attachError && <div style={{ fontSize: 10, color: "#DC2626", marginBottom: 4 }}>{attachError}</div>}
+                        <label style={{
+                          display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11,
+                          padding: "4px 10px", border: "1px solid #d1d5db", borderRadius: 4,
+                          background: "#fff", color: blobReady && !uploading ? "#374151" : "#9ca3af",
+                          cursor: blobReady && !uploading ? "pointer" : "not-allowed",
+                        }}>
+                          <span>{ATTACH_ICON}</span>
+                          {uploading ? "アップロード中..." : "ファイルを添付"}
+                          <input type="file" multiple disabled={!blobReady || uploading}
+                            onChange={(e) => { handleUpload(e.target.files); e.currentTarget.value = ""; }}
+                            style={{ display: "none" }} />
+                        </label>
+                      </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
                         <span style={{ fontSize: 10, color: "#9ca3af" }}>{"\u9001\u4FE1\u5148"}: {customer.email}</span>
                         <button onClick={handleSend} disabled={sending || !body.trim() || lockInfo.locked} style={{
