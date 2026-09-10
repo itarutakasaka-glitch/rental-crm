@@ -11,19 +11,19 @@ datasource db {
 }
 
 model Organization {
-  id                 String              @id @default(cuid())
+  id                 String                @id @default(cuid())
   name               String
-  isTest             Boolean             @default(false) // M-13: 権限総当たりテスト用の組織。横断inbox・集計・cronから除外する
-  tagPresets         String[]            @default([]) // M-12: タグ候補(§4.3)。候補に無い自由入力も可
-  slug               String?             @unique // architecture-v2.md §4: 反響メール宛先ルーティング用(hankyo+<slug>@...)
+  isTest             Boolean               @default(false) // M-13: 権限総当たりテスト用の組織。横断inbox・集計・cronから除外する
+  tagPresets         String[]              @default([]) // M-12: タグ候補(§4.3)。候補に無い自由入力も可
+  slug               String?               @unique // architecture-v2.md §4: 反響メール宛先ルーティング用(hankyo+<slug>@...)
   phone              String?
   email              String?
   address            String?
   website            String?
-  autoReplyEnabled   Boolean             @default(false)
-  autoReplyMode      String              @default("DRAFT_ONLY") // "DRAFT_ONLY" | "AUTO_SEND" (Phase1=下書き承認/Phase2=自動送信、2026-08-26決定)
-  autoReplySubject   String              @default("")
-  autoReplyTemplate  String              @default("")
+  autoReplyEnabled   Boolean               @default(false)
+  autoReplyMode      String                @default("DRAFT_ONLY") // "DRAFT_ONLY" | "AUTO_SEND" (Phase1=下書き承認/Phase2=自動送信、2026-08-26決定)
+  autoReplySubject   String                @default("")
+  autoReplyTemplate  String                @default("")
   storeName          String?
   storeAddress       String?
   storePhone         String?
@@ -35,7 +35,7 @@ model Organization {
   logoUrl            String?
   lineUrl            String?
   licenseNumber      String?
-  createdAt          DateTime            @default(now())
+  createdAt          DateTime              @default(now())
   users              User[]
   customers          Customer[]
   stores             Store[]
@@ -52,6 +52,7 @@ model Organization {
   initialCostRules   InitialCostRule[]
   staffOrgAccesses   StaffOrgAccess[]
   channels           OrganizationChannel[]
+  attachments        Attachment[]
 }
 
 // implementation-spec-v1.md §6 (M-3): 会社ごと（必要なら店舗ごと）の外部連携。
@@ -63,25 +64,25 @@ model Organization {
 //   storeId IS NULL     → (organizationId, type) で一意（会社レベルの設定）
 //   storeId IS NOT NULL → (organizationId, storeId, type) で一意（店舗レベルの設定）
 model OrganizationChannel {
-  id               String       @id @default(cuid())
-  organizationId   String
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  storeId          String?
-  store            Store?       @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  type             ChannelType
-  isActive         Boolean      @default(true)
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  storeId        String?
+  store          Store?       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  type           ChannelType
+  isActive       Boolean      @default(true)
 
-  fromName         String? // EMAIL: 送信者名
-  fromAddress      String? // EMAIL: 送信元アドレス（Resendで認証済みドメインのもの）
-  lineChannelId    String? // LINE: チャネルID（webhook URL の一部にもなる）
-  lineBasicId      String? // LINE: 友だち追加ID（@xxxx）。{{line_url}} の生成に使う
-  smsFromNumber    String? // SMS: Twilio の送信元番号
+  fromName      String? // EMAIL: 送信者名
+  fromAddress   String? // EMAIL: 送信元アドレス（Resendで認証済みドメインのもの）
+  lineChannelId String? // LINE: チャネルID（webhook URL の一部にもなる）
+  lineBasicId   String? // LINE: 友だち追加ID（@xxxx）。{{line_url}} の生成に使う
+  smsFromNumber String? // SMS: Twilio の送信元番号
 
   secretEnc        String? // LINE channel access token / Twilio auth token（暗号化）
   webhookSecretEnc String? // LINE channel secret / Resend signing secret（暗号化）
 
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([organizationId, type])
   @@index([lineChannelId])
@@ -94,26 +95,27 @@ enum ChannelType {
 }
 
 model User {
-  id                String           @id @default(cuid())
-  organizationId    String
-  organization      Organization     @relation(fields: [organizationId], references: [id])
-  supabaseUserId    String? // 旧Supabase Auth時代の残骸。2026-09-06に自前認証へ移行済み。参照している箇所は無い
-  email             String           @unique
-  name              String
-  role              String           @default("MEMBER")
-  avatarUrl         String?
-  createdAt         DateTime         @default(now())
-  isStaff           Boolean          @default(false) // true=ヘヤクレス社内オペレーター(複数クライアント横断アクセス可)
-  passwordHash      String? // scrypt。null=未設定(初回はパスワード設定メールから設定する)
-  assignedCustomers Customer[]       @relation("AssignedCustomers")
-  lockedCustomers   Customer[]       @relation("CustomerLock")
-  messages          Message[]        @relation("SentMessages")
-  auditLogs         AuditLog[]
-  schedules         Schedule[]
-  staffAccess       StaffOrgAccess[]
-  sessions          Session[]
-  passwordResets    PasswordReset[]
-  confirmedBookings StoreVisitBooking[] @relation("ConfirmedBookings")
+  id                  String              @id @default(cuid())
+  organizationId      String
+  organization        Organization        @relation(fields: [organizationId], references: [id])
+  supabaseUserId      String? // 旧Supabase Auth時代の残骸。2026-09-06に自前認証へ移行済み。参照している箇所は無い
+  email               String              @unique
+  name                String
+  role                String              @default("MEMBER")
+  avatarUrl           String?
+  createdAt           DateTime            @default(now())
+  isStaff             Boolean             @default(false) // true=ヘヤクレス社内オペレーター(複数クライアント横断アクセス可)
+  passwordHash        String? // scrypt。null=未設定(初回はパスワード設定メールから設定する)
+  assignedCustomers   Customer[]          @relation("AssignedCustomers")
+  lockedCustomers     Customer[]          @relation("CustomerLock")
+  messages            Message[]           @relation("SentMessages")
+  auditLogs           AuditLog[]
+  schedules           Schedule[]
+  staffAccess         StaffOrgAccess[]
+  sessions            Session[]
+  passwordResets      PasswordReset[]
+  confirmedBookings   StoreVisitBooking[] @relation("ConfirmedBookings")
+  uploadedAttachments Attachment[]        @relation("UploadedAttachments")
 }
 
 // 2026-09-06: Supabase Auth からの移行。ログイン状態をDBで持つ。
@@ -160,22 +162,22 @@ model StaffOrgAccess {
 }
 
 model Store {
-  id                String               @id @default(cuid())
+  id                String                @id @default(cuid())
   organizationId    String
-  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization      Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name              String
   slug              String
-  isDefault         Boolean              @default(false)
+  isDefault         Boolean               @default(false)
   phone             String?
   address           String?
   storeHours        String?
   storeAccess       String?
   storeParking      String?
-  autoReplyEnabled  Boolean              @default(false)
-  autoReplySubject  String               @default("")
-  autoReplyTemplate String               @default("")
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  autoReplyEnabled  Boolean               @default(false)
+  autoReplySubject  String                @default("")
+  autoReplyTemplate String                @default("")
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
   closedDayRules    StoreClosedDayRule[]
   customers         Customer[]
   channels          OrganizationChannel[]
@@ -212,7 +214,7 @@ model Status {
   isDefault      Boolean         @default(false)
   isSystem       Boolean         @default(false)
   systemCategory String? // architecture-v2.md §9: 会社ごとに自由なStatus名を、横断集計用の
-                          // 共通カテゴリにマップする。値: "NEW"|"IN_PROGRESS"|"DONE"|"CLOSED"
+  // 共通カテゴリにマップする。値: "NEW"|"IN_PROGRESS"|"DONE"|"CLOSED"
   customers      Customer[]
   historyFrom    StatusHistory[] @relation("StatusFrom")
   historyTo      StatusHistory[] @relation("StatusTo")
@@ -273,6 +275,7 @@ model Customer {
   preference             CustomerPreference?
   statusHistory          StatusHistory[]
   auditLogs              AuditLog[]
+  attachments            Attachment[]
 
   @@index([organizationId, isNeedAction, updatedAt]) // 横断inboxのソート・ページング(M-5)
   @@index([agentState]) // cron/agent の拾い上げ(M-1)
@@ -365,6 +368,7 @@ model Message {
   rejectReason      String?
   rejectedByUserId  String?
   rejectedAt        DateTime?
+  attachments       Attachment[]
   workflowStepRunId String?
   workflowStepRun   WorkflowStepRun? @relation(fields: [workflowStepRunId], references: [id])
   createdAt         DateTime         @default(now())
@@ -383,6 +387,34 @@ enum Channel {
   CALL
   NOTE
   VISIT
+}
+
+// implementation-spec-v1.md §4 F-6 / F-7: 会話に付く添付ファイル。
+// 実体は Vercel Blob に置き、URL は**サーバー側だけが持つ**。画面には出さず、
+// 認証付きの /api/attachments/[id]/download 経由でのみ配信する
+// （顧客の本人確認書類などが、推測されにくいだけの公開URLで外に出るのを避ける）。
+model Attachment {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customerId       String?
+  customer         Customer?    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  /// 送信前にアップロードされた時点では未確定。送信時に紐づける
+  messageId        String?
+  message          Message?     @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  direction        Direction
+  filename         String
+  contentType      String
+  size             Int
+  /// Blob の URL。**APIのレスポンスに含めない**
+  blobUrl          String
+  blobPathname     String
+  uploadedByUserId String?
+  uploadedByUser   User?        @relation("UploadedAttachments", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  createdAt        DateTime     @default(now())
+
+  @@index([messageId])
+  @@index([organizationId, createdAt])
 }
 
 enum MessageStatus {
@@ -658,7 +690,7 @@ model StoreVisitBooking {
   /// REJECTED にした理由（顧客への案内文にも使う）
   rejectReason      String?
   createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt @default(now())
+  updatedAt         DateTime      @default(now()) @updatedAt
   organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   customer          Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   store             Store?        @relation(fields: [storeId], references: [id], onDelete: SetNull)
@@ -684,25 +716,25 @@ enum ConfirmedBy {
 // implementation-spec-v1.md §6.2 (M-10): 店舗ごとの外部カレンダー連動設定。
 // INTERNAL は CRM 内の枠（営業時間×枠の長さ×定休日）で、連動先が無い店舗の基盤。
 model StoreScheduleLink {
-  id            String           @id @default(cuid())
-  storeId       String           @unique
-  store         Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  provider      ScheduleProvider @default(INTERNAL)
-  isActive      Boolean          @default(false)
+  id          String           @id @default(cuid())
+  storeId     String           @unique
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  provider    ScheduleProvider @default(INTERNAL)
+  isActive    Boolean          @default(false)
   /// 連動先のカレンダー識別子（Google のカレンダーID 等）
-  calendarId    String?
+  calendarId  String?
   /// 連動先の認証情報。§6 と同じ AES-256-GCM で暗号化して保存する
-  secretEnc     String?
+  secretEnc   String?
   /// 1枠の長さ（分）
-  slotMinutes   Int              @default(60)
+  slotMinutes Int              @default(60)
   /// 受付する営業時間。未設定なら StoreVisitSetting の値を使う
-  hoursStart    String?
-  hoursEnd      String?
+  hoursStart  String?
+  hoursEnd    String?
   /// 直近の連動失敗。失敗中は「連動なし」として扱う（黙って確定にしない）
-  lastErrorAt   DateTime?
-  lastError     String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  lastErrorAt DateTime?
+  lastError   String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }
 
 enum ScheduleProvider {

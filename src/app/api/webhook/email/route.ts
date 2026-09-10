@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { verifySharedSecret } from "@/lib/shared-secret";
 import { verifySvixSignature, readSvixHeaders } from "@/lib/svix-verify";
+import { saveInboundAttachments } from "@/lib/inbound-attachments";
 import { prisma } from "@/lib/db/prisma";
 import { resolveSingleOrgOrNull, resolveOrgByRecipient } from "@/lib/resolve-single-org";
 import { notifySlackError } from "@/lib/notify-slack";
@@ -115,12 +116,14 @@ export async function POST(request: NextRequest) {
     const fromRaw = emailData.from;
     const subject = emailData.subject || "";
     let body = "";
+    // F-6: 添付の取り込みにも使うので、詳細はこの外でも参照できるようにしておく
+    let emailDetail: any = emailData;
     if (emailData.email_id && process.env.RESEND_API_KEY) {
       try {
         const emailRes = await fetch(`https://api.resend.com/emails/receiving/${emailData.email_id}`, {
           headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
         });
-        const emailDetail = await emailRes.json();
+        emailDetail = await emailRes.json();
         body = emailDetail.text || emailDetail.html || "";
       } catch (e) {
         console.error("[Email Webhook] Failed to fetch email body:", e);
@@ -216,7 +219,7 @@ export async function POST(request: NextRequest) {
         await prisma.customer.update({ where: { id: customer.id }, data: { isNeedAction: true, updatedAt: new Date() } });
       }
 
-      await prisma.message.create({
+      const inboundMsg = await prisma.message.create({
         data: {
           customerId: customer.id,
           direction: "INBOUND",
@@ -226,15 +229,17 @@ export async function POST(request: NextRequest) {
           status: "DELIVERED",
         },
       });
+      await saveInboundAttachments({ emailDetail, organizationId: org.id, customerId: customer.id, messageId: inboundMsg.id });
       return NextResponse.json({ success: true, type: "portal", source: parsed.source, customerId: customer.id });
     }
 
     // Regular email reply from existing customer
     const existingCustomer = await prisma.customer.findFirst({ where: { email: fromAddress, organizationId: org.id } });
     if (existingCustomer) {
-      await prisma.message.create({
+      const replyMsg = await prisma.message.create({
         data: { customerId: existingCustomer.id, direction: "INBOUND", channel: "EMAIL", subject: subject || null, body, status: "DELIVERED" },
       });
+      await saveInboundAttachments({ emailDetail, organizationId: existingCustomer.organizationId, customerId: existingCustomer.id, messageId: replyMsg.id });
       // implementation-spec-v1.md §2.2: 受信時の遷移は lib/agent-state.ts の1箇所で決める
       const nextState = nextStateOnInbound(existingCustomer.agentState);
       await prisma.customer.update({ where: { id: existingCustomer.id }, data: { isNeedAction: true, updatedAt: new Date(), hasCustomerReplied: true, agentState: nextState } });

@@ -7,6 +7,8 @@ import { logAudit } from "@/lib/audit";
 import { resolveTemplateVars, buildVisitUrl } from "@/lib/template-vars";
 import { hasValidSharedSecret } from "@/lib/shared-secret";
 import { resolveEmailChannel, buildEmailFrom, ChannelBlockedError } from "@/lib/channel-resolver";
+import { fetchAttachmentBody } from "@/lib/blob";
+import { validateBatch } from "@/lib/attachment-rules";
 
 
 const CALL_RESULT_LABELS: Record<string, string> = {
@@ -120,7 +122,7 @@ export async function POST(request: NextRequest) {
     // architecture-v2.md §10 A-6: 宛先(to/phone/lineUserId)をリクエスト本文から受けると、
     // 会社名義で任意のアドレスへ送れてしまう(乗っ取り・退職者アカウント経由のスパム/フィッシング)。
     // 宛先は必ず顧客レコードから導出する。
-    const { customerId, channel, subject, body, callResult } = await request.json();
+    const { customerId, channel, subject, body, callResult, attachmentIds } = await request.json();
     if (!customerId || !body) return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
 
     const customer = await prisma.customer.findUnique({
@@ -146,6 +148,19 @@ export async function POST(request: NextRequest) {
 
     let finalBody = resolveVars(body, customer || {}, org, dbUser.name || "");
     let finalSubject = subject ? resolveVars(subject, customer || {}, org, dbUser.name || "") : null;
+
+    // implementation-spec-v1.md §4 F-7: 添付。顧客が一致し、まだ送信していないものだけを対象にする
+    const wantedAttachmentIds: string[] = Array.isArray(attachmentIds) ? attachmentIds.filter((x: any) => typeof x === "string") : [];
+    const pendingAttachments = wantedAttachmentIds.length
+      ? await prisma.attachment.findMany({ where: { id: { in: wantedAttachmentIds }, customerId, messageId: null } })
+      : [];
+    if (pendingAttachments.length > 0) {
+      const batch = validateBatch(pendingAttachments.map((a) => a.size));
+      if (batch.kind === "ng") return NextResponse.json({ error: batch.reason }, { status: 400 });
+      if (channel !== "EMAIL") {
+        return NextResponse.json({ error: "添付を送れるのはメールだけです" }, { status: 400 });
+      }
+    }
 
     let externalId: string | undefined;
     let messageStatus = "SENT";
@@ -174,9 +189,22 @@ export async function POST(request: NextRequest) {
       const htmlWithPixel = addTrackingPixel(baseHtml, preMsg.id);
       const resend = getResend();
       if (!resend) return NextResponse.json({ error: "メール送信が未設定です(RESEND_API_KEY)" }, { status: 500 });
+      // F-7: 添付の実体を Blob から取り出して同送する。取り出せなければ送信を中止する
+      // （添付が抜けたまま「送れました」にするのが一番まずい）
+      const outgoingAttachments = [];
+      for (const att of pendingAttachments) {
+        const buf = await fetchAttachmentBody(att.blobUrl);
+        if (!buf) {
+          await prisma.message.update({ where: { id: preMsg.id }, data: { status: "FAILED" } });
+          return NextResponse.json({ error: `添付「${att.filename}」を取得できませんでした。送信を中止しました` }, { status: 502 });
+        }
+        outgoingAttachments.push({ filename: att.filename, content: buf });
+      }
+
       const result = await resend.emails.send({
         from: buildEmailFrom(emailCh, fromName),
         to: [to],
+        ...(outgoingAttachments.length ? { attachments: outgoingAttachments } : {}),
         subject: finalSubject || "\uFF08\u4EF6\u540D\u306A\u3057\uFF09",
         html: htmlWithPixel,
         replyTo: `reply-${customerId}@moutrenoi.resend.app`,
@@ -186,6 +214,13 @@ export async function POST(request: NextRequest) {
         console.error("[send-message] Resend error:", result.error);
       } else {
         await prisma.message.update({ where: { id: preMsg.id }, data: { status: "SENT", externalId: result.data?.id || null } });
+        // 送信できたものだけ紐づける（失敗時は未送信のまま残し、送り直せるようにする）
+        if (pendingAttachments.length > 0) {
+          await prisma.attachment.updateMany({
+            where: { id: { in: pendingAttachments.map((a) => a.id) }, messageId: null },
+            data: { messageId: preMsg.id },
+          });
+        }
       }
       // Update customer and return (skip generic message creation below)
       await prisma.customer.update({ where: { id: customerId }, data: { isNeedAction: false, lastContactAt: new Date() } });

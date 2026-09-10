@@ -72,7 +72,13 @@ export async function GET(
         assignee: { select: { id: true, name: true, email: true } },
         messages: {
           orderBy: { createdAt: "asc" },
-          select: { id: true, direction: true, channel: true, subject: true, body: true, status: true, openedAt: true, openCount: true, createdAt: true, sender: { select: { id: true, name: true } } },
+          select: {
+            id: true, direction: true, channel: true, subject: true, body: true, status: true,
+            openedAt: true, openCount: true, rejectReason: true, createdAt: true,
+            sender: { select: { id: true, name: true } },
+            // F-6: 添付は blobUrl を返さない（実体は /api/attachments/[id]/download 経由）
+            attachments: { select: { id: true, filename: true, contentType: true, size: true }, orderBy: { createdAt: "asc" } },
+          },
         },
       },
     });
