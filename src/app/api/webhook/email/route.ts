@@ -2,90 +2,13 @@
 import { verifySharedSecret } from "@/lib/shared-secret";
 import { verifySvixSignature, readSvixHeaders } from "@/lib/svix-verify";
 import { saveInboundAttachments } from "@/lib/inbound-attachments";
+import { parsePortalInquiry } from "@/lib/parsers/portal-inquiry";
 import { prisma } from "@/lib/db/prisma";
 import { resolveSingleOrgOrNull, resolveOrgByRecipient } from "@/lib/resolve-single-org";
 import { notifySlackError } from "@/lib/notify-slack";
 import { nextStateOnInbound } from "@/lib/agent-state";
 
 // SUUMO parser
-function parseSuumo(text: string) {
-  if (!/suumo|SUUMO|\u30B9\u30FC\u30E2|\u304A\u554F\u5408\u305B\u304C\u3042\u308A\u307E\u3057\u305F/i.test(text)) return null;
-  // \u540D\u524D = 名前, \u6F22\u5B57 = 漢字, \u30AB\u30CA = カナ
-  const name = (text.match(/\u540D\u524D[\(（]\u6F22\u5B57[\)）][：:]\s*(.+)/) || text.match(/\u540D\u524D\(\u6F22\u5B57\)[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const nameKana = (text.match(/\u540D\u524D[\(（]\u30AB\u30CA[\)）][：:]\s*(.+)/) || text.match(/\u540D\u524D\(\u30AB\u30CA\)[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  // \u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9 = メールアドレス
-  const email = (text.match(/\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9[：:]\s*(\S+)/) || [])[1]?.trim() || "";
-  // TEL or \uFF34\uFF25\uFF2C = ＴＥＬ, \u96FB\u8A71\u756A\u53F7 = 電話番号
-  const phone = (text.match(/[\uFF34T][\uFF25E][\uFF2CL][：:]\s*(\S+)/) || text.match(/\u96FB\u8A71\u756A\u53F7[：:]\s*(\S+)/) || [])[1]?.trim() || "";
-  // \u7269\u4EF6\u540D = 物件名
-  const propertyName = (text.match(/\u7269\u4EF6\u540D[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  // \u7269\u4EF6\u8A73\u7D30\u753B\u9762 = 物件詳細画面
-  const propertyUrl = (text.match(/\u7269\u4EF6\u8A73\u7D30\u753B\u9762[：:]\s*(https?:\/\/\S+)/) || text.match(/(https?:\/\/suumo\.jp\S+)/) || [])[1]?.trim() || "";
-  // \u304A\u554F\u5408\u305B\u5185\u5BB9 = お問合せ内容
-  const inquiryContent = (text.match(/\u304A\u554F\u5408\u305B\u5185\u5BB9[：:]\s*(.+)/) || text.match(/\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  // \u6700\u5BC4\u308A\u99C5 = 最寄り駅, \u6700\u5BC4\u99C5 = 最寄駅
-  const station = (text.match(/\u6700\u5BC4\u308A\u99C5[：:]\s*(.+)/) || text.match(/\u6700\u5BC4\u99C5[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  // \u6240\u5728\u5730 = 所在地
-  const address = (text.match(/\u6240\u5728\u5730[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  // \u8CC3\u6599 = 賃料
-  const rent = (text.match(/\u8CC3\u6599[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  // \u9593\u53D6\u308B = 間取り, \u9593\u53D6 = 間取
-  const layout = (text.match(/\u9593\u53D6\u308A[：:]\s*(.+)/) || text.match(/\u9593\u53D6[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  // \u5C02\u6709\u9762\u7A4D = 専有面積
-  const area = (text.match(/\u5C02\u6709\u9762\u7A4D[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  if (!name && !email) return null;
-  return { name, nameKana, email, phone, source: "SUUMO", inquiryContent, propertyName, propertyUrl, propertyStation: station, propertyAddress: address, propertyRent: rent, propertyLayout: layout, propertyArea: area };
-}
-
-// APAMANSHOP parser
-function parseApamanshop(text: string) {
-  // \u30A2\u30D1\u30DE\u30F3\u30B7\u30E7\u30C3\u30D7 = アパマンショップ
-  if (!/\u30A2\u30D1\u30DE\u30F3\u30B7\u30E7\u30C3\u30D7|apamanshop/i.test(text)) return null;
-  // \u3010\u540D\u524D\u3011 = 【名前】, \u3010\u304A\u540D\u524D\u3011 = 【お名前】
-  const name = (text.match(/\u3010\u540D\u524D\u3011\s*(.+)/) || text.match(/\u3010\u304A\u540D\u524D\u3011\s*(.+)/) || [])[1]?.trim() || "";
-  const nameKana = (text.match(/\u3010\u540D\u524D\u30AB\u30CA\u3011\s*(.+)/) || [])[1]?.trim() || "";
-  // \u3010\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9\u3011 = 【メールアドレス】
-  const email = (text.match(/\u3010\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9\u3011\s*(\S+)/) || [])[1]?.trim() || "";
-  // \u3010\u96FB\u8A71\u756A\u53F7\u3011 = 【電話番号】
-  const phone = (text.match(/\u3010\u96FB\u8A71\u756A\u53F7\u3011\s*(.+)/) || [])[1]?.trim() || "";
-  // \u3010\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9\u3011 = 【お問い合わせ内容】
-  const inquiryContent = (text.match(/\u3010\u304A\u554F\u3044\u5408\u308F\u305B\u5185\u5BB9\u3011\s*([\s\S]*?)(?:\u3010|$)/) || [])[1]?.trim() || "";
-  // \u3014\u7269 \u4EF6 \u540D\u3015 = 〔物 件 名〕, \u3010\u7269\u4EF6\u540D\u3011 = 【物件名】
-  const propertyName = (text.match(/\u3014\u7269\s*\u4EF6\s*\u540D\u3015\s*(.+)/) || text.match(/\u3010\u7269\u4EF6\u540D\u3011\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyUrl = (text.match(/(https?:\/\/www\.apamanshop\.com\S+)/) || [])[1]?.trim() || "";
-  if (!name && !email) return null;
-  return { name, nameKana, email, phone, source: "\u30A2\u30D1\u30DE\u30F3\u30B7\u30E7\u30C3\u30D7", inquiryContent, propertyName, propertyUrl };
-}
-
-// HOME'S parser
-function parseHomes(text: string) {
-  if (!/LIFULL HOME'S|HOME'S|homes\.co\.jp/i.test(text)) return null;
-  const name = (text.match(/\u540D\u524D[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const email = (text.match(/\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9[：:]\s*(\S+)/) || [])[1]?.trim() || "";
-  const phone = (text.match(/\u96FB\u8A71\u756A\u53F7[：:]\s*(\S+)/) || [])[1]?.trim() || "";
-  const propertyName = (text.match(/\u7269\u4EF6\u540D[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyRent = (text.match(/\u8CC3\u6599[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyAddress = (text.match(/\u6240\u5728\u5730[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyStation = (text.match(/\u4EA4\u901A[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyArea = (text.match(/\u9762\u7A4D[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyLayout = (text.match(/\u9593\u53D6[：:]\s*(.+)/) || text.match(/\u9593\u53D6\u308A[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const inquiryContent = (text.match(/\u304A\u554F\u5408\u305B\u5185\u5BB9[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const note = (text.match(/\u5099\u8003[：:]\s*(.+)/) || [])[1]?.trim() || "";
-  const propertyUrl = (text.match(/(https?:\/\/www\.homes\.co\.jp\S+)/) || [])[1]?.trim() || "";
-  if (!name && !email) return null;
-  const fullInquiry = [inquiryContent, note].filter(Boolean).join("\n");
-  return { name, email, phone, source: "HOME'S", inquiryContent: fullInquiry, propertyName, propertyRent, propertyUrl, propertyAddress, propertyStation, propertyArea, propertyLayout };
-}
-
-function parsePortalEmail(subject: string, body: string) {
-  const fullText = subject + "\n" + body;
-  for (const parser of [parseSuumo, parseApamanshop, parseHomes]) {
-    const result = parser(fullText);
-    if (result) return result;
-  }
-  return null;
-}
-
 export async function POST(request: NextRequest) {
   try {
     // architecture-v2.md §10 A-5 / implementation-spec-v1.md §3:
@@ -148,7 +71,7 @@ export async function POST(request: NextRequest) {
     });
     if (!defaultStatus) return NextResponse.json({ error: "No default status" }, { status: 400 });
 
-    const parsed = parsePortalEmail(subject, body);
+    const parsed = parsePortalInquiry(subject, body);
 
     if (parsed) {
       console.log("[Email Webhook] Portal:", parsed.source, "-", parsed.name);

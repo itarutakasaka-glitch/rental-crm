@@ -2,11 +2,27 @@
 // 無認証POSTエンドポイントとして露出し、外部から偽の反響を注入できてしまう。
 // webhook route(サーバー側)から普通のモジュールとしてimportして使う。
 import { prisma } from "@/lib/db/prisma";
-import { parseInquiryEmail } from "@/lib/parsers/inquiry-email-parser";
+import { parsePortalInquiry } from "@/lib/parsers/portal-inquiry";
 import { revalidatePath } from "next/cache";
 
 export async function processInboundEmail(organizationId: string, data: { from: string; subject: string; body: string }) {
-  const parsed = parseInquiryEmail(data.subject, data.body, data.from);
+  // F-5: 受信口が2つあるが、読み取りは lib/parsers/portal-inquiry.ts の1本に統一する
+  const p = parsePortalInquiry(data.subject, data.body);
+  const parsed = {
+    customerName: p?.name || "",
+    customerEmail: p?.email || data.from,
+    customerPhone: p?.phone || "",
+    portal: p?.source || "その他",
+    inquiryContent: p?.inquiryContent || data.body.slice(0, 500),
+    propertyName: p?.propertyName || "",
+    propertyAddress: p?.propertyAddress || null,
+    station: p?.propertyStation || null,
+    // 表示用は原文のまま（「3万円」）。数値が要る場合は rentYen を使う
+    rent: p?.propertyRent || null,
+    rentYen: p?.rentYen ?? null,
+    area: p?.propertyArea || null,
+    layout: p?.propertyLayout || null,
+  };
   const existing = await prisma.customer.findFirst({
     where: { organizationId, OR: [{ email: parsed.customerEmail }, ...(parsed.customerPhone ? [{ phone: parsed.customerPhone }] : [])] },
   });
