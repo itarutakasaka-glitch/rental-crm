@@ -553,6 +553,7 @@ OrganizationChannel
   - 配信は常に `Content-Disposition: attachment` ＋ `X-Content-Type-Options: nosniff`（ブラウザ内で開かせない）
   - テスト 91件 → **109件**
   - 反映には Vercel Blob ストアの作成と `BLOB_READ_WRITE_TOKEN` の登録が必要。未登録の間は画面に「添付できません」と出るだけで、他の機能は動く
+- **2026-09-15 添付の保存先を private に変更（PR #46）**: Vercel Blob の private ストア `crm-attachments` を作成し、`access: "private"` で保存するようにした。URL を知っていても認証なしでは読めないため、配信経路（`/api/attachments/[id]/download`・ログイン＋所属会社の確認＋監査ログ）と合わせて二重に守られる。読み出しはトークン付きの `get()` に変更。
 - 残り（D-0）: 権限総当たりテストの**後半**（A社・B社・staff の3ユーザーで実際にログインして 200/403 を確認する部分。Supabase のテストアカウント3つが要る＝Itaru の手作業）、Neon の PITR 確認（S-3）、`RESEND_WEBHOOK_SECRET` の登録。
   前半（未ログイン・鍵なしで弾かれること）は `scripts/check-public-endpoints.mjs` で本番に対して実行できる。
 

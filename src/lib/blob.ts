@@ -1,4 +1,4 @@
-import { put, del } from "@vercel/blob";
+import { put, del, get } from "@vercel/blob";
 import { randomBytes } from "node:crypto";
 import { blobPathname } from "@/lib/attachment-rules";
 
@@ -35,7 +35,9 @@ export async function putAttachment(params: {
   if (!isBlobConfigured()) throw new BlobNotConfiguredError();
   const pathname = blobPathname(params.organizationId, randomBytes(12).toString("hex"), params.filename);
   const res = await put(pathname, params.body as any, {
-    access: "public", // Blob の公開URLは外に出さず、認証付きの配信経路からのみ読む
+    // private ストア。URL を知っていても認証なしでは読めない。
+    // そのうえで配信は /api/attachments/[id]/download（ログイン＋所属会社の確認）だけを通す。
+    access: "private",
     contentType: params.contentType,
     addRandomSuffix: false,
     token: process.env.BLOB_READ_WRITE_TOKEN,
@@ -53,14 +55,25 @@ export async function deleteAttachment(url: string): Promise<void> {
   }
 }
 
-/** 配信用に実体を取り出す。URL は呼び出し側の外に出さないこと。 */
+/**
+ * 配信用に実体を取り出す。
+ * private ストアなので素の fetch では読めない。必ずトークン付きの get を使う。
+ */
 export async function fetchAttachmentBody(url: string): Promise<Buffer | null> {
+  if (!isBlobConfigured()) return null;
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    return Buffer.from(await res.arrayBuffer());
+    const res = await get(url, { access: "private", token: process.env.BLOB_READ_WRITE_TOKEN });
+    if (!res || res.statusCode !== 200 || !res.stream) return null;
+    const chunks: Uint8Array[] = [];
+    const reader = res.stream.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
+    }
+    return Buffer.concat(chunks);
   } catch (e: any) {
-    console.error("[blob] fetch failed:", e?.message || e);
+    console.error("[blob] get failed:", e?.message || e);
     return null;
   }
 }
